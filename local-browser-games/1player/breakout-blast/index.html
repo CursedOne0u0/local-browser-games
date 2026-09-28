@@ -98,7 +98,7 @@ function buildLevel(lv){
       put(c,r,hp,type);
     }
   }
-  paddle.w=Math.max(80,120-lv*5);paddle.x=W/2;
+  paddle.w=Math.max(80,120-lv*5);paddle.x=W/2;targX=paddle.x;
   balls=[{x:paddle.x,y:paddle.y-12,vx:0,vy:0,stuck:true,r:9}];
   combo=0;mult=1;comboEl.textContent='x1';
 }
@@ -161,10 +161,11 @@ function loop(t){
   update(dt);draw(t);
 }
 function update(dt){
-  const spd=560*dt;
+  const spd=560*dt; // shared cap per second — keyboard and pointer (touch/mouse) alike
   if(keys['arrowleft']||keys['a'])paddle.x-=spd;
   if(keys['arrowright']||keys['d'])paddle.x+=spd;
-  if(keys[' ']||(isTouch&&Date.now()<laserUntil))tryShoot();
+  if(keys['arrowleft']||keys['a']||keys['arrowright']||keys['d'])targX=paddle.x; // keyboard owns outright
+  else paddle.x+=Math.sign(targX-paddle.x)*Math.min(Math.abs(targX-paddle.x),spd); // pointer glides at the same cap
   paddle.x=Math.max(paddle.w/2+6,Math.min(W-paddle.w/2-6,paddle.x));
   balls.forEach(b=>{if(b.stuck)b.x=paddle.x;});
   powerups.forEach(p=>{p.y+=p.vy*dt;});
@@ -271,11 +272,16 @@ window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;i
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptr(e){const r=cv.getBoundingClientRect();return r.left+(e.touches?e.touches[0].clientX:e.clientX)-r.left;}
 let dragging=false;
-cv.addEventListener('mousedown',e=>{dragging=true;paddle.x=(ptr(e)/cv.getBoundingClientRect().width)*W;if(running){launch();tryShoot();}});
-window.addEventListener('mouseup',()=>dragging=false);
-cv.addEventListener('mousemove',e=>{if(dragging)paddle.x=(ptr(e)/cv.getBoundingClientRect().width)*W;});
-cv.addEventListener('touchstart',e=>{paddle.x=(ptr(e)/cv.getBoundingClientRect().width)*W;if(running){launch();tryShoot();}e.preventDefault();},{passive:false});
-cv.addEventListener('touchmove',e=>{paddle.x=(ptr(e)/cv.getBoundingClientRect().width)*W;e.preventDefault();},{passive:false});
+let targX=W/2; // pointer target — paddle glides toward it at the shared keyboard rate
+function setTarget(e){targX=(ptr(e)/cv.getBoundingClientRect().width)*W;}
+function stopGlide(){targX=paddle.x;} // pointer released: stop dead, like keyup
+cv.addEventListener('mousedown',e=>{dragging=true;setTarget(e);if(running){launch();tryShoot();}});
+window.addEventListener('mouseup',()=>{dragging=false;stopGlide();});
+cv.addEventListener('mousemove',e=>{if(dragging)setTarget(e);});
+cv.addEventListener('touchstart',e=>{setTarget(e);if(running){launch();tryShoot();}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{setTarget(e);e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',stopGlide);
+cv.addEventListener('touchcancel',stopGlide);
 function start(){score=0;lives=3;level=1;combo=0;mult=1;shield=false;scoreEl.textContent='0';livesEl.textContent='3';levelEl.textContent='1';comboEl.textContent='x1';buildLevel(1);running=true;paused=false;ov.style.display='none';}
 playBtn.onclick=()=>{start();beep(700,.1);};
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'▶':'⏸';}beep(600,.06);};
