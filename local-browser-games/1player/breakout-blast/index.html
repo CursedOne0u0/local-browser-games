@@ -12,6 +12,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #top{width:min(860px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
 .logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
+#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);white-space:nowrap}
 #hud{display:flex;gap:12px;font-weight:800;font-size:13px;letter-spacing:.04em;flex-wrap:wrap;justify-content:flex-end}
 #hud b{color:var(--c1)}
 #hud #comboB{color:#ffe14d}
@@ -33,6 +34,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
+    <div id="verBadge">v1.2</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">

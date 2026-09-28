@@ -12,6 +12,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #top{width:min(860px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
 .logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
+#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);white-space:nowrap}
 #score{font-weight:900;font-size:clamp(18px,3.4vw,28px)}
 #mode{font-size:12px;opacity:.75}
 #stage{position:relative;width:min(860px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
@@ -33,7 +34,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="score">0 : 0</div></div>
+  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.3</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
   <div id="mode">menu</div>
   <div id="stage">
     <canvas id="cv" width="800" height="500"></canvas>
