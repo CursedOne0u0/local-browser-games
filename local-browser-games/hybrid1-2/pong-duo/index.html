@@ -78,7 +78,7 @@ function launch(){if(!ball.stuck)return;const a=(Math.random()*.6-.3);const s=40
 function burst(x,y,c,n=24){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*500,vy:(Math.random()-.5)*500,life:1,color:c});}
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else paused=!paused;}if(k==='m')muted=!muted;});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height/H,left:(cx-r.left)<r.width/2};}
+function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height,left:(cx-r.left)<r.width/2};}
 function ptrSide(e){const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return ptrFromClient(cx,cy);}
 let drag=null;
 const touchMap=new Map();
