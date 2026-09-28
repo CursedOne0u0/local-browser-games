@@ -1,0 +1,28 @@
+name: Auto-deploy site on push
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  trigger-site-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fire repository_dispatch at BenJooYT/browser-games
+        env:
+          DEPLOY_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+        run: |
+          curl -sS -X POST \
+            "https://api.github.com/repos/BenJooYT/browser-games/dispatches" \
+            -H "Authorization: Bearer ${DEPLOY_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "User-Agent: games-repo-dispatch" \
+            -d "{\"event_type\":\"games-updated\",\"client_payload\":{\"headSha\":\"${GITHUB_SHA}\"}}"
+      - name: Confirm dispatch accepted
+        if: always()
+        run: echo "repository_dispatch fired for ${GITHUB_SHA}"
