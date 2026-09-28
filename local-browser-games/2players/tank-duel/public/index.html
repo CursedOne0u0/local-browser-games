@@ -50,7 +50,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <p id="joinMsg">WASD / arrows + Space. Touch: left drag steers, right button fires.</p>
     </div></div>
   </div>
-  <div id="hint"><kbd>W</kbd><kbd>S</kbd> drive • <kbd>A</kbd><kbd>D</kbd> rotate • <kbd>Space</kbd> fire — shells bounce 6×, watch your own ricochets! Pickups: <b style="color:#ff9f1c">✹ spread</b> • <b style="color:#ffe14d">⚡ rapid</b> • <b style="color:#7dffcb">🛡 shield</b> • <b style="color:#ff6b6b">🎯 homing</b> • <b style="color:#b9a7ff">💣 mines</b> • <b style="color:#66ffff">🔫 rail</b> (0.9s red telegraph, then a hitscan beam — dodge!)</div>
+  <div id="hint"><kbd>W</kbd><kbd>S</kbd> drive • <kbd>A</kbd><kbd>D</kbd> rotate • <kbd>Space</kbd> fire — shells bounce 6×, watch your own ricochets! Pickups: <b style="color:#ff9f1c">✹ spread</b> • <b style="color:#ffe14d">⚡ rapid</b> • <b style="color:#7dffcb">🛡 shield</b> • <b style="color:#ff6b6b">🎯 homing</b> (125° seeker cone) • <b style="color:#b9a7ff">💣 mines</b> • <b style="color:#66ffff">🔫 rail</b> (0.9s red telegraph, then a hitscan beam — dodge!)</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),stageEl=document.getElementById('stage');
@@ -227,6 +227,14 @@ function draw(now,dt){
     ctx.save();
     if(b.rail){ctx.shadowColor='#66ffff';ctx.shadowBlur=18;ctx.fillStyle='#d8ffff';ctx.fillRect(b.x-9,b.y-3,18,6);}
     else{ctx.shadowColor='#ffe14d';ctx.shadowBlur=14;ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(b.x,b.y,5,0,7);ctx.fill();}
+    if(b.home){ // 125° seeker cone edges, very faint red
+      const half=62.5*Math.PI/180,len=70;
+      ctx.globalAlpha=.22;ctx.strokeStyle='#ff4444';ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+Math.cos(b.a-half)*len,b.y+Math.sin(b.a-half)*len);
+      ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+Math.cos(b.a+half)*len,b.y+Math.sin(b.a+half)*len);
+      ctx.stroke();
+    }
     ctx.restore();
   });
   if(beamFx){const age=now-beamFx.t;

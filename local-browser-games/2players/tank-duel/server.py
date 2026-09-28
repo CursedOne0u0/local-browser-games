@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.8"  # bump on every update; shown on the site
+VERSION = "1.9"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -41,6 +41,7 @@ BULLET_LIFE = 5.0
 OWNER_GRACE = 0.4
 WEAPONS = {"spread": 10.0, "rapid": 8.0, "shield": 12.0,
            "homing": 9.0, "mines": 14.0, "rail": 8.0}
+HOME_FOV = math.radians(125)  # seeker cone: homing shells only see ±62.5° off travel dir
 MAX_PICKUPS = 2
 MAX_MINES = 3
 MINE_ARM = 1.0
@@ -296,7 +297,7 @@ def step(dt):
         if circle_free(t["x"], ny): t["y"] = ny
     # bullets (substepped; axis-separated bounce)
     for b in game["bullets"]:
-        if b.get("home"):  # homing shells steer at the foe while armed
+        if b.get("home"):  # homing shells steer at the foe while armed — if it's inside the 125° seeker cone
             foe = game["tanks"][1-b["owner"]]
             ot = game["tanks"][b["owner"]]
             if foe["alive"] and ot["wpn"] == "homing" and now() < ot["wpn_until"]:
@@ -304,8 +305,9 @@ def step(dt):
                 cur = math.atan2(b["vy"], b["vx"])
                 want = math.atan2(foe["y"]-b["y"], foe["x"]-b["x"])
                 dd = (want-cur+math.pi) % (2*math.pi) - math.pi
-                na = cur + max(-2.8*dt, min(2.8*dt, dd))
-                b["vx"] = math.cos(na)*sp; b["vy"] = math.sin(na)*sp
+                if abs(dd) <= HOME_FOV/2:
+                    na = cur + max(-2.8*dt, min(2.8*dt, dd))
+                    b["vx"] = math.cos(na)*sp; b["vy"] = math.sin(na)*sp
         sdt = dt/3
         for _ in range(3):
             oldx, oldy = b["x"], b["y"]
@@ -403,7 +405,9 @@ def snapshot():
                    "rail": ({"t": round(t.get("rail_charge", 0),2), "ang": round(t["rail_ang"],3)}
                             if t.get("rail_charge", 0) > 0 else None)}
                   for t in game["tanks"]],
-        "bullets": [{"x": round(b["x"],1), "y": round(b["y"],1)} for b in game["bullets"]],
+        "bullets": [{"x": round(b["x"],1), "y": round(b["y"],1),
+                       "home": bool(b.get("home")),
+                       "a": round(math.atan2(b["vy"], b["vx"]),3)} for b in game["bullets"]],
         "mines": [{"x": round(m["x"],1), "y": round(m["y"],1), "owner": m["owner"],
                    "armed": now() >= m["armed_at"]} for m in game["mines"]],
         "pickups": [{"x": round(p["x"],1), "y": round(p["y"],1), "kind": p["kind"]} for p in game["pickups"]],
