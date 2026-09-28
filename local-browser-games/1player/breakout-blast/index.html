@@ -34,7 +34,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
-    <div id="verBadge">v1.3</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.4</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">
@@ -56,7 +56,10 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const W=860,H=560;
 const ov=document.getElementById('overlay'),title=document.getElementById('title'),msg=document.getElementById('msg'),playBtn=document.getElementById('playBtn');
 const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),levelEl=document.getElementById('level'),bestEl=document.getElementById('best'),comboEl=document.getElementById('comboB');
-let best=+(localStorage.getItem('breakout_best')||0);bestEl.textContent=best;
+const store=(()=>{try{const s=window.localStorage;s.setItem('__t','1');s.removeItem('__t');return s;}catch(e){return null;}})();
+const loadBest=()=>{try{const n=+(store&&store.getItem('breakout_best'));return isFinite(n)&&n>0?n:0;}catch(e){return 0;}};
+const saveBest=v=>{try{store&&store.setItem('breakout_best',String(v));}catch(e){}};
+let best=loadBest();bestEl.textContent=best;
 let score=0,lives=3,level=1,running=false,paused=false,muted=false;
 let combo=0,mult=1;
 let paddle={w:120,h:14,x:W/2,y:H-36};
@@ -151,6 +154,7 @@ function damageBrick(br,amt){
     br.alive=false;
     combo++;mult=Math.min(5,1+Math.floor(combo/4));comboEl.textContent='x'+mult;
     score+=10*level*mult;scoreEl.textContent=score;
+    if(score>best){best=score;saveBest(best);bestEl.textContent=best;}
     burst(br.x+br.w/2,br.y+br.h/2,br.color,br.type==='bomb'?34:18);
     drop(br.x+br.w/2,br.y+br.h/2);
     beep(700+Math.min(400,combo*15),.07);
@@ -272,7 +276,7 @@ function draw(t){
 }
 function gameOver(){
   running=false;ov.style.display='flex';
-  if(score>best){best=score;localStorage.setItem('breakout_best',best);bestEl.textContent=best;}
+  if(score>best){best=score;saveBest(best);bestEl.textContent=best;}
   title.textContent='💥 GAME OVER';
   msg.innerHTML=`Score: <b>${score}</b> • Level: <b>${level}</b> • Best: <b>${best}</b><br>Press Play to try again.`;
   playBtn.textContent='Play again';
