@@ -9,37 +9,46 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3003"))
-VERSION = "1.1"  # bump on every update; shown on the site
+VERSION = "1.2"  # bump on every update; shown on the site
 MAX_PLAYERS = 8
 WIN_ROUNDS = 3
 PUBLIC = Path(__file__).parent / "public"
 
-W, H = 800, 560
+W, H = 2200, 1400
 RUN_R = 15
-DIVER_SPEED = 235
-HUNTER_SPEED = 210
+DIVER_SPEED = 300
+HUNTER_SPEED = 270
 TAG_DIST = 34
 NODE_R = 26
 CHANNEL_TIME = 2.0  # touch a node this long to claim a puzzle (silent)
-LIVE_NODES = 2
-SPAWN_CLEAR_HUNTER = 150
-NODE_SPREAD = 200
-ROUND_TIME = 150
+LIVE_NODES = 3
+SPAWN_CLEAR_HUNTER = 350
+NODE_SPREAD = 300
+ROUND_TIME = 180
 PING_EVERY = 4.0
 BOT_NAMES = ["Byte", "Echo", "Sonar", "Pixel", "Glitch", "Watt", "Ping", "Fathom"]
 BOT_SOLVE_MIN, BOT_SOLVE_MAX = 5.0, 9.0  # bot "thinking" time per puzzle
 PICK_COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"]
-# pillars (x,y,w,h) — same trench furniture as bomb-tag
+# trench furniture: 180-degree rotational mirrors (x,y,w,h) <-> (W-x-w,H-y-h)
 PILLARS = [
-    {"x": 200, "y": 140, "w": 60, "h": 60},
-    {"x": 540, "y": 140, "w": 60, "h": 60},
-    {"x": 200, "y": 360, "w": 60, "h": 60},
-    {"x": 540, "y": 360, "w": 60, "h": 60},
-    {"x": 370, "y": 250, "w": 60, "h": 60},
+    {"x": 300, "y": 250, "w": 80, "h": 80},
+    {"x": 1820, "y": 1070, "w": 80, "h": 80},
+    {"x": 700, "y": 900, "w": 120, "h": 60},
+    {"x": 1380, "y": 440, "w": 120, "h": 60},
+    {"x": 1050, "y": 200, "w": 60, "h": 140},
+    {"x": 1090, "y": 1060, "w": 60, "h": 140},
+    {"x": 1500, "y": 700, "w": 100, "h": 100},
+    {"x": 600, "y": 600, "w": 100, "h": 100},
+    {"x": 350, "y": 1050, "w": 140, "h": 70},
+    {"x": 1710, "y": 280, "w": 140, "h": 70},
+    {"x": 950, "y": 600, "w": 70, "h": 200},
+    {"x": 1180, "y": 600, "w": 70, "h": 200},
+    {"x": 1800, "y": 600, "w": 80, "h": 160},
+    {"x": 320, "y": 640, "w": 80, "h": 160},
 ]
-DIVER_SPAWNS = [(100, 100), (700, 100), (100, 460), (700, 460),
-                (100, 280), (700, 280), (250, 460), (550, 100)]
-HUNTER_SPAWNS = [(400, 280), (340, 250), (460, 250), (340, 310), (460, 310)]
+DIVER_SPAWNS = [(150, 150), (2050, 150), (150, 1250), (2050, 1250),
+                (150, 700), (2050, 700), (1100, 150), (1100, 1250)]
+HUNTER_SPAWNS = [(1100, 700), (1070, 660), (1130, 660), (1070, 740), (1130, 740)]
 
 lock = threading.Lock()
 game = {
@@ -139,7 +148,7 @@ def make_puzzle():
 
 def spawn_node():
     hunters_pos = [(game["runners"][i]["x"], game["runners"][i]["y"]) for i in hunters()]
-    for _ in range(60):
+    for _ in range(120):
         x = 70+random.random()*(W-140); y = 70+random.random()*(H-140)
         if not point_clear(x, y): continue
         if hunters_pos and min(math.hypot(x-hx, y-hy) for hx, hy in hunters_pos) < SPAWN_CLEAR_HUNTER:
