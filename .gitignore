@@ -1,2 +1,3 @@
 .server.pid
 __pycache__/
+_site/
