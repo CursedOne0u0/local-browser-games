@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3002"))
-VERSION = "1.6"  # bump on every update; shown on the site
+VERSION = "1.7"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -91,7 +91,9 @@ def new_round():
     # alternate the holder every round (random first) — never the same twice running
     game["holder"] = random.choice([1, 2]) if game["holder"] not in (1, 2) else 3-game["holder"]
     game["fuse"] = 8+random.random()*6
-    # NOTE: no last_pass event here — assignment is shown via holder/names, not the pass toast
+    # NOTE: no last_pass event here — assignment is shown via holder/names, not the pass toast.
+    # Clear any previous round's pass so a client polling late never toasts it as new at round start.
+    game["last_pass"] = None
 
 def touch(pid):
     for p in game["players"]:
@@ -134,6 +136,9 @@ def explode():
     game["event_id"] += 1
     game["last_boom"] = {"x": round(game["pos"][h]["x"],1), "y": round(game["pos"][h]["y"],1),
                          "scorer": scorer, "id": game["event_id"]}
+    # Round is over: drop the last pass so a client polling late (e.g. background
+    # tab during the 2.5s intermission) doesn't toast a stale pass as new.
+    game["last_pass"] = None
     if game["pos"][scorer-1]["score"] >= WIN_ROUNDS:
         game["phase"] = "over"; game["winner"] = scorer
     else:
