@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Neon Pong Showdown — LAN 2P</title>
+<style>
+:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;overflow:hidden}
+#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px}
+#topbar{display:flex;align-items:center;gap:12px;width:min(920px,96vw);justify-content:space-between}
+.logo{font-weight:900;letter-spacing:.12em;font-size:clamp(14px,2.5vw,20px);text-shadow:0 0 12px var(--c1),0 0 30px var(--c2)}
+.logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
+#score{font-weight:900;font-size:clamp(18px,3.5vw,30px);letter-spacing:.1em}
+#names{font-size:13px;opacity:.85;text-align:center}
+#stage{position:relative;width:min(920px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;box-shadow:0 0 0 1px #000,0 0 40px #00f6ff33,0 0 80px #ff2fd622;background:#070a18}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.78);backdrop-filter:blur(6px);padding:16px}
+.card{width:min(440px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;box-shadow:0 0 30px #00f6ff22;text-align:center}
+.card h1{margin:.2em 0;font-size:22px;letter-spacing:.06em}
+.card p{font-size:13px;opacity:.8;line-height:1.5}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#050816;color:#fff;font-size:16px;outline:none;margin:8px 0}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;letter-spacing:.04em;color:#04121a;background:linear-gradient(90deg,var(--c1),#7dffcb);box-shadow:0 0 18px #00f6ff88;width:100%;margin-top:8px}
+button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
+button:disabled{opacity:.4;cursor:default}
+#slots{display:flex;gap:8px;margin:10px 0}
+.slot{flex:1;padding:8px;border-radius:10px;background:#ffffff0d;border:1px dashed #ffffff33;font-size:13px}
+.slot.on{border-style:solid;border-color:var(--c1)}
+#settings{margin:10px 0;display:grid;gap:6px}
+.srow{display:flex;gap:6px;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.06em;opacity:.95}
+.srow .lbl{flex:0 0 44px;text-align:right;opacity:.7}
+.srow button{flex:1;width:auto;margin:0;padding:7px 2px;font-size:12px}
+.srow button.sel{outline:2px solid #fff}
+#hint{width:min(920px,96vw);font-size:12px;opacity:.7;text-align:center;line-height:1.6}
+kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-bottom-width:2px;border-radius:6px;padding:1px 6px;font-size:11px}
+#toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none}
+#verBadge{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);box-shadow:0 0 12px #00f6ff33;white-space:nowrap}
+#taunts{width:min(920px,96vw);display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+#taunts button{flex:0 1 auto;width:auto;margin:0;padding:6px 10px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <div class="logo">NEON <span>PONG</span> SHOWDOWN</div>
+    <div id="verBadge">v…</div>
+    <div id="score">0 : 0</div>
+  </div>
+  <div id="names">connecting…</div>
+  <div id="stage">
+    <canvas id="cv" width="800" height="500"></canvas>
+    <div id="toast"></div>
+    <div id="overlay">
+      <div class="card" id="joinCard">
+        <h1>🏓 LAN Duel <span id="duelSub" style="font-size:15px;opacity:.75">— first to 7</span></h1>
+        <p>One laptop hosts (<b>python3 server.py</b>). Both players open the <b>same URL</b> on the same Wi-Fi.</p>
+        <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div></div>
+        <div id="settings">
+          <div class="srow" id="winRow"><span class="lbl">WIN</span><button data-win="3">3</button><button data-win="5">5</button><button data-win="7">7</button><button data-win="11">11</button></div>
+          <div class="srow" id="spdRow"><span class="lbl">BALL</span><button data-spd="320">Chill</button><button data-spd="420">Classic</button><button data-spd="520">Spicy</button></div>
+          <div class="srow" id="obRow"><span class="lbl">BEAM</span><button data-ob="1">ON</button><button data-ob="0">OFF</button></div>
+        </div>
+        <input id="name" maxlength="32" placeholder="Your name…" value="Player">
+        <button id="joinBtn">Join game</button>
+        <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
+        <button id="botBtn" class="ghost" disabled>🤖 Solo vs AI: OFF</button>
+        <p id="joinMsg">Tip: host reads the LAN URL from the terminal.</p>
+      </div>
+      <div class="card" id="endCard" style="display:none">
+        <h1 id="winText">P1 WINS!</h1>
+        <p>GG! Rematch?</p>
+        <button id="againBtn">Back to lobby</button>
+      </div>
+    </div>
+  </div>
+  <div id="hint"><kbd>W</kbd>/<kbd>S</kbd> or <kbd>↑</kbd>/<kbd>↓</kbd> or mouse / touch — move • <kbd>E</kbd> or button = <b>OVERDRIVE</b> (big paddle 1.6s, 8s cooldown) • move paddle while hitting = <b>spin</b> • orbs: <b style="color:#00f6ff">Expand</b> • <b style="color:#ff2fd6">Shrink</b> • <b style="color:#ffe14d">Turbo</b> • <b style="color:#7dff6a">Slow</b> • <b style="color:#7dffcb">🛡 Shield</b> • <b style="color:#9adcff">❄ Freeze foe</b> • <b style="color:#ff6b9d">🧲 Magnet</b> • <b style="color:#b9a7ff">👻 Ghost</b> • <b style="color:#7dff6a">🔀 Swap</b> • <b style="color:#c58bff">🌀 Vortex</b> • 6-6 = <b>SUDDEN DEATH</b></div>
+  <div style="width:min(920px,96vw);display:flex;gap:8px;align-items:center;justify-content:center"><button id="odBtn" style="max-width:280px;margin:0;padding:9px 14px">⚡ OVERDRIVE (E)</button><div id="odStat" style="font-size:12px;opacity:.8">ready</div></div>
+  <div id="taunts"><button data-t="gg">1·GG 🏓</button><button data-t="nice">2·Nice 🔥</button><button data-t="ouch">3·Ouch 😅</button><button data-t="whoops">4·Whoops 🙈</button><button data-t="lol">5·LOL 😂</button><button data-t="rematch">6·Rematch? 👀</button></div>
+</div>
+<script>
+const W=800,H=500;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const ov=document.getElementById('overlay'),joinCard=document.getElementById('joinCard'),endCard=document.getElementById('endCard');
+const nameI=document.getElementById('name'),joinBtn=document.getElementById('joinBtn'),readyBtn=document.getElementById('readyBtn'),againBtn=document.getElementById('againBtn'),botBtn=document.getElementById('botBtn');
+try{nameI.value=localStorage.getItem('neonpong_name')||'Player';}catch(e){}
+nameI.addEventListener('input',()=>{try{localStorage.setItem('neonpong_name',nameI.value);}catch(e){}});
+let lastBot=false;
+const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),joinMsg=document.getElementById('joinMsg');
+const cid=Math.random().toString(36).slice(2)+Date.now().toString(36);
+let you=0,myY=0.5,keys={},state=null,trail=[],parts=[],flash='',flashT=0,lastPhase='',lastCd=0,lastPowerId=0,lastPointId=0,lastBlockId=0,lastPreview=false,lastObId=0,lastTauntId=0,joined=false;
+let names=['Player 1','Player 2'],scores=[0,0];
+const odBtn=document.getElementById('odBtn'),odStat=document.getElementById('odStat'),verEl=document.getElementById('verBadge');
+async function doOverdrive(){if(!joined||!you)return;try{const r=await api('/api/overdrive',{clientId:cid});if(r.ok){beep(1000,.15,'sawtooth',.14);showToast('⚡ OVERDRIVE!');}else if(r.cd)showToast('Overdrive in '+Math.ceil(r.cd)+'s…');}catch(e){}}
+odBtn.onclick=doOverdrive;
+let AC=null;function beep(f=440,d=0.08,type='square',v=0.12){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
+joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=false;botBtn.disabled=false;joinMsg.textContent=you===0?'Room full — spectating 👀':(you===1?'You are LEFT (cyan) — P1':'You are RIGHT (pink) — P2');showToast(joinMsg.textContent);beep(660,.08);};
+readyBtn.onclick=async()=>{await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for other player…';beep(700,.07);};
+botBtn.onclick=async()=>{const r=await api('/api/bot',{clientId:cid,on:!lastBot});if(r.ok){beep(700,.07);}else showToast('AI needs an empty P2 seat, lobby only');};
+againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});endCard.style.display='none';joinCard.style.display='block';readyBtn.disabled=false;readyBtn.textContent='Ready up ⚡';ov.style.display='flex';};
+document.querySelectorAll('#settings button').forEach(b=>b.onclick=async()=>{
+  const body={clientId:cid};
+  if(b.dataset.win)body.win=+b.dataset.win;
+  if(b.dataset.spd)body.speed=+b.dataset.spd;
+  if(b.dataset.ob!==undefined)body.obstacle=b.dataset.ob==='1';
+  await api('/api/settings',body);beep(600,.06);
+});
+const TAUNT_KEYS=['gg','nice','ouch','whoops','lol','rematch'];
+async function sendTaunt(key){
+  if(!joined||!you){showToast('Join first!');return;}
+  const r=await api('/api/taunt',{clientId:cid,msg:key});
+  if(r.ok)beep(700,.06);else if(r.cd)showToast('Chill… '+r.cd+'s');
+}
+document.querySelectorAll('#taunts button').forEach(b=>b.onclick=()=>sendTaunt(b.dataset.t));
+function paintSettings(st){
+  if(!st)return;
+  document.querySelectorAll('#winRow button').forEach(b=>b.classList.toggle('sel',+b.dataset.win===st.win));
+  document.querySelectorAll('#spdRow button').forEach(b=>b.classList.toggle('sel',+b.dataset.spd===st.speed));
+  document.querySelectorAll('#obRow button').forEach(b=>b.classList.toggle('sel',(b.dataset.ob==='1')===st.obstacle));
+  document.getElementById('duelSub').textContent='— first to '+st.win;
+}
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k))e.preventDefault();if(k==='e'&&document.activeElement!==nameI)doOverdrive();if(/^[1-6]$/.test(k)&&document.activeElement!==nameI)sendTaunt(TAUNT_KEYS[+k-1]);});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function pointerY(ev){const r=cv.getBoundingClientRect();const y=(ev.touches?ev.touches[0].clientY:ev.clientY);return Math.max(0,Math.min(1,(y-r.top)/r.height));}
+let pointerActive=false;
+cv.addEventListener('mousedown',e=>{pointerActive=true;myY=pointerY(e);});
+window.addEventListener('mouseup',()=>pointerActive=false);
+cv.addEventListener('mousemove',e=>{if(pointerActive)myY=pointerY(e);});
+cv.addEventListener('touchstart',e=>{pointerActive=true;myY=pointerY(e);e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{myY=pointerY(e);e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',()=>pointerActive=false);
+let view={p1y:0.5,p2y:0.5,bx:W/2,by:H/2};
+let netBall={x:W/2,y:H/2,vx:0,vy:0,t:performance.now()};
+let frameDt=1/60,lastTrailPush=0;
+let lastMoveSend=0,lastSentY=-1,lastFrame=performance.now(),pollSeq=0;
+function poll(){
+  const mySeq=++pollSeq; // 60Hz fire-and-forget; only newest response applies
+  api('/api/state?id='+cid).then(s=>{
+    if(mySeq!==pollSeq)return;
+    state=s;scores=[s.p1.score,s.p2.score];names=[s.names[0]||'Player 1',s.names[1]||'Player 2'];
+    if(s.v)verEl.textContent='v'+s.v;
+    paintSettings(s.settings);
+    scoreEl.textContent=scores[0]+' : '+scores[1];
+    const me=you===1?s.p1:you===2?s.p2:null;
+    let extra='';
+    if(s.sudden)extra+=' ☠ SUDDEN DEATH';
+    if(me&&me.frozen)extra+=' ❄ FROZEN!';
+    namesEl.textContent=`${names[0]}  ${scores[0]} : ${scores[1]}  ${names[1]}${you?` — you are P${you}`:joined?' — spectating':''}${extra}`;
+    if(me){odStat.textContent=me.od>0?('OVERDRIVE active '+me.od.toFixed(1)+'s'):me.od_cd>0?('overdrive in '+Math.ceil(me.od_cd)+'s'):'overdrive ready — E!';odBtn.disabled=!(me.od_cd<=0&&me.od<=0);}
+    s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
+    s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);
+    lastBot=!!s.bot;botBtn.textContent='🤖 Solo vs AI: '+(s.bot?'ON':'OFF');
+    if(s.phase==='playing'||s.phase==='countdown'||s.phase==='point'){ov.style.display='none';endCard.style.display='none';}
+    if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
+    if(s.phase==='playing'&&s.preview){if(!lastPreview){lastPreview=true;beep(520,.08);}}
+    if(lastPreview&&!(s.phase==='playing'&&s.preview)){lastPreview=false;if(s.phase==='playing'){flash='GO!';flashT=Date.now()+600;beep(880,.2);}}
+    if(s.last_power&&s.last_power.id!==lastPowerId){lastPowerId=s.last_power.id;beep(1200,.12,'sawtooth',.1);showToast({expand:'⬆️ Expanded!',shrink:'⬇️ Shrunk foe!',turbo:'⚡ TURBO!',slow:'🐢 SLOWED!',shield:'🛡 SHIELD UP!',freeze:'❄ FROZE FOE!',magnet:'🧲 MAGNET PADDLE!',ghost:'👻 GHOST BALL!',swap:'🔀 SWAPPED!',vortex:'🌀 VORTEX! run or slingshot!',overdrive:'⚡ OVERDRIVE!',sudden:'☠ SUDDEN DEATH — tiny paddles, fast ball!'}[s.last_power.kind]||'Power!');burst(s.ball.x,s.ball.y,'#ffe14d',24);if(s.last_power.kind==='swap'&&you!==0)myY=you===1?s.p1.y:s.p2.y;}
+    if(s.last_block&&s.last_block.id!==lastBlockId){lastBlockId=s.last_block.id;beep(900,.2,'square',.12);showToast('🛡 SHIELD SAVE by '+(s.last_block.by===1?names[0]:names[1])+'!');flash='BLOCKED!';flashT=Date.now()+900;}
+    if(s.last_obounce&&s.last_obounce.id!==lastObId){lastObId=s.last_obounce.id;beep(760,.07,'square',.1);burst(view.bx,view.by,'#ff9f1c',16);}
+    if(s.last_taunt&&s.last_taunt.id!==lastTauntId){lastTauntId=s.last_taunt.id;const who=s.last_taunt.by===you?'You':(names[s.last_taunt.by-1]||('P'+s.last_taunt.by));showToast('💬 '+who+': '+s.last_taunt.text);beep(s.last_taunt.by===you?700:500,.09,'square',.1);}
+    if(s.last_point&&s.last_point.id!==lastPointId){lastPointId=s.last_point.id;const sc=s.last_point.scored;beep(sc===you?880:220,.25);burst(sc===1?60:W-60,H/2,sc===1?'#00f6ff':'#ff2fd6',40);flash=(s.last_point.scores[0]+' — '+s.last_point.scores[1]);flashT=Date.now()+900;}
+    if(s.phase==='over'){ov.style.display='flex';joinCard.style.display='none';endCard.style.display='block';document.getElementById('winText').textContent=(s.winner?names[s.winner-1]:'Nobody')+' WINS! 🏆';}
+    if(s.phase==='waiting'&&lastPhase==='over'){ov.style.display='flex';joinCard.style.display='block';endCard.style.display='none';readyBtn.disabled=!joined;readyBtn.textContent='Ready up ⚡';}
+    lastPhase=s.phase;
+    // dead-reckoning base: newest snapshot + velocity; frame() extrapolates to display rate
+    netBall={x:s.ball.x,y:s.ball.y,vx:s.ball.vx||0,vy:s.ball.vy||0,t:performance.now()};
+    if(you===0){view.p1y=s.p1.y;view.p2y=s.p2.y;}
+  }).catch(()=>{}).finally(()=>{});
+  setTimeout(poll,16); // ~60Hz state
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(0.05,(now-lastFrame)/1000)||0.016;lastFrame=now;
+  const me=state?(you===1?state.p1:you===2?state.p2:null):null;
+  const frozen=!!(me&&me.frozen);
+  if(!frozen){
+    const spd=1.7*dt; // full court in ~0.6s — was 0.028/poll (~3.5s), the lag culprit
+    if(keys['w']||keys['arrowup'])myY-=spd;
+    if(keys['s']||keys['arrowdown'])myY+=spd;
+    myY=Math.max(0,Math.min(1,myY));
+  }else if(state){myY=you===1?state.p1.y:state.p2.y;}
+  if(joined&&you!==0&&!frozen&&(Math.abs(myY-lastSentY)>0.0004||now-lastMoveSend>100)){
+    lastMoveSend=now;lastSentY=myY;
+    fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,y:myY})}).catch(()=>{});
+  }
+  if(state){
+    // own paddle: instant local prediction — no server-echo lag
+    if(you===1){view.p1y=myY;view.p2y+=(state.p2.y-view.p2y)*Math.min(1,dt*14);}
+    else if(you===2){view.p2y=myY;view.p1y+=(state.p1.y-view.p1y)*Math.min(1,dt*14);}
+    else{view.p1y+=(state.p1.y-view.p1y)*Math.min(1,dt*14);view.p2y+=(state.p2.y-view.p2y)*Math.min(1,dt*14);}
+    if(state.phase==='playing'&&!state.preview){
+      // predict ball between 60Hz snapshots so 120/144Hz screens stay smooth
+      const ext=Math.min(0.12,(now-netBall.t)/1000);
+      let px=netBall.x+netBall.vx*ext,py=netBall.y+netBall.vy*ext;
+      if(py<10)py=20-py;else if(py>H-10)py=2*(H-10)-py; // one wall bounce
+      view.bx=px;view.by=py; // snap on teleport (serve/point) is implicit: netBall resets each snapshot
+    }else{view.bx=state.ball.x;view.by=state.ball.y;}
+  }else{view.p1y=myY;view.p2y=myY;}
+  frameDt=dt;
+  draw(now);
+}
+function burst(x,y,color,n=20){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*500,vy:(Math.random()-0.5)*500,life:1,color});}
+function draw(now){
+  ctx.save();ctx.fillStyle='#070a18';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#ffffff0d';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.save();ctx.shadowColor='#00f6ff';ctx.shadowBlur=12;ctx.strokeStyle='#00f6ff88';ctx.setLineDash([12,12]);ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-10);ctx.stroke();ctx.restore();ctx.setLineDash([]);
+  const h1=state?state.p1.h:90,h2=state?state.p2.h:90;
+  const p1={y:view.p1y,h:h1},p2={y:view.p2y,h:h2};
+  const ball={x:view.bx,y:view.by};
+  const ghosted=!!(state&&state.ghost_for===you&&you!==0);
+  if(!ghosted){trail.push({x:ball.x,y:ball.y,t:now});}while(trail.length&&now-trail[0].t>260)trail.shift();
+  if(!ghosted)trail.forEach((p,i)=>{ctx.globalAlpha=i/trail.length*0.5;ctx.fillStyle='#00f6ff';ctx.beginPath();ctx.arc(p.x,p.y,4+6*i/trail.length,0,7);ctx.fill();});ctx.globalAlpha=1;
+  if(state&&state.powerup){const pu=state.powerup;const pulse=1+Math.sin(now/200)*0.12;ctx.save();ctx.translate(pu.x,pu.y);ctx.scale(pulse,pulse);const col={expand:'#00f6ff',shrink:'#ff2fd6',turbo:'#ffe14d',slow:'#7dff6a',shield:'#7dffcb',freeze:'#9adcff',magnet:'#ff6b9d',ghost:'#b9a7ff',swap:'#7dff6a',vortex:'#c58bff'}[pu.kind]||'#fff';ctx.shadowColor=col;ctx.shadowBlur=20;ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,18,0,7);ctx.stroke();ctx.fillStyle=col;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText({expand:'⇕',shrink:'⇩',turbo:'⚡',slow:'◔',shield:'🛡',freeze:'❄',magnet:'🧲',ghost:'👻',swap:'🔀',vortex:'🌀'}[pu.kind]||'★',0,1);ctx.restore();}
+  // shields: back walls that block one goal
+  if(state&&state.p1.shield){ctx.save();ctx.shadowColor='#7dffcb';ctx.shadowBlur=14;ctx.strokeStyle='#7dffcb';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(6,60);ctx.lineTo(6,H-60);ctx.stroke();ctx.restore();}
+  if(state&&state.p2.shield){ctx.save();ctx.shadowColor='#7dffcb';ctx.shadowBlur=14;ctx.strokeStyle='#7dffcb';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(W-6,60);ctx.lineTo(W-6,H-60);ctx.stroke();ctx.restore();}
+  if(state&&state.obstacle){
+    const ob=state.obstacle;
+    const ox=Math.cos(ob.ang)*ob.len/2,oy=Math.sin(ob.ang)*ob.len/2;
+    ctx.save();ctx.lineCap='round';
+    if(ob.phase==='active'){
+      ctx.shadowColor='#ff9f1c';ctx.shadowBlur=20;ctx.strokeStyle='#ffd166';ctx.lineWidth=7;
+      ctx.beginPath();ctx.moveTo(ob.x-ox,ob.y-oy);ctx.lineTo(ob.x+ox,ob.y+oy);ctx.stroke();
+      ctx.shadowBlur=0;ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(ob.x-ox,ob.y-oy,4,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(ob.x+ox,ob.y+oy,4,0,7);ctx.fill();
+    }else{ // warn_in / warn_out: flashing dashed telegraph
+      const blink=(Math.sin(now/(ob.phase==='warn_in'?90:140))+1)/2;
+      ctx.globalAlpha=0.25+0.6*blink;
+      ctx.shadowColor='#ff4444';ctx.shadowBlur=12;
+      ctx.strokeStyle=ob.phase==='warn_in'?'#ff5555':'#ff9f1c';
+      ctx.lineWidth=5;ctx.setLineDash([10,8]);
+      ctx.beginPath();ctx.moveTo(ob.x-ox,ob.y-oy);ctx.lineTo(ob.x+ox,ob.y+oy);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if(state&&state.vortex){
+    const v=state.vortex,rot=now/160;
+    ctx.save();ctx.translate(v.x,v.y);
+    ctx.shadowColor='#a855f7';ctx.shadowBlur=24;ctx.strokeStyle='#c58bff';ctx.lineCap='round';
+    for(let k=0;k<3;k++){
+      ctx.save();ctx.rotate(rot+k*Math.PI*2/3);ctx.lineWidth=5-k;
+      ctx.globalAlpha=0.9-k*0.25;
+      ctx.beginPath();ctx.arc(0,0,22-k*5,0.3,2.4);ctx.stroke();ctx.restore();
+    }
+    ctx.globalAlpha=1;ctx.fillStyle='#0a0616';
+    ctx.beginPath();ctx.arc(0,0,9,0,7);ctx.fill();
+    ctx.shadowBlur=0;ctx.strokeStyle='#e9d5ff';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,9,0,7);ctx.stroke();
+    ctx.restore();
+  }
+  const p1c=state&&state.p1.frozen?'#9adcff':(state&&state.p1.od>0?'#ffffff':'#00f6ff');
+  const p2c=state&&state.p2.frozen?'#9adcff':(state&&state.p2.od>0?'#ffffff':'#ff2fd6');
+  paddle(30,p1.y*H,p1.h,p1c);paddle(W-30-14,p2.y*H,p2.h,p2c);
+  if(state){const g1=state.ghost_for===1?'hide':(state.ghost>0?'hit':null);const g2=state.ghost_for===2?'hide':(state.ghost>0?'hit':null);sideBars(10,'l',state.p1,g1);sideBars(W-10,'r',state.p2,g2);}
+  if(state&&state.sudden){ctx.save();ctx.textAlign='center';ctx.font='900 20px system-ui';ctx.fillStyle='#ff5555';ctx.shadowColor='#f00';ctx.shadowBlur=12;ctx.fillText('☠ SUDDEN DEATH ☠',W/2,28);ctx.restore();}
+  if(!ghosted){ctx.save();ctx.shadowColor='#fff';ctx.shadowBlur=24;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ball.x,ball.y,9,0,7);ctx.fill();ctx.restore();}
+  else if(state){ctx.save();ctx.textAlign='center';ctx.font='700 16px system-ui';ctx.fillStyle='#b9a7ffaa';ctx.fillText('👻 where did it go?!',W/2,44);ctx.restore();}
+  if(state&&state.phase==='playing'&&state.preview){
+    const dir=state.serve_dir>=0?1:-1;
+    const pulse=0.55+0.45*Math.sin(now/150);
+    ctx.save();ctx.globalAlpha=Math.max(0.25,pulse);ctx.textAlign='center';
+    ctx.font='900 40px system-ui';ctx.shadowColor=dir>0?'#ff2fd6':'#00f6ff';ctx.shadowBlur=22;ctx.fillStyle='#fff';
+    const ax=Math.max(90,Math.min(W-90,ball.x+dir*80));
+    ctx.fillText(dir>0?'▶▶▶':'◀◀◀',ax,ball.y+14);
+    ctx.font='700 14px system-ui';ctx.shadowBlur=8;ctx.fillStyle='#ffffffdd';
+    ctx.fillText('to '+names[dir>0?1:0],ax,ball.y-24);
+    ctx.restore();
+  }
+  parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*frameDt;p.y+=p.vy*frameDt;const dmp=Math.pow(0.3,frameDt);p.vx*=dmp;p.vy*=dmp;p.life-=frameDt*1.2;ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
+  if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 64px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=30;ctx.fillStyle='#fff';ctx.fillText(flash,W/2,H/2-10);ctx.restore();}
+  else if(state&&state.phase!=='playing'&&state.phase!=='over'){ctx.save();ctx.textAlign='center';ctx.font='700 22px system-ui';ctx.fillStyle='#ffffffaa';const txt={waiting:'Waiting for both players to READY…',countdown:'Get ready…',point:'Nice!'}[state.phase]||'';if(txt)ctx.fillText(txt,W/2,60);ctx.restore();}
+  ctx.restore();
+}
+function paddle(x,y,h,color){ctx.save();ctx.shadowColor=color;ctx.shadowBlur=18;ctx.fillStyle=color;const w=14;const yy=y-h/2;ctx.beginPath();ctx.moveTo(x+7,yy);ctx.arcTo(x+w,yy,x+w,yy+h,7);ctx.arcTo(x+w,yy+h,x,yy+h,7);ctx.arcTo(x,yy+h,x,yy,7);ctx.arcTo(x,yy,x+w,yy,7);ctx.closePath();ctx.fill();ctx.fillStyle='#ffffffcc';ctx.fillRect(x+3,yy+8,3,h-16);ctx.restore();}
+function hbar(x,y,w,frac,col,align){
+  const bx=align==='l'?x:x-w;
+  ctx.fillStyle='#ffffff1c';ctx.fillRect(bx,y,w,5);
+  ctx.fillStyle=col;ctx.fillRect(bx,y,w*Math.max(0,Math.min(1,frac)),5);
+}
+function sideBars(x,align,pl,g){
+  // per-player effect / cooldown bars at that player's edge
+  const list=[];
+  if(pl.od>0)list.push({i:'⚡',f:pl.od/1.6,c:'#ffffff'});
+  else if(pl.od_cd>0)list.push({i:'⚡',f:1-pl.od_cd/8,c:'#2b6f7e'});
+  if(pl.mag>0)list.push({i:'🧲',f:pl.mag/8,c:'#ff6b9d'});
+  if(pl.fx>0)list.push({i:pl.fxd<0?'⇩':'⇕',f:pl.fx/10,c:pl.fxd<0?'#ff2fd6':'#00f6ff'});
+  if(pl.fr>0)list.push({i:'❄',f:pl.fr/2.5,c:'#9adcff'});
+  if(g==='hit')list.push({i:'👻',f:1,c:'#b9a7ff'});
+  else if(g==='hide')list.push({i:'👻',f:1,c:'#ff5555'});
+  if(pl.shield)list.push({i:'🛡',f:1,c:'#7dffcb'});
+  if(!list.length)return;
+  ctx.save();ctx.font='700 10px system-ui';ctx.textBaseline='middle';
+  list.slice(0,5).forEach((e,k)=>{
+    const y=44+k*15;
+    if(align==='l'){ctx.fillStyle=e.c;ctx.textAlign='left';ctx.fillText(e.i,x,y+3);hbar(x+15,y,60,e.f,e.c,'l');}
+    else{ctx.fillStyle=e.c;ctx.textAlign='right';ctx.fillText(e.i,x,y+3);hbar(x-15,y,60,e.f,e.c,'r');}
+  });
+  ctx.restore();
+}
+poll();requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bomb Tag — LAN 2P</title>
+<style>
+:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
+#topbar{width:min(820px,96vw);display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
+.logo span{color:#ffb02e;text-shadow:0 0 12px #ffb02e}
+#score{font-weight:900;font-size:clamp(16px,3vw,26px)}
+#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px}
+#names{font-size:12px;opacity:.85}
+#fusebar{width:min(820px,96vw);height:14px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff2a;overflow:hidden}
+#fusefill{height:100%;width:100%;background:linear-gradient(90deg,#7dff6a,#ffe14d,#ff5555);transition:width .1s linear}
+#stage{position:relative;width:min(820px,96vw);aspect-ratio:800/560;border-radius:14px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #ffb02e22}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(420px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center}
+.card h1{margin:.2em 0;font-size:22px}
+.card p{font-size:13px;opacity:.8;line-height:1.6}
+#slots{display:flex;gap:8px;margin:10px 0}
+.slot{flex:1;padding:8px;border-radius:10px;background:#ffffff0d;border:1px dashed #ffffff33;font-size:13px}
+.slot.on{border-style:solid;border-color:var(--c1)}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#050816;color:#fff;font-size:16px;outline:none;margin:8px 0}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,#ffb02e,#ff6b6b);box-shadow:0 0 18px #ffb02e88;width:100%;margin-top:8px}
+button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
+button:disabled{opacity:.4}
+#hint{width:min(820px,96vw);font-size:11px;opacity:.65;text-align:center;line-height:1.6}
+kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
+#toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar"><div class="logo">BOMB <span>TAG</span></div><div id="verBadge">v…</div><div id="score">0 : 0</div></div>
+  <div id="names">connecting…</div>
+  <div id="fusebar"><div id="fusefill"></div></div>
+  <div id="stage">
+    <canvas id="cv" width="800" height="560"></canvas>
+    <div id="toast"></div>
+    <div id="overlay"><div class="card" id="joinCard">
+      <h1>💣 BOMB TAG <span style="font-size:14px;opacity:.75">— first to 5</span></h1>
+      <p>Host runs <b>python3 server.py</b> in <b>bomb-tag/</b>. Both open the same LAN URL.<br>Holder is slower — tag to pass it! <kbd>Space</kbd> dashes.</p>
+      <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div></div>
+      <input id="name" maxlength="32" placeholder="Your name…" value="Player">
+      <button id="joinBtn">Join game</button>
+      <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
+    </div></div>
+  </div>
+  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> run • <kbd>Space</kbd> dash (3s cooldown) • touch: drag to run, button to dash</div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=800,H=560;
+const ov=document.getElementById('overlay'),joinCard=document.getElementById('joinCard');
+const nameI=document.getElementById('name'),joinBtn=document.getElementById('joinBtn'),readyBtn=document.getElementById('readyBtn');
+const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),verEl=document.getElementById('verBadge'),fusefill=document.getElementById('fusefill');
+try{nameI.value=localStorage.getItem('bombtag_name')||'Player';}catch(e){}
+nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',nameI.value);}catch(e){}});
+const cid=Math.random().toString(36).slice(2)+Date.now().toString(36);
+let you=0,joined=false,state=null,lastPhase='',lastCd=0,lastPassId=0,lastBoomId=0,lastFuseSec=99,lastFrame=performance.now(),overShown=false;
+let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false;
+const isTouch='ontouchstart' in window;
+let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
+joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=false;showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
+readyBtn.onclick=async()=>{await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function input(){
+  let x=0,y=0,fire=false;
+  if(keys['a']||keys['arrowleft'])x-=1;
+  if(keys['d']||keys['arrowright'])x+=1;
+  if(keys['w']||keys['arrowup'])y-=1;
+  if(keys['s']||keys['arrowdown'])y+=1;
+  if(keys[' ']||keys['enter']||keys['e'])fire=true;
+  if(stick){x+=stick.x;y+=stick.y;}
+  if(dashTouch)fire=true;
+  const n=Math.hypot(x,y);if(n>1){x/=n;y/=n;}
+  return {x,y,fire};
+}
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W;if(x>W*0.6)dashTouch=true;else stick={ox:x,oy:(t.clientY-r.top)/r.height*H,x:0,y:0,id:t.identifier};}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;stick.x=Math.max(-1,Math.min(1,(x-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(y-stick.oy)/70));}}e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}if(e.touches.length===0)dashTouch=false;});
+let pollSeq=0;
+function poll(){
+  const mySeq=++pollSeq;
+  api('/api/state?id='+cid).then(s=>{
+    if(mySeq!==pollSeq)return;
+    state=s;
+    if(s.v)verEl.textContent='v'+s.v;
+    scoreEl.textContent=s.runners[0].score+' : '+s.runners[1].score;
+    const nm=[s.names[0]||'Player 1',s.names[1]||'Player 2'];
+    const holdTxt=s.holder?` — 💣 ${nm[s.holder-1]}`:'';
+    namesEl.textContent=`${nm[0]}  ${s.runners[0].score} : ${s.runners[1].score}  ${nm[1]}${holdTxt}${you?` — you are P${you}`:joined?' — spectating':''}`;
+    fusefill.style.width=Math.max(0,Math.min(100,s.fuse/14*100))+'%';
+    s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
+    s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);
+    if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';overShown=false;}
+    if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
+    if(s.last_pass&&s.last_pass.id!==lastPassId){lastPassId=s.last_pass.id;const h=s.last_pass.holder;beep(h===you?300:900,.1,'square',.12);showToast('🤝 Bomb passed to '+nm[h-1]+(h===you?' — RUN!':''));}
+    if(s.last_boom&&s.last_boom.id!==lastBoomId){lastBoomId=s.last_boom.id;const sc=s.last_boom.scorer;beep(120,.5,'sawtooth',.16);setTimeout(()=>beep(60,.6,'sawtooth',.14),80);burst(s.last_boom.x,s.last_boom.y,'#ffb02e',60);burst(s.last_boom.x,s.last_boom.y,'#ff4444',30);flash='💥 '+nm[sc-1]+' +1';flashT=Date.now()+1600;}
+    if(s.phase==='over'){
+      ov.style.display='flex';
+      if(!overShown){overShown=true;joinCard.innerHTML=`<h1>🏆 ${(s.winner?nm[s.winner-1]:'Nobody')} WINS!</h1><p>Final ${s.runners[0].score} : ${s.runners[1].score}</p><button id="againBtn">Back to lobby</button>`;document.getElementById('againBtn').onclick=async()=>{await api('/api/restart',{clientId:cid});location.reload();};beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);}
+    }
+    // fuse ticking: pitch rises as doom nears
+    if(s.phase==='playing'){
+      const sec=Math.ceil(s.fuse);
+      if(sec<lastFuseSec){lastFuseSec=sec;beep(500+(14-sec)*60,.06,'square',.09);}
+    }else lastFuseSec=99;
+    lastPhase=s.phase;
+  }).catch(()=>{});
+  setTimeout(poll,16);
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(0.05,(now-lastFrame)/1000)||0.016;lastFrame=now;
+  if(joined&&you!==0){
+    const inp=(state&&state.phase==='playing')?input():{x:0,y:0,fire:false};
+    const key=inp.x.toFixed(2)+','+inp.y.toFixed(2)+','+inp.fire;
+    if(key!==lastSent||now-lastMoveSend>100){
+      lastSent=key;lastMoveSend=now;
+      fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,...inp})}).catch(()=>{});
+    }
+  }
+  draw(now,dt);
+}
+function burst(x,y,color,n=20){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*520,vy:(Math.random()-0.5)*520,life:1,color});}
+function draw(now,dt){
+  ctx.fillStyle='#070a18';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#ffffff0c';for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  (state?state.pillars:[]).forEach(p=>{
+    ctx.save();ctx.shadowColor='#ffb02e';ctx.shadowBlur=8;ctx.fillStyle='#2a1f10';
+    ctx.fillRect(p.x,p.y,p.w,p.h);ctx.strokeStyle='#ffb02e88';ctx.lineWidth=2;ctx.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);ctx.restore();
+  });
+  const rs=state?state.runners:[{x:100,y:280},{x:700,y:280}];
+  const holder=state?state.holder:0;
+  rs.forEach((r,i)=>{
+    const col=i?'#ff2fd6':'#00f6ff';
+    const isH=holder===i+1;
+    ctx.save();
+    if(r.imm>0){ctx.globalAlpha=.55+0.3*Math.sin(now/90);}
+    ctx.shadowColor=isH?'#ff4444':col;ctx.shadowBlur=isH?22:14;ctx.fillStyle=isH?'#ff6b6b':col;
+    ctx.beginPath();ctx.arc(r.x,r.y,15,0,7);ctx.fill();
+    ctx.shadowBlur=0;ctx.fillStyle='#0a1420';
+    ctx.beginPath();ctx.arc(r.x,r.y,7,0,7);ctx.fill();
+    ctx.restore();
+    if(r.dash>0){ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(r.x,r.y,20,0,7);ctx.stroke();ctx.restore();}
+    else if(r.dash_cd>0){const f=1-r.dash_cd/3;ctx.save();ctx.strokeStyle='#ffffff44';ctx.lineWidth=2;ctx.beginPath();ctx.arc(r.x,r.y,20,-1.57,-1.57+f*6.28);ctx.stroke();ctx.restore();}
+    if(isH){
+      const pulse=1+0.12*Math.sin(now/140);
+      ctx.save();ctx.translate(r.x,r.y-30);ctx.scale(pulse,pulse);
+      ctx.shadowColor='#ff4444';ctx.shadowBlur=14;ctx.font='bold 22px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('💣',0,0);ctx.restore();
+      if(state&&state.phase==='playing'){ctx.save();ctx.textAlign='center';ctx.font='900 20px system-ui';ctx.fillStyle='#ffb02e';ctx.shadowColor='#f80';ctx.shadowBlur=8;ctx.fillText(state.fuse.toFixed(1)+'s',r.x,r.y+32);ctx.restore();}
+    }
+    if(you===i+1){ctx.save();ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(r.x,r.y,24,0,7);ctx.stroke();ctx.restore();}
+  });
+  parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;const d=Math.pow(0.3,dt);p.vx*=d;p.vy*=d;p.life-=dt*1.1;ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
+  if(isTouch&&state&&state.phase==='playing'){
+    ctx.save();ctx.globalAlpha=.35;ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(W-60,H-60,32,0,7);ctx.fill();
+    ctx.globalAlpha=.9;ctx.fillStyle='#a60';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DASH',W-60,H-60);
+    if(stick){ctx.globalAlpha=.35;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(stick.ox,stick.oy,24,0,7);ctx.fill();}
+    ctx.restore();
+  }
+  if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 52px system-ui';ctx.shadowColor='#ffb02e';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(flash,W/2,H/2);ctx.restore();}
+}
+poll();requestAnimationFrame(frame);
+</script>
+</body>
+</html>

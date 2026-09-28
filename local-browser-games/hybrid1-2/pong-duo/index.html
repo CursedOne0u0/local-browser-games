@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pong Duo — 1P vs AI or 2P Local</title>
+<style>
+:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
+#top{width:min(860px,96vw);display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
+.logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
+#score{font-weight:900;font-size:clamp(18px,3.4vw,28px)}
+#mode{font-size:12px;opacity:.75}
+#stage{position:relative;width:min(860px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(440px,93%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;box-shadow:0 0 30px #00f6ff22}
+.card h1{margin:.2em 0;font-size:22px}
+.card p{font-size:13px;opacity:.85;line-height:1.6}
+.row{display:flex;gap:8px;margin-top:8px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:800;font-size:14px;color:#04121a;background:linear-gradient(90deg,var(--c1),#7dffcb);box-shadow:0 0 18px #00f6ff88;flex:1}
+button.pink{background:linear-gradient(90deg,var(--c2),#ff9f6a);box-shadow:0 0 18px #ff2fd688}
+button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a;flex:1}
+button.sel{outline:2px solid #fff}
+#hint{font-size:12px;opacity:.65;text-align:center;line-height:1.6}
+kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="score">0 : 0</div></div>
+  <div id="mode">menu</div>
+  <div id="stage">
+    <canvas id="cv" width="800" height="500"></canvas>
+    <div id="overlay"><div class="card">
+      <h1>🏓 PONG DUO</h1>
+      <p>Play <b>alone vs AI</b> or <b>2 players, one keyboard</b>. First to 7.</p>
+      <div class="row">
+        <button id="b1p">🤖 1 Player</button>
+        <button id="b2p" class="pink">👥 2 Players</button>
+      </div>
+      <div class="row" id="diffRow">
+        <button data-d="easy" class="ghost">Easy</button>
+        <button data-d="medium" class="ghost sel">Medium</button>
+        <button data-d="hard" class="ghost">Hard</button>
+      </div>
+      <p style="margin-top:10px">P1: <kbd>W</kbd>/<kbd>S</kbd> &nbsp;•&nbsp; P2: <kbd>↑</kbd>/<kbd>↓</kbd> &nbsp;•&nbsp; touch: left/right half drag</p>
+      <div class="row"><button id="startBtn">Start</button></div>
+    </div></div>
+  </div>
+  <div id="hint"><kbd>Space</kbd> launch / pause • first to 7 wins • <span id="hintMode">pick a mode above</span></div>
+</div>
+<script>
+const W=800,H=500,WIN=7;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const ov=document.getElementById('overlay'),scoreEl=document.getElementById('score'),modeEl=document.getElementById('mode'),hintMode=document.getElementById('hintMode');
+let mode='1p',diff='medium',running=false,paused=false,over=false;
+let p1={y:.5,h:90,score:0},p2={y:.5,h:90,score:0};
+let ball={x:W/2,y:H/2,vx:0,vy:0,stuck:true,dir:1};
+let keys={},parts=[],trail=[],flash='',flashT=0,countdown=0,countT=0;
+let AC=null,muted=false;
+function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+document.querySelectorAll('#diffRow button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#diffRow button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');diff=b.dataset.d;beep(600,.06);});
+document.getElementById('b1p').onclick=()=>{mode='1p';hintMode.textContent='solo vs AI ('+diff+') — you are LEFT, move with W/S or mouse';modeEl.textContent='🤖 singleplayer vs AI ('+diff+')';beep(520,.07);};
+document.getElementById('b2p').onclick=()=>{mode='2p';hintMode.textContent='2 players — P1 W/S, P2 arrows';modeEl.textContent='👥 multiplayer local — P1 W/S vs P2 ↑/↓';beep(660,.07);};
+document.getElementById('startBtn').onclick=start;
+function start(){p1.score=0;p2.score=0;p1.h=90;p2.h=90;over=false;running=true;paused=false;ov.style.display='none';modeEl.textContent=mode==='1p'?('🤖 singleplayer vs AI ('+diff+')'):('👥 multiplayer local');resetPoint(ball.dir);countdown=3;countT=performance.now();beep(700,.1);}
+function resetPoint(dir){ball.x=W/2;ball.y=H/2;ball.stuck=true;ball.dir=dir||(Math.random()<.5?-1:1);trail=[];}
+function launch(){if(!ball.stuck)return;const a=(Math.random()*.6-.3);const s=400;ball.vx=Math.cos(a)*s*ball.dir;ball.vy=Math.sin(a)*s+(Math.random()<.5?-50:50);ball.stuck=false;beep(880,.12);}
+function burst(x,y,c,n=24){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*500,vy:(Math.random()-.5)*500,life:1,color:c});}
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else paused=!paused;}if(k==='m')muted=!muted;});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function ptrSide(e){const r=cv.getBoundingClientRect();const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height/H,left:(cx-r.left)<r.width/2};}
+let drag=null;
+cv.addEventListener('mousedown',e=>{const p=ptrSide(e);drag=p.left?'p1':'p2';if(mode==='1p')drag='p1';moveTo(p);if(ball.stuck&&running)launch();});
+window.addEventListener('mouseup',()=>drag=null);
+cv.addEventListener('mousemove',e=>{if(drag)moveTo(ptrSide(e));});
+cv.addEventListener('touchstart',e=>{const p=ptrSide(e);drag=(mode==='1p')?'p1':(p.left?'p1':'p2');moveTo(p);if(ball.stuck&&running)launch();e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{moveTo(ptrSide(e));e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',()=>drag=null);
+function moveTo(p){const y=Math.max(0,Math.min(1,p.y));if(drag==='p1')p1.y=y;else p2.y=y;}
+const AI={easy:{sp:.011,err:.09},medium:{sp:.017,err:.045},hard:{sp:.024,err:.015}}[diff]||{sp:.017,err:.045};
+let aiTarget=.5,aiTimer=0;
+let last=performance.now();
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.033,(t-last)/1000);last=t;if(!running||paused)return;update(dt,t);draw(t);}
+function update(dt,t){
+  if(countdown>0){if(t-countT>650){countT=t;countdown--;beep(440+countdown*90,.1);flash=countdown>0?String(countdown):'GO!';flashT=Date.now()+600;if(countdown===0)launch();}return;}
+  const sp=.028;
+  if(keys['w'])p1.y-=sp;if(keys['s'])p1.y+=sp;
+  if(mode==='2p'){if(keys['arrowup'])p2.y-=sp;if(keys['arrowdown'])p2.y+=sp;}
+  p1.y=Math.max(0,Math.min(1,p1.y));p2.y=Math.max(0,Math.min(1,p2.y));
+  // AI
+  if(mode==='1p'&&!ball.stuck){
+    const cfg={easy:{sp:.011,err:.09},medium:{sp:.018,err:.045},hard:{sp:.026,err:.015}}[diff];
+    aiTimer-=dt;
+    if(aiTimer<=0){aiTimer=.25;aiTarget=ball.y/H+(Math.random()-.5)*cfg.err*4;}
+    if(ball.vx>0){const d=aiTarget-p2.y;const m=Math.sign(d)*Math.min(Math.abs(d),cfg.sp*60*dt);p2.y+=m;}
+    else{const d=.5-p2.y;p2.y+=Math.sign(d)*Math.min(Math.abs(d),.008);}
+    p2.y=Math.max(0,Math.min(1,p2.y));
+  }
+  if(ball.stuck){ball.x=(ball.dir<0?120:W-120);ball.y=(ball.dir<0?p1.y:H*p2.y)||H/2;ball.y=(ball.dir<0?p1.y*H:p2.y*H);return;}
+  ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
+  if(ball.y<10){ball.y=10;ball.vy=Math.abs(ball.vy);}
+  if(ball.y>H-10){ball.y=H-10;ball.vy=-Math.abs(ball.vy);}
+  const p1x=30,p2x=W-30-14,p1py=p1.y*H,p2py=p2.y*H;
+  if(ball.vx<0&&ball.x-8<p1x+14&&ball.x-8>p1x-12&&Math.abs(ball.y-p1py)<p1.h/2+8){
+    ball.x=p1x+22;const rel=(ball.y-p1py)/(p1.h/2);const s=Math.min(860,Math.hypot(ball.vx,ball.vy)*1.05+8);
+    ball.vx=Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(520,.06);burst(ball.x,ball.y,'#00f6ff',10);
+  }
+  if(ball.vx>0&&ball.x+8>p2x&&ball.x+8<p2x+26&&Math.abs(ball.y-p2py)<p2.h/2+8){
+    ball.x=p2x-8;const rel=(ball.y-p2py)/(p2.h/2);const s=Math.min(860,Math.hypot(ball.vx,ball.vy)*1.05+8);
+    ball.vx=-Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(620,.06);burst(ball.x,ball.y,'#ff2fd6',10);
+  }
+  if(ball.x<-24){scored(2);}else if(ball.x>W+24){scored(1);}
+  parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.98;p.vy*=.98;p.life-=dt*1.6;});
+}
+function scored(w){
+  if(w===1)p1.score++;else p2.score++;
+  scoreEl.textContent=p1.score+' : '+p2.score;
+  beep(w===1?880:220,.25);burst(w===1?60:W-60,H/2,w===1?'#00f6ff':'#ff2fd6',40);
+  flash=p1.score+' — '+p2.score;flashT=Date.now()+900;
+  if(p1.score>=WIN||p2.score>=WIN){gameOver(w);return;}
+  ball.dir=w===1?-1:1;ball.stuck=true;
+  setTimeout(()=>{if(running&&!over){resetPoint(ball.dir);countdown=0;launch();}},900);
+  ball.vx=ball.vy=0;ball.x=W/2;
+}
+function gameOver(w){
+  over=true;running=false;
+  ov.style.display='flex';
+  const champ=mode==='1p'?(w===1?'YOU WIN! 🏆':'AI WINS 🤖'):(w===1?'PLAYER 1 WINS! 🏆':'PLAYER 2 WINS! 🏆');
+  ov.querySelector('h1').textContent=champ;
+  ov.querySelector('p').innerHTML='Final: <b>'+p1.score+' : '+p2.score+'</b> • mode: '+(mode==='1p'?'solo vs '+diff:'2P local')+'<br>Pick a mode and hit Start.';
+  document.getElementById('startBtn').textContent='Play again';
+}
+function draw(t){
+  ctx.fillStyle='#070a18';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#ffffff0d';for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  ctx.save();ctx.shadowColor='#00f6ff';ctx.shadowBlur=12;ctx.strokeStyle='#00f6ff88';ctx.setLineDash([12,12]);ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-10);ctx.stroke();ctx.restore();ctx.setLineDash([]);
+  trail.push({x:ball.x,y:ball.y});if(trail.length>16)trail.shift();
+  trail.forEach((p,i)=>{ctx.globalAlpha=i/trail.length*.45;ctx.fillStyle='#00f6ff';ctx.beginPath();ctx.arc(p.x,p.y,3+6*i/trail.length,0,7);ctx.fill();});ctx.globalAlpha=1;
+  paddle(30,p1.y*H,'#00f6ff');paddle(W-30-14,p2.y*H,'#ff2fd6');
+  ctx.save();ctx.shadowColor='#fff';ctx.shadowBlur=22;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ball.x,ball.y,9,0,7);ctx.fill();ctx.restore();
+  parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
+  if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 60px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(flash,W/2,H/2-10);ctx.restore();}
+  else if(countdown>0){ctx.save();ctx.textAlign='center';ctx.font='900 72px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(countdown,W/2,H/2);ctx.restore();}
+  else if(ball.stuck&&running){ctx.save();ctx.textAlign='center';ctx.font='700 18px system-ui';ctx.fillStyle='#ffffffaa';ctx.fillText(mode==='1p'?'Space / click to launch':'Space to launch',W/2,70);ctx.restore();}
+}
+function paddle(x,y,c){ctx.save();ctx.shadowColor=c;ctx.shadowBlur=16;ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y-45,14,90,7);ctx.fill();ctx.fillStyle='#ffffffcc';ctx.fillRect(x+3,y-37,3,74);ctx.restore();}
+requestAnimationFrame(loop);draw(performance.now());
+</script>
+</body>
+</html>
