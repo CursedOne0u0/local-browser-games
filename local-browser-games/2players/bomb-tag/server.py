@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3002"))
-VERSION = "1.2"  # bump on every update; shown on the site
+VERSION = "1.6"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -31,6 +31,12 @@ PILLARS = [
     {"x": 370, "y": 250, "w": 60, "h": 60},
 ]
 SPAWNS = [{"x": 100, "y": 280}, {"x": 700, "y": 280}]
+# boost pads spawn at random spots aiming random ways; one-shot slingshots
+PAD_R = 30
+BOOST_TIME = 0.55
+BOOST_MULT = 1.7
+MAX_PADS = 2
+PAD_LIFE = 10.0
 
 lock = threading.Lock()
 game = {
@@ -45,6 +51,10 @@ game = {
     "imm_until": [0, 0],
     "holder": 0,
     "fuse": 10.0,
+    "pads": [],  # live pads {x,y,dx,dy,expires}
+    "pad_timer": 2.5,
+    "boost_until": [0, 0],
+    "last_boost": None,  # {x,y,by,id}
     "winner": 0,
     "event_id": 0,
     "last_pass": None,  # {holder,id}
@@ -58,6 +68,19 @@ def reset_positions():
         game["pos"][i]["x"] = s["x"]; game["pos"][i]["y"] = s["y"]
     game["imm_until"] = [0, 0]
     game["dash_until"] = [0, 0]; game["dash_cd"] = [0, 0]
+    game["pads"] = []; game["pad_timer"] = 2.5; game["boost_until"] = [0, 0]
+
+def spawn_pad():
+    if len(game["pads"]) >= MAX_PADS: return
+    for _ in range(30):
+        x = 70+random.random()*(W-140); y = 70+random.random()*(H-140)
+        if any(pl["x"]-25 < x < pl["x"]+pl["w"]+25 and pl["y"]-25 < y < pl["y"]+pl["h"]+25 for pl in PILLARS):
+            continue
+        if all(math.hypot(x-t["x"], y-t["y"]) > 120 for t in game["pos"]):
+            a = random.random()*2*math.pi
+            game["pads"].append({"x": x, "y": y, "dx": math.cos(a), "dy": math.sin(a),
+                                 "expires": now()+PAD_LIFE})
+            return
 
 def reset_scores():
     for p in game["pos"]: p["score"] = 0
@@ -139,8 +162,28 @@ def step(dt):
         if n > 1: ix/=n; iy/=n
         spd = (HOLDER_SPEED if game["holder"] == i+1 else RUN_SPEED)
         if t < game["dash_until"][i]: spd *= DASH_MULT
+        if t < game["boost_until"][i]: spd *= BOOST_MULT
         x, y = game["pos"][i]["x"]+ix*spd*dt, game["pos"][i]["y"]+iy*spd*dt
         game["pos"][i]["x"], game["pos"][i]["y"] = collide(x, y)
+        # boost pads: random spawns, one-shot slingshots along their arrow
+        game["pad_timer"] -= dt
+        if game["pad_timer"] <= 0:
+            spawn_pad()
+            game["pad_timer"] = 4+random.random()*3
+        for pd in game["pads"]:
+            if now() >= pd["expires"]:
+                pd["dead"] = True
+                continue
+            for i in (0, 1):
+                if math.hypot(game["pos"][i]["x"]-pd["x"], game["pos"][i]["y"]-pd["y"]) < PAD_R:
+                    pd["dead"] = True
+                    game["boost_until"][i] = t+BOOST_TIME
+                    game["pos"][i]["x"], game["pos"][i]["y"] = collide(
+                        game["pos"][i]["x"]+pd["dx"]*95, game["pos"][i]["y"]+pd["dy"]*95)
+                    game["event_id"] += 1
+                    game["last_boost"] = {"x": pd["x"], "y": pd["y"], "by": i+1, "id": game["event_id"]}
+                    break
+        game["pads"] = [pd for pd in game["pads"] if not pd.get("dead")]
     # tag pass
     h = game["holder"]-1
     o = 1-h
@@ -173,6 +216,7 @@ def game_loop():
             if game["phase"] == "waiting" and p0 and p1 and p0["ready"] and p1["ready"]:
                 game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
                 reset_scores(); new_round()
+                game["last_pass"] = None; game["last_boom"] = None  # no stale toasts
             step(dt)
         time.sleep(1/60)
 
@@ -190,7 +234,11 @@ def snapshot():
                      "score": game["pos"][i]["score"],
                      "dash": round(max(0, game["dash_until"][i]-t),2),
                      "dash_cd": round(max(0, game["dash_cd"][i]-t),2),
+                     "boost": round(max(0, game["boost_until"][i]-t),2),
                      "imm": round(max(0, game["imm_until"][i]-t),2)} for i in (0, 1)],
+        "pads": [{"x": round(pd["x"],1), "y": round(pd["y"],1),
+                  "dx": round(pd["dx"],3), "dy": round(pd["dy"],3),
+                  "ttl": round(max(0, pd["expires"]-t),2)} for pd in game["pads"]],
         "holder": game["holder"] if game["phase"] in ("playing", "round") else 0,
         "fuse": round(max(0, game["fuse"]),2),
         "winner": game["winner"],
@@ -199,10 +247,12 @@ def snapshot():
         "connected": [bool(game["players"][0]), bool(game["players"][1])],
         "last_pass": game["last_pass"],
         "last_boom": game["last_boom"],
+        "last_boost": game["last_boost"],
         "event_id": game["event_id"],
     }
 
 class Handler(SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"  # keep-alive: no TCP+TLS handshake per 60Hz poll
     def __init__(self,*a,**kw): super().__init__(*a, directory=str(PUBLIC), **kw)
     def log_message(self,*a): pass
     def handle_one_request(self):
@@ -268,12 +318,13 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path=="/api/restart":
                     if game["phase"]=="over":
                         reset_scores(); new_round()
+                        game["last_pass"] = None; game["last_boom"] = None
                         for p in game["players"]:
                             if p: p["ready"]=False
                         game["phase"]="waiting"; game["winner"]=0; game["round"]=1
                     return self._json({"ok":True})
             return self._json({"ok":False},400)
-        self.send_response(404); self.end_headers()
+        self.send_response(404); self.send_header("Content-Length","0"); self.end_headers()
 
 def lan_ips():
     out=[]
@@ -293,6 +344,7 @@ if __name__=="__main__":
     reset_positions()
     threading.Thread(target=game_loop,daemon=True).start()
     srv=ThreadingHTTPServer(("0.0.0.0",PORT),Handler)
+    srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle delay on small packets
     print(f"\n  BOMB TAG running!\n  On this laptop:  http://localhost:{PORT}")
     for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
     print(f"\n  WASD/arrows to run, SPACE to dash. Holder is slower — pass it!\n  First to {WIN_ROUNDS} blasts wins!\n")

@@ -188,9 +188,9 @@ function frame(now){
   }
   if(state){
     // own paddle: instant local prediction — no server-echo lag
-    if(you===1){view.p1y=myY;view.p2y+=(state.p2.y-view.p2y)*Math.min(1,dt*14);}
-    else if(you===2){view.p2y=myY;view.p1y+=(state.p1.y-view.p1y)*Math.min(1,dt*14);}
-    else{view.p1y+=(state.p1.y-view.p1y)*Math.min(1,dt*14);view.p2y+=(state.p2.y-view.p2y)*Math.min(1,dt*14);}
+    if(you===1){view.p1y=myY;view.p2y+=(state.p2.y-view.p2y)*Math.min(1,dt*20);}
+    else if(you===2){view.p2y=myY;view.p1y+=(state.p1.y-view.p1y)*Math.min(1,dt*20);}
+    else{view.p1y+=(state.p1.y-view.p1y)*Math.min(1,dt*20);view.p2y+=(state.p2.y-view.p2y)*Math.min(1,dt*20);}
     if(state.phase==='playing'&&!state.preview){
       // predict ball between 60Hz snapshots so 120/144Hz screens stay smooth
       const ext=Math.min(0.12,(now-netBall.t)/1000);

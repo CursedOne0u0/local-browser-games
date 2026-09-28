@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Bomb Tag
+Comment=Starts the Bomb Tag server (visible console, Ctrl+C stops it) and opens the game
+Exec=bash -c 'cd -- "$(dirname "$(readlink -f %k)")" && exec ./start-linux.sh'
+Terminal=true
+Categories=Game;
+StartupNotify=false

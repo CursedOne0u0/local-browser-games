@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.19"  # bump on every update; shown on the site
+VERSION = "1.20"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
@@ -417,6 +417,7 @@ def snapshot():
     }
 
 class Handler(SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"  # keep-alive: no TCP+TLS handshake per 60Hz poll
     def __init__(self,*a,**kw): super().__init__(*a, directory=str(PUBLIC), **kw)
     def log_message(self,*a): pass
     def handle_one_request(self):
@@ -541,7 +542,7 @@ class Handler(SimpleHTTPRequestHandler):
                         game["phase"]="waiting"; game["winner"]=0
                     return self._json({"ok":True})
             return self._json({"ok":False},400)
-        self.send_response(404); self.end_headers()
+        self.send_response(404); self.send_header("Content-Length","0"); self.end_headers()
 
 def lan_ips():
     out=[]
@@ -560,6 +561,7 @@ if __name__=="__main__":
     PUBLIC.mkdir(exist_ok=True)
     threading.Thread(target=game_loop,daemon=True).start()
     srv=ThreadingHTTPServer(("0.0.0.0",PORT),Handler)
+    srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle delay on small packets
     print(f"\n  NEON PONG SHOWDOWN running!\n  On this laptop:  http://localhost:{PORT}")
     for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
     print(f"\n  1. Host runs:  python3 server.py\n  2. Friend opens the LAN URL above (same WiFi)\n  3. Both enter names -> Join -> Ready -> first to {game['settings']['win']} wins (changeable in lobby)!\n")

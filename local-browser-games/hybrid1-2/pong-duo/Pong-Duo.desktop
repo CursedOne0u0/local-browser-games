@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Pong Duo
+Comment=Opens Pong Duo in the browser (no server needed)
+Exec=bash -c 'cd -- "$(dirname "$(readlink -f %k)")" && exec ./start-linux.sh'
+Terminal=false
+Categories=Game;
+StartupNotify=false

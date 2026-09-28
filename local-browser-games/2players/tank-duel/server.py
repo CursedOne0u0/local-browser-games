@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.6"  # bump on every update; shown on the site
+VERSION = "1.7"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -379,6 +379,7 @@ def snapshot():
     }
 
 class Handler(SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"  # keep-alive: no TCP+TLS handshake per 60Hz poll
     def __init__(self,*a,**kw): super().__init__(*a, directory=str(PUBLIC), **kw)
     def log_message(self,*a): pass
     def handle_one_request(self):
@@ -449,7 +450,7 @@ class Handler(SimpleHTTPRequestHandler):
                         game["phase"]="waiting"; game["winner"]=0; game["round"]=1
                     return self._json({"ok":True})
             return self._json({"ok":False},400)
-        self.send_response(404); self.end_headers()
+        self.send_response(404); self.send_header("Content-Length","0"); self.end_headers()
 
 def lan_ips():
     out=[]
@@ -469,6 +470,7 @@ if __name__=="__main__":
     reset_tanks()
     threading.Thread(target=game_loop,daemon=True).start()
     srv=ThreadingHTTPServer(("0.0.0.0",PORT),Handler)
+    srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle delay on small packets
     print(f"\n  TANK DUEL running!\n  On this laptop:  http://localhost:{PORT}")
     for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
     print(f"\n  Controls: W/S drive, A/D rotate, SPACE fire (arrows work too)\n  First to {WIN_ROUNDS} rounds wins!\n")
