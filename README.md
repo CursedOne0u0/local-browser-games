@@ -2,7 +2,9 @@
 
 Zero installs (besides Python for the LAN ones), zero internet needed.
 
-**Easiest start:** each game folder has `start-linux.sh` (double-click or `./start-linux.sh`, Ctrl+C stops the server) and `start-windows.bat` (double-click, needs Python) — they boot the server (LAN games) and open the game in your browser.
+**Play Breakout Blast and Pong Duo right now, no download:** ▶ 👉 [Play in the browser](https://benjooyt.github.io/browser-games/)
+
+**Easiest local start:** each game folder has `start-linux.sh` (double-click or `./start-linux.sh`, Ctrl+C stops the server) and `start-windows.bat` (double-click, needs Python) — they boot the server (LAN games) and open the game in your browser.
 
 ## 1player — solo, just open `index.html`
 
