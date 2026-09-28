@@ -8,11 +8,11 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.7"  # bump on every update; shown on the site
+VERSION = "1.8"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
-MAZE = [
+CLASSIC_MAZE = [
     "#################",
     "#.......#.......#",
     "#.#####.#.#####.#",
@@ -26,6 +26,7 @@ MAZE = [
     "#.......#.......#",
     "#################",
 ]
+MAZE = list(CLASSIC_MAZE)  # live map: regenerated every round by gen_maze()
 COLS, ROWS, CELL = len(MAZE[0]), len(MAZE), 60
 W, H = COLS*CELL, ROWS*CELL
 TANK_R = 16
@@ -76,6 +77,46 @@ SPAWNS = [
     {"cx": 1.5, "cy": 10.5, "ang": -math.pi/2},
     {"cx": 15.5, "cy": 1.5, "ang": math.pi/2},
 ]
+SPAWN_CELLS = [(1, ROWS-2), (COLS-2, 1)]  # 180° rotational mirrors of each other
+
+def gen_maze():
+    """Random 180°-symmetric maze, BFS-verified traversable between spawns.
+
+    Fair by construction (spawns are rotational mirrors, walls mirrored too).
+    Falls back to CLASSIC_MAZE if no good layout in 200 tries.
+    """
+    def mirror(c, r): return (COLS-1-c, ROWS-1-r)
+    for _ in range(200):
+        g = [['#']*COLS for _ in range(ROWS)]
+        for r in range(1, ROWS-1):
+            for c in range(1, COLS-1):
+                mc, mr = mirror(c, r)
+                if (c, r) > (mc, mr): continue  # fill each mirror pair once
+                ch = '#' if random.random() < 0.30 else '.'
+                g[r][c] = g[mr][mc] = ch
+        # carve maneuvering room around both spawns (border cells skipped)
+        for cc, rr in SPAWN_CELLS:
+            for dc in range(-1, 2):
+                for dr in range(-1, 2):
+                    c2, r2 = cc+dc, rr+dr
+                    if 1 <= c2 < COLS-1 and 1 <= r2 < ROWS-1:
+                        g[r2][c2] = '.'
+        # openness guard: claustrophobic maps aren't fun
+        if sum(row.count('.') for row in g) < (COLS-2)*(ROWS-2)*0.55:
+            continue
+        # BFS: spawn1 must reach spawn2 over open cells (4-connectivity)
+        s1, s2 = SPAWN_CELLS
+        seen, stack = {s1}, [s1]
+        while stack:
+            c, r = stack.pop()
+            for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n = (c+dc, r+dr)
+                if (0 <= n[0] < COLS and 0 <= n[1] < ROWS
+                        and g[n[1]][n[0]] == '.' and n not in seen):
+                    seen.add(n); stack.append(n)
+        if s2 in seen:
+            return [''.join(row) for row in g]
+    return list(CLASSIC_MAZE)
 
 def now(): return time.time()
 
@@ -92,6 +133,8 @@ def circle_free(x, y, rad=TANK_R):
     return True
 
 def reset_tanks():
+    global MAZE
+    MAZE = gen_maze()  # fresh random (but verified traversable) map every round
     for i, s in enumerate(SPAWNS):
         t = game["tanks"][i]
         t["x"] = s["cx"]*CELL; t["y"] = s["cy"]*CELL
