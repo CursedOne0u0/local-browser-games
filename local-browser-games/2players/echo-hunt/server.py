@@ -12,6 +12,7 @@ PORT = int(os.environ.get("PORT", "3003"))
 VERSION = "1.0"  # bump on every update; shown on the site
 MAX_PLAYERS = 8
 WIN_ROUNDS = 3
+PUBLIC = Path(__file__).parent / "public"
 
 W, H = 800, 560
 RUN_R = 15
