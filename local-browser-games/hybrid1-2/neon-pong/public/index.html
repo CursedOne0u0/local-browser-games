@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Neon Pong Showdown — LAN 2P</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;overflow:hidden}
-#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px}
 #topbar{display:flex;align-items:center;gap:12px;width:min(920px,96vw);justify-content:space-between}
 .logo{font-weight:900;letter-spacing:.12em;font-size:clamp(14px,2.5vw,20px);text-shadow:0 0 12px var(--c1),0 0 30px var(--c2)}
 .logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
@@ -17,7 +17,7 @@ body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#141a3a 0%,var
 #stage{position:relative;width:min(920px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;box-shadow:0 0 0 1px #000,0 0 40px #00f6ff33,0 0 80px #ff2fd622;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.78);backdrop-filter:blur(6px);padding:16px}
-.card{width:min(440px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;box-shadow:0 0 30px #00f6ff22;text-align:center}
+.card{width:min(440px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;box-shadow:0 0 30px #00f6ff22;text-align:center;max-height:94%;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;letter-spacing:.06em}
 .card p{font-size:13px;opacity:.8;line-height:1.5}
 input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#050816;color:#fff;font-size:16px;outline:none;margin:8px 0}
@@ -37,7 +37,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-bottom-width:2px;bord
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none}
 #verBadge{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);box-shadow:0 0 12px #00f6ff33;white-space:nowrap}
 #taunts{width:min(920px,96vw);display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-#taunts button{flex:0 1 auto;width:auto;margin:0;padding:6px 10px;font-size:12px}
+#taunts button{flex:0 1 auto;width:auto;margin:0;padding:10px 14px;font-size:13px;min-height:44px}
 </style>
 </head>
 <body>
@@ -94,7 +94,7 @@ let names=['Player 1','Player 2'],scores=[0,0];
 const odBtn=document.getElementById('odBtn'),odStat=document.getElementById('odStat'),verEl=document.getElementById('verBadge');
 async function doOverdrive(){if(!joined||!you)return;try{const r=await api('/api/overdrive',{clientId:cid});if(r.ok){beep(1000,.15,'sawtooth',.14);showToast('⚡ OVERDRIVE!');}else if(r.cd)showToast('Overdrive in '+Math.ceil(r.cd)+'s…');}catch(e){}}
 odBtn.onclick=doOverdrive;
-let AC=null;function beep(f=440,d=0.08,type='square',v=0.12){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+let AC=null;function beep(f=440,d=0.08,type='square',v=0.12){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);botBtn.disabled=(d.you===0);joinMsg.textContent=you===0?'Room full — spectating 👀':(you===1?'You are LEFT (cyan) — P1':'You are RIGHT (pink) — P2');showToast(joinMsg.textContent);beep(660,.08);};
@@ -124,14 +124,17 @@ function paintSettings(st){
 }
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k))e.preventDefault();if(k==='e'&&document.activeElement!==nameI)doOverdrive();if(/^[1-6]$/.test(k)&&document.activeElement!==nameI)sendTaunt(TAUNT_KEYS[+k-1]);});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-function pointerY(ev){const r=cv.getBoundingClientRect();const y=(ev.touches?ev.touches[0].clientY:ev.clientY);return Math.max(0,Math.min(1,(y-r.top)/r.height));}
-let pointerActive=false;
+function yFromClient(clientY){const r=cv.getBoundingClientRect();return Math.max(0,Math.min(1,(clientY-r.top)/r.height));}
+function pointerY(ev){const y=(ev.touches?ev.touches[0].clientY:ev.clientY);return yFromClient(y);}
+let pointerActive=false,activeTouchId=null;
 cv.addEventListener('mousedown',e=>{pointerActive=true;myY=pointerY(e);});
 window.addEventListener('mouseup',()=>pointerActive=false);
 cv.addEventListener('mousemove',e=>{if(pointerActive)myY=pointerY(e);});
-cv.addEventListener('touchstart',e=>{pointerActive=true;myY=pointerY(e);e.preventDefault();},{passive:false});
-cv.addEventListener('touchmove',e=>{myY=pointerY(e);e.preventDefault();},{passive:false});
-cv.addEventListener('touchend',()=>pointerActive=false);
+cv.addEventListener('touchstart',e=>{if(activeTouchId===null){const t=e.changedTouches[0];activeTouchId=t.identifier;pointerActive=true;myY=yFromClient(t.clientY);}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(t.identifier===activeTouchId)myY=yFromClient(t.clientY);}e.preventDefault();},{passive:false});
+function endTouchNeon(e){for(const t of e.changedTouches){if(t.identifier===activeTouchId){activeTouchId=null;pointerActive=false;}}if(activeTouchId===null&&e.touches.length>0){const t=e.touches[0];activeTouchId=t.identifier;pointerActive=true;myY=yFromClient(t.clientY);}}
+cv.addEventListener('touchend',endTouchNeon);
+cv.addEventListener('touchcancel',endTouchNeon);
 let view={p1y:0.5,p2y:0.5,bx:W/2,by:H/2};
 let netBall={x:W/2,y:H/2,vx:0,vy:0,t:performance.now()};
 let frameDt=1/60,lastTrailPush=0;

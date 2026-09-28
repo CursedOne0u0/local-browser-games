@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Pong Duo — 1P vs AI or 2P Local</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
-#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
 #top{width:min(860px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
 .logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
@@ -17,7 +17,9 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #stage{position:relative;width:min(860px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
-.card{width:min(440px,93%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;box-shadow:0 0 30px #00f6ff22}
+.card{width:min(440px,93%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;box-shadow:0 0 30px #00f6ff22;max-height:94%;overflow:auto}
+#mbtns{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
+#mbtns button{width:42px;height:42px;min-width:42px;padding:0;margin:0;font-size:18px;border-radius:10px;background:#000000aa;color:#fff;box-shadow:none;border:1px solid #ffffff44;flex:none}
 .card h1{margin:.2em 0;font-size:22px}
 .card p{font-size:13px;opacity:.85;line-height:1.6}
 .row{display:flex;gap:8px;margin-top:8px}
@@ -35,6 +37,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
   <div id="mode">menu</div>
   <div id="stage">
     <canvas id="cv" width="800" height="500"></canvas>
+    <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
     <div id="overlay"><div class="card">
       <h1>🏓 PONG DUO</h1>
       <p>Play <b>alone vs AI</b> or <b>2 players, one keyboard</b>. First to 7.</p>
@@ -62,7 +65,9 @@ let p1={y:.5,h:90,score:0},p2={y:.5,h:90,score:0};
 let ball={x:W/2,y:H/2,vx:0,vy:0,stuck:true,dir:1};
 let keys={},parts=[],trail=[],flash='',flashT=0,countdown=0,countT=0;
 let AC=null,muted=false;
-function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};}
+function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 document.querySelectorAll('#diffRow button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#diffRow button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');diff=b.dataset.d;beep(600,.06);});
 document.getElementById('b1p').onclick=()=>{mode='1p';hintMode.textContent='solo vs AI ('+diff+') — you are LEFT, move with W/S or mouse';modeEl.textContent='🤖 singleplayer vs AI ('+diff+')';beep(520,.07);};
 document.getElementById('b2p').onclick=()=>{mode='2p';hintMode.textContent='2 players — P1 W/S, P2 arrows';modeEl.textContent='👥 multiplayer local — P1 W/S vs P2 ↑/↓';beep(660,.07);};
@@ -73,14 +78,19 @@ function launch(){if(!ball.stuck)return;const a=(Math.random()*.6-.3);const s=40
 function burst(x,y,c,n=24){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*500,vy:(Math.random()-.5)*500,life:1,color:c});}
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else paused=!paused;}if(k==='m')muted=!muted;});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-function ptrSide(e){const r=cv.getBoundingClientRect();const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height/H,left:(cx-r.left)<r.width/2};}
+function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height/H,left:(cx-r.left)<r.width/2};}
+function ptrSide(e){const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return ptrFromClient(cx,cy);}
 let drag=null;
+const touchMap=new Map();
+function moveSide(side,y){y=Math.max(0,Math.min(1,y));if(side==='p1')p1.y=y;else p2.y=y;}
 cv.addEventListener('mousedown',e=>{const p=ptrSide(e);drag=p.left?'p1':'p2';if(mode==='1p')drag='p1';moveTo(p);if(ball.stuck&&running)launch();});
 window.addEventListener('mouseup',()=>drag=null);
 cv.addEventListener('mousemove',e=>{if(drag)moveTo(ptrSide(e));});
-cv.addEventListener('touchstart',e=>{const p=ptrSide(e);drag=(mode==='1p')?'p1':(p.left?'p1':'p2');moveTo(p);if(ball.stuck&&running)launch();e.preventDefault();},{passive:false});
-cv.addEventListener('touchmove',e=>{moveTo(ptrSide(e));e.preventDefault();},{passive:false});
-cv.addEventListener('touchend',()=>drag=null);
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const p=ptrFromClient(t.clientX,t.clientY);const side=(mode==='1p')?'p1':(p.left?'p1':'p2');touchMap.set(t.identifier,side);drag=side;moveSide(side,p.y);}if(ball.stuck&&running)launch();e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(touchMap.has(t.identifier)){const p=ptrFromClient(t.clientX,t.clientY);moveSide(touchMap.get(t.identifier),p.y);}}e.preventDefault();},{passive:false});
+function endTouch(e){for(const t of e.changedTouches){touchMap.delete(t.identifier);}if(touchMap.size===0)drag=null;else drag=[...touchMap.values()].pop();}
+cv.addEventListener('touchend',endTouch);
+cv.addEventListener('touchcancel',endTouch);
 function moveTo(p){const y=Math.max(0,Math.min(1,p.y));if(drag==='p1')p1.y=y;else p2.y=y;}
 const AI={easy:{sp:.011,err:.09},medium:{sp:.017,err:.045},hard:{sp:.024,err:.015}}[diff]||{sp:.017,err:.045};
 let aiTarget=.5,aiTimer=0;
@@ -146,9 +156,12 @@ function draw(t){
   parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
   if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 60px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(flash,W/2,H/2-10);ctx.restore();}
   else if(countdown>0){ctx.save();ctx.textAlign='center';ctx.font='900 72px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(countdown,W/2,H/2);ctx.restore();}
-  else if(ball.stuck&&running){ctx.save();ctx.textAlign='center';ctx.font='700 18px system-ui';ctx.fillStyle='#ffffffaa';ctx.fillText(mode==='1p'?'Space / click to launch':'Space to launch',W/2,70);ctx.restore();}
+  else if(ball.stuck&&running){ctx.save();ctx.textAlign='center';ctx.font='700 18px system-ui';ctx.fillStyle='#ffffffaa';ctx.fillText(mode==='1p'?'Space / tap to launch':'Space / tap to launch',W/2,70);ctx.restore();}
 }
 function paddle(x,y,c){ctx.save();ctx.shadowColor=c;ctx.shadowBlur=16;ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y-45,14,90,7);ctx.fill();ctx.fillStyle='#ffffffcc';ctx.fillRect(x+3,y-37,3,74);ctx.restore();}
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running&&!over){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'▶':'⏸';}beep(600,.06);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';if(!muted)beep(700,.07);};
+if(isTouch){document.getElementById('hintMode').textContent='touch: drag left/right half (2P = two fingers)';}
 requestAnimationFrame(loop);draw(performance.now());
 </script>
 </body>

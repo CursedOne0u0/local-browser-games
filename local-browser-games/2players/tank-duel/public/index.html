@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Tank Duel — LAN 2P</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
-#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
 #topbar{width:min(800px,96vw);display:flex;align-items:center;justify-content:space-between}
 .logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
 .logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
@@ -64,9 +64,10 @@ const cid=(()=>{try{let id=sessionStorage.getItem('tankduel_cid');if(!id){id=Mat
 window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
 let you=0,joined=false,state=null,lastPhase='',lastCd=0,lastKillId=0,lastBlockId=0,lastPickupId=0,lastShotId=0,lastBeamId=0,beamFx=null,lastPopId=0,lastPopBeep=0,lastBounceN=0,lastBounceBeep=0,lastFrame=performance.now(),overShown=false;
 let keys={},parts=[],btrail=[],flash='',flashT=0,lastSent='',lastMoveSend=0;
-let stick=null,fireTouch=false;
+let stick=null,fireTouch=false,fireId=null;
 const isTouch='ontouchstart' in window;
-let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};}
+let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN (bottom-left)':'You are PINK (top-right)'));beep(660,.08);};
@@ -86,9 +87,11 @@ function input(){
 }
 // touch: left half = stick, right half = fire button
 function tpos(e){const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return {x:(t.clientX-r.left)/r.width*W,y:(t.clientY-r.top)/r.height*H};}
-cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;if(x>W*0.55)fireTouch=true;else stick={ox:x,oy:y,f:0,t:0,id:t.identifier};}e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;if(x>W*0.55){if(fireId===null){fireTouch=true;fireId=t.identifier;}}else if(!stick)stick={ox:x,oy:y,f:0,t:0,id:t.identifier};}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;stick.f=Math.max(-1,Math.min(1,(stick.oy-y)/70));stick.t=Math.max(-1,Math.min(1,(x-stick.ox)/70));}}e.preventDefault();},{passive:false});
-cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}if(e.touches.length===0)fireTouch=false;});
+function endTouchTank(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===fireId){fireTouch=false;fireId=null;}}}
+cv.addEventListener('touchend',endTouchTank);
+cv.addEventListener('touchcancel',endTouchTank);
 let pollSeq=0;
 function poll(){
   const mySeq=++pollSeq;

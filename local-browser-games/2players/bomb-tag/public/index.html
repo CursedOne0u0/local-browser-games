@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Bomb Tag — LAN 2P</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
-#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
 #topbar{width:min(820px,96vw);display:flex;align-items:center;justify-content:space-between}
 .logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
 .logo span{color:#ffb02e;text-shadow:0 0 12px #ffb02e}
@@ -65,9 +65,9 @@ nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',name
 const cid=(()=>{try{let id=sessionStorage.getItem('bombtag_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('bombtag_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
 window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
 let you=0,joined=false,state=null,synced=false,lastPhase='',lastCd=0,lastPassId=0,lastBoomId=0,lastBoostId=0,lastFuseSec=99,lastFrame=performance.now(),overShown=false;
-let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false,prevDash=[0,0],prevCd=[0,0];
+let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false,dashId=null,prevDash=[0,0],prevCd=[0,0];
 const isTouch='ontouchstart' in window;
-let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
@@ -86,9 +86,11 @@ function input(){
   const n=Math.hypot(x,y);if(n>1){x/=n;y/=n;}
   return {x,y,fire};
 }
-cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W;if(x>W*0.6)dashTouch=true;else stick={ox:x,oy:(t.clientY-r.top)/r.height*H,x:0,y:0,id:t.identifier};}e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W;if(x>W*0.6){if(dashId===null){dashTouch=true;dashId=t.identifier;}}else if(!stick)stick={ox:x,oy:(t.clientY-r.top)/r.height*H,x:0,y:0,id:t.identifier};}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;stick.x=Math.max(-1,Math.min(1,(x-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(y-stick.oy)/70));}}e.preventDefault();},{passive:false});
-cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}if(e.touches.length===0)dashTouch=false;});
+function endTouchBomb(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===dashId){dashTouch=false;dashId=null;}}}
+cv.addEventListener('touchend',endTouchBomb);
+cv.addEventListener('touchcancel',endTouchBomb);
 let pollSeq=0;
 function poll(){
   const mySeq=++pollSeq;
