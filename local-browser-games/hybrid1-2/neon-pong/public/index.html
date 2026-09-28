@@ -126,13 +126,13 @@ window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;i
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function yFromClient(clientY){const r=cv.getBoundingClientRect();return Math.max(0,Math.min(1,(clientY-r.top)/r.height));}
 function pointerY(ev){const y=(ev.touches?ev.touches[0].clientY:ev.clientY);return yFromClient(y);}
-let pointerActive=false,activeTouchId=null;
-cv.addEventListener('mousedown',e=>{pointerActive=true;myY=pointerY(e);});
-window.addEventListener('mouseup',()=>pointerActive=false);
-cv.addEventListener('mousemove',e=>{if(pointerActive)myY=pointerY(e);});
-cv.addEventListener('touchstart',e=>{if(activeTouchId===null){const t=e.changedTouches[0];activeTouchId=t.identifier;pointerActive=true;myY=yFromClient(t.clientY);}e.preventDefault();},{passive:false});
-cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(t.identifier===activeTouchId)myY=yFromClient(t.clientY);}e.preventDefault();},{passive:false});
-function endTouchNeon(e){for(const t of e.changedTouches){if(t.identifier===activeTouchId){activeTouchId=null;pointerActive=false;}}if(activeTouchId===null&&e.touches.length>0){const t=e.touches[0];activeTouchId=t.identifier;pointerActive=true;myY=yFromClient(t.clientY);}}
+let pointerActive=false,activeTouchId=null,targY=0.5; // pointer target — myY glides toward it at the shared keyboard rate
+cv.addEventListener('mousedown',e=>{pointerActive=true;targY=pointerY(e);});
+window.addEventListener('mouseup',()=>{pointerActive=false;targY=myY;});
+cv.addEventListener('mousemove',e=>{if(pointerActive)targY=pointerY(e);});
+cv.addEventListener('touchstart',e=>{if(activeTouchId===null){const t=e.changedTouches[0];activeTouchId=t.identifier;pointerActive=true;targY=yFromClient(t.clientY);}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(t.identifier===activeTouchId)targY=yFromClient(t.clientY);}e.preventDefault();},{passive:false});
+function endTouchNeon(e){for(const t of e.changedTouches){if(t.identifier===activeTouchId){activeTouchId=null;pointerActive=false;targY=myY;}}if(activeTouchId===null&&e.touches.length>0){const t=e.touches[0];activeTouchId=t.identifier;pointerActive=true;targY=yFromClient(t.clientY);}}
 cv.addEventListener('touchend',endTouchNeon);
 cv.addEventListener('touchcancel',endTouchNeon);
 let view={p1y:0.5,p2y:0.5,bx:W/2,by:H/2};
@@ -180,11 +180,13 @@ function frame(now){
   const me=state?(you===1?state.p1:you===2?state.p2:null):null;
   const frozen=!!(me&&me.frozen);
   if(!frozen){
-    const spd=1.7*dt; // full court in ~0.6s — was 0.028/poll (~3.5s), the lag culprit
+    const spd=1.7*dt; // shared cap per second — keyboard and pointer (touch/mouse) alike
     if(keys['w']||keys['arrowup'])myY-=spd;
     if(keys['s']||keys['arrowdown'])myY+=spd;
+    if(keys['w']||keys['arrowup']||keys['s']||keys['arrowdown'])targY=myY; // keyboard owns outright
+    else myY+=Math.sign(targY-myY)*Math.min(Math.abs(targY-myY),spd); // pointer glides at the same cap
     myY=Math.max(0,Math.min(1,myY));
-  }else if(state){myY=you===1?state.p1.y:state.p2.y;}
+  }else if(state){myY=you===1?state.p1.y:state.p2.y;targY=myY;}
   if(joined&&you!==0&&!frozen&&(Math.abs(myY-lastSentY)>0.0004||now-lastMoveSend>100)){
     lastMoveSend=now;lastSentY=myY;
     fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,y:myY})}).catch(()=>{});
