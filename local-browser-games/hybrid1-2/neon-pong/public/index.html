@@ -74,7 +74,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-bottom-width:2px;bord
       </div>
     </div>
   </div>
-  <div id="hint"><kbd>W</kbd>/<kbd>S</kbd> or <kbd>↑</kbd>/<kbd>↓</kbd> or mouse / touch — move • <kbd>E</kbd> or button = <b>OVERDRIVE</b> (big paddle 1.6s, 8s cooldown) • move paddle while hitting = <b>spin</b> • orbs: <b style="color:#00f6ff">Expand</b> • <b style="color:#ff2fd6">Shrink</b> • <b style="color:#ffe14d">Turbo</b> • <b style="color:#7dff6a">Slow</b> • <b style="color:#7dffcb">🛡 Shield</b> • <b style="color:#9adcff">❄ Freeze foe</b> • <b style="color:#ff6b9d">🧲 Magnet</b> • <b style="color:#b9a7ff">👻 Ghost</b> • <b style="color:#7dff6a">🔀 Swap</b> • <b style="color:#c58bff">🌀 Vortex</b> • 6-6 = <b>SUDDEN DEATH</b></div>
+  <div id="hint"><kbd>W</kbd>/<kbd>S</kbd> or <kbd>↑</kbd>/<kbd>↓</kbd> or mouse / touch — move • <kbd>E</kbd> or button = <b>OVERDRIVE</b> (big paddle 1.6s, 8s cooldown) • move paddle while hitting = <b>spin</b> • orbs: <b style="color:#00f6ff">Expand</b> • <b style="color:#ff2fd6">Shrink</b> • <b style="color:#ffe14d">Turbo</b> • <b style="color:#7dff6a">Slow</b> • <b style="color:#7dffcb">🛡 Shield</b> • <b style="color:#9adcff">❄ Freeze foe</b> • <b style="color:#ff6b9d">🧲 Magnet</b> • <b style="color:#b9a7ff">👻 Ghost</b> • <b style="color:#7dff6a">🔀 Swap</b> • <b style="color:#c58bff">🌀 Vortex</b> • 6-6 = <b>SUDDEN DEATH</b> • every 3rd point = <b>🌬️ WIND</b> round (mid-court drift)</div>
   <div style="width:min(920px,96vw);display:flex;gap:8px;align-items:center;justify-content:center"><button id="odBtn" style="max-width:280px;margin:0;padding:9px 14px">⚡ OVERDRIVE (E)</button><div id="odStat" style="font-size:12px;opacity:.8">ready</div></div>
   <div id="taunts"><button data-t="gg">1·GG 🏓</button><button data-t="nice">2·Nice 🔥</button><button data-t="ouch">3·Ouch 😅</button><button data-t="whoops">4·Whoops 🙈</button><button data-t="lol">5·LOL 😂</button><button data-t="rematch">6·Rematch? 👀</button></div>
 </div>
@@ -160,7 +160,7 @@ function poll(){
     if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
     if(s.phase==='playing'&&s.preview){if(!lastPreview){lastPreview=true;beep(520,.08);}}
     if(lastPreview&&!(s.phase==='playing'&&s.preview)){lastPreview=false;if(s.phase==='playing'){flash='GO!';flashT=Date.now()+600;beep(880,.2);}}
-    if(s.last_power&&s.last_power.id!==lastPowerId){lastPowerId=s.last_power.id;beep(1200,.12,'sawtooth',.1);showToast({expand:'⬆️ Expanded!',shrink:'⬇️ Shrunk foe!',turbo:'⚡ TURBO!',slow:'🐢 SLOWED!',shield:'🛡 SHIELD UP!',freeze:'❄ FROZE FOE!',magnet:'🧲 MAGNET PADDLE!',ghost:'👻 GHOST BALL!',swap:'🔀 SWAPPED!',vortex:'🌀 VORTEX! run or slingshot!',overdrive:'⚡ OVERDRIVE!',sudden:'☠ SUDDEN DEATH — tiny paddles, fast ball!'}[s.last_power.kind]||'Power!');burst(s.ball.x,s.ball.y,'#ffe14d',24);if(s.last_power.kind==='swap'&&you!==0)myY=you===1?s.p1.y:s.p2.y;}
+    if(s.last_power&&s.last_power.id!==lastPowerId){lastPowerId=s.last_power.id;beep(1200,.12,'sawtooth',.1);showToast({expand:'⬆️ Expanded!',shrink:'⬇️ Shrunk foe!',turbo:'⚡ TURBO!',slow:'🐢 SLOWED!',shield:'🛡 SHIELD UP!',freeze:'❄ FROZE FOE!',magnet:'🧲 MAGNET PADDLE!',ghost:'👻 GHOST BALL!',swap:'🔀 SWAPPED!',vortex:'🌀 VORTEX! run or slingshot!',overdrive:'⚡ OVERDRIVE!',sudden:'☠ SUDDEN DEATH — tiny paddles, fast ball!',wind:'🌬️ WIND ROUND — mind the drift!'}[s.last_power.kind]||'Power!');burst(s.ball.x,s.ball.y,'#ffe14d',24);if(s.last_power.kind==='swap'&&you!==0)myY=you===1?s.p1.y:s.p2.y;}
     if(s.last_block&&s.last_block.id!==lastBlockId){lastBlockId=s.last_block.id;beep(900,.2,'square',.12);showToast('🛡 SHIELD SAVE by '+(s.last_block.by===1?names[0]:names[1])+'!');flash='BLOCKED!';flashT=Date.now()+900;}
     if(s.last_obounce&&s.last_obounce.id!==lastObId){lastObId=s.last_obounce.id;beep(760,.07,'square',.1);burst(view.bx,view.by,'#ff9f1c',16);}
     if(s.last_taunt&&s.last_taunt.id!==lastTauntId){lastTauntId=s.last_taunt.id;const who=s.last_taunt.by===you?'You':(names[s.last_taunt.by-1]||('P'+s.last_taunt.by));showToast('💬 '+who+': '+s.last_taunt.text);beep(s.last_taunt.by===you?700:500,.09,'square',.1);}
@@ -264,6 +264,21 @@ function draw(now){
   paddle(30,p1.y*H,p1.h,p1c);paddle(W-30-14,p2.y*H,p2.h,p2c);
   if(state){const g1=state.ghost_for===1?'hide':(state.ghost>0?'hit':null);const g2=state.ghost_for===2?'hide':(state.ghost>0?'hit':null);sideBars(10,'l',state.p1,g1);sideBars(W-10,'r',state.p2,g2);}
   if(state&&state.sudden){ctx.save();ctx.textAlign='center';ctx.font='900 20px system-ui';ctx.fillStyle='#ff5555';ctx.shadowColor='#f00';ctx.shadowBlur=12;ctx.fillText('☠ SUDDEN DEATH ☠',W/2,28);ctx.restore();}
+  if(state&&state.wind&&state.phase==='playing'){ // wind-round indicator: arrow + drifting streaks at mid-court
+    const dir=state.wind, pulse=.45+.2*Math.sin(now/200);
+    ctx.save();ctx.textAlign='center';ctx.globalAlpha=pulse+.25;
+    ctx.font='900 34px system-ui';ctx.fillStyle='#9adcff';ctx.shadowColor='#9adcff';ctx.shadowBlur=14;
+    ctx.fillText(dir>0?'⬇':'⬆',W/2,H/2+dir*110);
+    ctx.font='800 13px system-ui';ctx.shadowBlur=8;
+    ctx.fillText('🌬️ WIND',W/2,H/2+dir*142);
+    ctx.globalAlpha=pulse;ctx.strokeStyle='#9adcff';ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let k=0;k<10;k++){
+      const sx=W/2-150+((k*97+now*.02)%300+300)%300, sy=(k*53+now*.12*dir+H*2)%H;
+      ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+dir*22);
+    }
+    ctx.stroke();ctx.restore();
+  }
   if(!ghosted){ctx.save();ctx.shadowColor='#fff';ctx.shadowBlur=24;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ball.x,ball.y,9,0,7);ctx.fill();ctx.restore();}
   else if(state){ctx.save();ctx.textAlign='center';ctx.font='700 16px system-ui';ctx.fillStyle='#b9a7ffaa';ctx.fillText('👻 where did it go?!',W/2,44);ctx.restore();}
   if(state&&state.phase==='playing'&&state.preview){

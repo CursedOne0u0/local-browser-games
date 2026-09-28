@@ -8,13 +8,14 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.22"  # bump on every update; shown on the site
+VERSION = "1.23"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
 W, H = 800, 500
 WIN_SCORE = 7
 BASE_PADDLE_H = 90
+WIND_ACCEL = 120  # wind-rally vertical drift, px/s^2 (gentle, washes out on paddle hits)
 PUBLIC = Path(__file__).parent / "public"
 
 lock = threading.Lock()
@@ -27,6 +28,7 @@ game = {
     "p1": {"y": 0.5, "h": BASE_PADDLE_H, "score": 0, "effect_until": 0},
     "p2": {"y": 0.5, "h": BASE_PADDLE_H, "score": 0, "effect_until": 0},
     "ball": {"x": W/2, "y": H/2, "vx": 0, "vy": 0, "speed": 420, "last_hit": 0, "spin": 0},
+    "wind": 0,  # -1/0/+1: vertical drift this rally (wind round after every 3rd scored point)
     "powerup": None,
     "powerup_timer": 5,
     "serve_dir": 1,
@@ -93,6 +95,12 @@ def serve():
     game["serve_preview_until"] = now()+0.9
     game["serve_armed"] = True
     game["serve_dir"] *= -1
+    # wind round: the serve after every 3rd scored point drifts vertically
+    tot = game["p1"]["score"]+game["p2"]["score"]
+    game["wind"] = random.choice([-1, 1]) if tot > 0 and tot % 3 == 0 else 0
+    if game["wind"]:
+        game["event_id"] += 1
+        game["last_power"] = {"kind": "wind", "by": 0, "id": game["event_id"]}
 
 def spawn_powerup():
     kinds = ["expand","shrink","turbo","slow","shield","freeze","magnet","ghost","swap","vortex"]
@@ -277,6 +285,9 @@ def step(dt):
         game["ball"]["vx"] *= (1+0.0015); game["ball"]["vy"] *= (1+0.0015)
     b=game["ball"]
     b["x"]+=b["vx"]*dt; b["y"]+=b["vy"]*dt
+    # wind-round drift (washes out on paddle hits, which reset vy)
+    if game["wind"]:
+        b["vy"] += game["wind"]*WIND_ACCEL*dt
     # spin curves the ball (kept subtle)
     b["vy"] += b.get("spin",0)*dt*120
     b["spin"] = b.get("spin",0)*0.99
@@ -359,6 +370,7 @@ def game_loop():
                 game["bot_vy"]=0.0; game["bot_err"]=0.0; game["bot_prev_y"]=0.5
                 game["ghost_until"]=0; game["ghost_hidden_for"]=0; game["vortex"]=None
                 game["ball"]["speed"]=game["settings"]["speed"]; game["ball"]["last_hit"]=0; game["ball"]["spin"]=0
+                game["wind"]=0
                 game["obstacle"]=None; game["ob_next"]=now()+6; game["last_obounce"]=None
                 game["serve_dir"]=-1 if random.random()<0.5 else 1
                 game["powerup"]=None; game["powerup_timer"]=5
@@ -388,6 +400,7 @@ def snapshot():
         "phase": game["phase"],
         "countdown": cd,
         "sudden": game["sudden"],
+        "wind": game.get("wind", 0),
         "preview": game["phase"]=="playing" and bool(game.get("serve_armed")) and t < game.get("serve_preview_until", 0),
         "serve_dir": game.get("serve_current_dir", 1),
         "p1": {"y": game["p1"]["y"], "h": game["p1"]["h"], "score": game["p1"]["score"], **pinfo(0)},
