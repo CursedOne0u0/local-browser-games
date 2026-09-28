@@ -128,7 +128,16 @@ function applyPower(k){
   const nowT=Date.now();
   if(k==='expand'){paddle.w=Math.min(230,paddle.w+50);setTimeout(()=>paddle.w=Math.max(80,paddle.w-50),12000);}
   if(k==='slow'){balls.forEach(b=>{b.vx*=.7;b.vy*=.7;});}
-  if(k==='multi'){const extra=[];balls.forEach(b=>{for(let i=0;i<2;i++)extra.push({x:b.x,y:b.y,vx:b.vx*.9+(Math.random()-.5)*200,vy:-Math.abs(b.vy)*.9,r:9,stuck:false});});balls=balls.concat(extra).slice(0,6);}
+  if(k==='multi'){const extra=[];balls.forEach(b=>{
+    const sp=Math.hypot(b.vx,b.vy);
+    const deg=sp<1||Math.abs(b.vy)<sp*.2;
+    for(let i=0;i<2;i++){
+      let vx,vy;
+      if(deg){const a=-Math.PI/2+(Math.random()*.5-.25);const s=380+level*25;vx=Math.cos(a)*s;vy=Math.sin(a)*s;}
+      else{vx=b.vx*.9+(Math.random()-.5)*200;vy=-Math.abs(b.vy)*.9;}
+      extra.push({x:b.x,y:b.y,vx,vy,r:9,stuck:false});
+    }
+  });balls=balls.concat(extra).slice(0,6);}
   if(k==='life'){lives=Math.min(5,lives+1);livesEl.textContent=lives;}
   if(k==='fire'){balls.forEach(b=>{b.fire=nowT+8000;});}
   if(k==='laser'){laserUntil=nowT+12000;}
