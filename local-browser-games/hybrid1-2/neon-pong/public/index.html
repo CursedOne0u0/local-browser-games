@@ -87,7 +87,8 @@ try{nameI.value=localStorage.getItem('neonpong_name')||'Player';}catch(e){}
 nameI.addEventListener('input',()=>{try{localStorage.setItem('neonpong_name',nameI.value);}catch(e){}});
 let lastBot=false;
 const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),joinMsg=document.getElementById('joinMsg');
-const cid=Math.random().toString(36).slice(2)+Date.now().toString(36);
+const cid=(()=>{try{let id=sessionStorage.getItem('neonpong_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('neonpong_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
+window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
 let you=0,myY=0.5,keys={},state=null,trail=[],parts=[],flash='',flashT=0,lastPhase='',lastCd=0,lastPowerId=0,lastPointId=0,lastBlockId=0,lastPreview=false,lastObId=0,lastTauntId=0,joined=false;
 let names=['Player 1','Player 2'],scores=[0,0];
 const odBtn=document.getElementById('odBtn'),odStat=document.getElementById('odStat'),verEl=document.getElementById('verBadge');
@@ -96,8 +97,8 @@ odBtn.onclick=doOverdrive;
 let AC=null;function beep(f=440,d=0.08,type='square',v=0.12){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
-joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=false;botBtn.disabled=false;joinMsg.textContent=you===0?'Room full — spectating 👀':(you===1?'You are LEFT (cyan) — P1':'You are RIGHT (pink) — P2');showToast(joinMsg.textContent);beep(660,.08);};
-readyBtn.onclick=async()=>{await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for other player…';beep(700,.07);};
+joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);botBtn.disabled=(d.you===0);joinMsg.textContent=you===0?'Room full — spectating 👀':(you===1?'You are LEFT (cyan) — P1':'You are RIGHT (pink) — P2');showToast(joinMsg.textContent);beep(660,.08);};
+readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for other player…';beep(700,.07);};
 botBtn.onclick=async()=>{const r=await api('/api/bot',{clientId:cid,on:!lastBot});if(r.ok){beep(700,.07);}else showToast('AI needs an empty P2 seat, lobby only');};
 againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});endCard.style.display='none';joinCard.style.display='block';readyBtn.disabled=false;readyBtn.textContent='Ready up ⚡';ov.style.display='flex';};
 document.querySelectorAll('#settings button').forEach(b=>b.onclick=async()=>{

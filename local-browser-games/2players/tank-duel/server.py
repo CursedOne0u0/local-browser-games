@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.5"  # bump on every update; shown on the site
+VERSION = "1.6"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -436,6 +436,10 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({"ok":True})
                 if self.path=="/api/ready" and s>=0:
                     game["players"][s]["ready"]=True
+                    return self._json({"ok":True})
+                if self.path=="/api/leave":
+                    if s>=0:  # browser closed: free the seat now, don't wait out the 8s timeout
+                        game["players"][s]=None
                     return self._json({"ok":True})
                 if self.path=="/api/restart":
                     if game["phase"]=="over":

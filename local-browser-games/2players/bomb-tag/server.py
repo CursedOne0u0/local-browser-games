@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3002"))
-VERSION = "1.0"  # bump on every update; shown on the site
+VERSION = "1.2"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -43,7 +43,7 @@ game = {
     "dash_until": [0, 0],
     "dash_cd": [0, 0],
     "imm_until": [0, 0],
-    "holder": 1,
+    "holder": 0,
     "fuse": 10.0,
     "winner": 0,
     "event_id": 0,
@@ -65,10 +65,10 @@ def reset_scores():
 
 def new_round():
     reset_positions()
-    game["holder"] = random.choice([1, 2])
+    # alternate the holder every round (random first) — never the same twice running
+    game["holder"] = random.choice([1, 2]) if game["holder"] not in (1, 2) else 3-game["holder"]
     game["fuse"] = 8+random.random()*6
-    game["event_id"] += 1
-    game["last_pass"] = {"holder": game["holder"], "id": game["event_id"]}
+    # NOTE: no last_pass event here — assignment is shown via holder/names, not the pass toast
 
 def touch(pid):
     for p in game["players"]:
@@ -260,6 +260,10 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({"ok":True})
                 if self.path=="/api/ready" and s>=0:
                     game["players"][s]["ready"]=True
+                    return self._json({"ok":True})
+                if self.path=="/api/leave":
+                    if s>=0:  # browser closed: free the seat now, don't wait out the 8s timeout
+                        game["players"][s]=None
                     return self._json({"ok":True})
                 if self.path=="/api/restart":
                     if game["phase"]=="over":

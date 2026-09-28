@@ -62,15 +62,16 @@ const nameI=document.getElementById('name'),joinBtn=document.getElementById('joi
 const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),verEl=document.getElementById('verBadge'),fusefill=document.getElementById('fusefill');
 try{nameI.value=localStorage.getItem('bombtag_name')||'Player';}catch(e){}
 nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',nameI.value);}catch(e){}});
-const cid=Math.random().toString(36).slice(2)+Date.now().toString(36);
+const cid=(()=>{try{let id=sessionStorage.getItem('bombtag_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('bombtag_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
+window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
 let you=0,joined=false,state=null,lastPhase='',lastCd=0,lastPassId=0,lastBoomId=0,lastFuseSec=99,lastFrame=performance.now(),overShown=false;
 let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false;
 const isTouch='ontouchstart' in window;
 let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
-joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=false;showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
-readyBtn.onclick=async()=>{await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
+joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
+readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function input(){

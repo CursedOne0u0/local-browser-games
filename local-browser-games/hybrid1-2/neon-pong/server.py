@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.18"  # bump on every update; shown on the site
+VERSION = "1.19"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
@@ -497,6 +497,10 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({"ok":False,"cd":max(0,pl.get("od_ready_at",0)-t)})
                 if self.path=="/api/ready" and s>=0:
                     game["players"][s]["ready"]=True
+                    return self._json({"ok":True})
+                if self.path=="/api/leave":
+                    if s>=0:  # browser closed: free the seat now, don't wait out the 8s timeout
+                        game["players"][s]=None
                     return self._json({"ok":True})
                 if self.path=="/api/bot" and s>=0:
                     want = bool(d.get("on", not game["bot"]))
