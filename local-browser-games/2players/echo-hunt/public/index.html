@@ -29,6 +29,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .slot.on{border-style:solid;border-color:var(--c1)}
 .slot.h{border-color:#ff5555;color:#ff9a9a}
 .slot.d{border-color:#00f6ff;color:#9adcff}
+#botRow{display:none;align-items:center;justify-content:center;gap:6px;margin:10px 0;font-size:13px;font-weight:800}
+#botRow button{width:auto;margin:0;padding:8px 16px;font-size:15px;flex:none}
 input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#050816;color:#fff;font-size:16px;outline:none;margin:8px 0}
 button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,#9adcff,#7dffcb);box-shadow:0 0 18px #9adcff88;width:100%;margin-top:8px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
@@ -51,7 +53,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.0</div><div id="score">0 : 0</div></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.1</div><div id="score">0 : 0</div></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
@@ -68,12 +70,13 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <h1>🛰️ ECHO HUNT <span style="font-size:14px;opacity:.75">— first side to 3</span></h1>
       <p>Host runs <b>python3 server.py</b> in <b>echo-hunt/</b>. 2–8 phones, same Wi-Fi.<br>Wardens hunt near-blind on sonar. Divers crack wire nodes.<br>Stroll = silent • sprint = loud. Freeze when you hear the ping!</p>
       <div id="slots"></div>
+      <div id="botRow">🤖 Bots: <b id="botCount">0</b><button id="botMinus" class="ghost">−</button><button id="botPlus" class="ghost">+</button></div>
       <input id="name" maxlength="32" placeholder="Your name…" value="Player">
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
     </div></div>
   </div>
-  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> swim (easy = silent, full tilt = sprint) • touch: drag anywhere • divers: hold a node 2s to rewire it • wardens: tags land by touch</div>
+      <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> swim (easy = silent, full tilt = sprint) • touch: drag anywhere • divers: hold a node 2s to rewire it • wardens: tags land by touch • host (localhost) can add 🤖 bots in the lobby</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -82,7 +85,8 @@ const ov=document.getElementById('overlay'),joinCard=document.getElementById('jo
 const nameI=document.getElementById('name'),joinBtn=document.getElementById('joinBtn'),readyBtn=document.getElementById('readyBtn');
 const sgrid=document.getElementById('slots'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),
       roleEl=document.getElementById('rolebar'),toast=document.getElementById('toast'),verEl=document.getElementById('verBadge'),
-      stamfill=document.getElementById('stamfill'),stamwrap=document.getElementById('stamwrap');
+      stamfill=document.getElementById('stamfill'),stamwrap=document.getElementById('stamwrap'),
+      botRow=document.getElementById('botRow'),botCount=document.getElementById('botCount');
 const fogCv=document.createElement('canvas');fogCv.width=W;fogCv.height=H;const fctx=fogCv.getContext('2d');
 try{nameI.value=localStorage.getItem('echohunt_name')||'Player';}catch(e){}
 nameI.addEventListener('input',()=>{try{localStorage.setItem('echohunt_name',nameI.value);}catch(e){}});
@@ -102,6 +106,8 @@ function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeo
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':'Joined! Ready up ⚡');beep(660,.08);};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for crew…';beep(700,.07);};
+document.getElementById('botPlus').onclick=async()=>{await api('/api/bot',{clientId:cid,n:(botRow._n||0)+1});beep(700,.06);};
+document.getElementById('botMinus').onclick=async()=>{await api('/api/bot',{clientId:cid,n:Math.max(0,(botRow._n||0)-1)});beep(500,.06);};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function input(){
@@ -232,6 +238,7 @@ function poll(){
     if(myRole==='diver'&&me)stamfill.style.width=(me.stam*100)+'%';
     // lobby slots
     sgrid.innerHTML='';
+    let nBots=0;
     s.names.forEach((n,i)=>{
       if(!s.connected[i]&&!n)return;
       const d=document.createElement('div');
@@ -239,7 +246,10 @@ function poll(){
       d.className='slot'+(s.connected[i]?' on':'')+(s.roles[i]==='hunter'?' h':s.roles[i]==='diver'?' d':'');
       d.textContent=(n||('P'+(i+1)))+(s.ready[i]?' ✅':'')+rl;
       sgrid.appendChild(d);
+      if(s.connected[i]&&n&&n.startsWith('🤖'))nBots++;
     });
+    botRow._n=nBots;botCount.textContent=nBots;
+    botRow.style.display=s.host?'flex':'none';
     if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';overShown=false;}
     if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
     if(s.last_ping&&s.last_ping.id!==lastPingId){lastPingId=s.last_ping.id;sweep(1200,300,.35,.08);}

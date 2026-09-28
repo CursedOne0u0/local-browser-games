@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3003"))
-VERSION = "1.0"  # bump on every update; shown on the site
+VERSION = "1.1"  # bump on every update; shown on the site
 MAX_PLAYERS = 8
 WIN_ROUNDS = 3
 PUBLIC = Path(__file__).parent / "public"
@@ -26,6 +26,8 @@ SPAWN_CLEAR_HUNTER = 150
 NODE_SPREAD = 200
 ROUND_TIME = 150
 PING_EVERY = 4.0
+BOT_NAMES = ["Byte", "Echo", "Sonar", "Pixel", "Glitch", "Watt", "Ping", "Fathom"]
+BOT_SOLVE_MIN, BOT_SOLVE_MAX = 5.0, 9.0  # bot "thinking" time per puzzle
 PICK_COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"]
 # pillars (x,y,w,h) — same trench furniture as bomb-tag
 PILLARS = [
@@ -47,7 +49,9 @@ game = {
     "round": 1,
     "h_wins": 0, "d_wins": 0,
     "winner_side": 0,  # 0 none, 1 hunters, 2 divers
-    "players": [None]*MAX_PLAYERS,  # {id,name,last_seen,ready,input:{x,y}}
+    "players": [None]*MAX_PLAYERS,  # {id,name,last_seen,ready,input:{x,y},bot?}
+    "bots": {},  # seat -> {solve_at,wp,wp_at} brain scratch (bot seats only)
+    "ips": {},  # clientId -> last seen IP (localhost check = host controls)
     "runners": [{"x": 0, "y": 0, "alive": True, "stam": 1.0, "gassed": False} for _ in range(MAX_PLAYERS)],
     "effmag": [0.0]*MAX_PLAYERS,  # post-stamina-cap speed actually applied (drives blips)
     "roles": [None]*MAX_PLAYERS,  # hunter|diver|None per seat
@@ -79,7 +83,7 @@ def slot_of(pid):
     return -1
 def free_stale():
     for i, p in enumerate(game["players"]):
-        if p and now() - p["last_seen"] > 8:
+        if p and not p.get("bot") and now() - p["last_seen"] > 8:
             release_slots(i)
             game["players"][i] = None
             game["roles"][i] = None
@@ -238,6 +242,7 @@ def step(dt):
         return
     if game["phase"] != "playing": return
     t = now()
+    bot_brain(dt)
     if t >= game["next_ping_at"]:
         sonar_ping()
     # movement (divers capped by stamina, hunters flat)
@@ -296,6 +301,8 @@ def step(dt):
             sl = next(s for s in nd["slots"] if s["solver"] is None and not s["resolved"])
             sl["solver"] = i
             game["channel"][i] = None
+            if (game["players"][i] or {}).get("bot"):
+                game["bots"].setdefault(i, {})["solve_at"] = t+random.uniform(BOT_SOLVE_MIN, BOT_SOLVE_MAX)
             p = game["players"][i]
             by = (p or {}).get("name", "") or f"P{i+1}"
             shout(nd["x"], nd["y"], by)
@@ -350,6 +357,121 @@ def solve_attempt(seat, links):
                 return {"ok": False}
     return {"ok": False}
 
+def bot_perceive(seat):
+    """Role-locked perception: only what that role's phone would show.
+    Divers: nodes (global-dim) + hunters inside 280px fog. Never exact far positions.
+    Wardens: sonar blips + divers inside 90px proximity + fellow hunters. Never nodes."""
+    r = game["runners"][seat]
+    t = now()
+    if game["roles"][seat] == "diver":
+        seen = []
+        for h in hunters():
+            hr = game["runners"][h]
+            if math.hypot(hr["x"]-r["x"], hr["y"]-r["y"]) < 280:
+                seen.append((hr["x"], hr["y"]))
+        return {"hunters": seen,
+                "nodes": [(nd["x"], nd["y"]) for nd in game["nodes"] if nd["done"] < 3]}
+    seen_cu = []
+    for d in divers():
+        dr = game["runners"][d]
+        if dr["alive"] and math.hypot(dr["x"]-r["x"], dr["y"]-r["y"]) < 90:
+            seen_cu.append((dr["x"], dr["y"]))
+    return {"blips": [(b["x"], b["y"]) for b in game["blips"] if t < b["until"]],
+            "close": seen_cu,
+            "mates": [h for h in hunters() if h != seat]}
+
+def bot_diver_move(i, st):
+    r = game["runners"][i]
+    if holds_slot(i) or game["channel"][i]:
+        return (0, 0)  # sit: keep channeling, stay silent
+    px = bot_perceive(i)
+    if px["hunters"]:
+        hx, hy = min(px["hunters"], key=lambda h: math.hypot(h[0]-r["x"], h[1]-r["y"]))
+        dx, dy = r["x"]-hx, r["y"]-hy
+        n = math.hypot(dx, dy) or 1
+        return (dx/n, dy/n)  # full sprint away (drains stamina like anyone)
+    if px["nodes"]:
+        nx, ny = min(px["nodes"], key=lambda q: math.hypot(q[0]-r["x"], q[1]-r["y"]))
+        dx, dy = nx-r["x"], ny-r["y"]
+        n = math.hypot(dx, dy) or 1
+        if n < NODE_R*0.5:
+            return (0, 0)  # parked on the node: silent channel
+        return (dx/n, dy/n)
+    return (0, 0)
+
+def bot_hunter_move(i, st, t):
+    r = game["runners"][i]
+    px = bot_perceive(i)
+    targets = list(px["blips"]) + px["close"]
+    if targets:
+        tx, ty = min(targets, key=lambda q: math.hypot(q[0]-r["x"], q[1]-r["y"]))
+        dx, dy = tx-r["x"], ty-r["y"]
+        n = math.hypot(dx, dy) or 1
+        if n < TAG_DIST*0.5:
+            return (0, 0)
+        return (dx/n, dy/n)
+    wp = st.get("wp")
+    if not wp or math.hypot(wp[0]-r["x"], wp[1]-r["y"]) < 40 or t-st.get("wp_at", 0) > 6:
+        for _ in range(30):
+            x = 70+random.random()*(W-140); y = 70+random.random()*(H-140)
+            if point_clear(x, y): break
+        st["wp"] = (x, y); st["wp_at"] = t
+        wp = st["wp"]
+    dx, dy = wp[0]-r["x"], wp[1]-r["y"]
+    n = math.hypot(dx, dy) or 1
+    return (dx/n, dy/n)
+
+def bot_try_solve(i):
+    for nd in game["nodes"]:
+        for sl in nd["slots"]:
+            if sl["solver"] == i and not sl["resolved"]:
+                solve_attempt(i, [[s, d] for d, s in enumerate(sl["perm"])])
+                return
+
+def bot_brain(dt):
+    t = now()
+    for i, p in enumerate(game["players"]):
+        if not p or not p.get("bot"): continue
+        p["last_seen"] = t
+        role = game["roles"][i]
+        if game["phase"] != "playing" or not role:
+            p["input"] = {"x": 0, "y": 0}
+            continue
+        if role == "diver" and not game["runners"][i]["alive"]:
+            p["input"] = {"x": 0, "y": 0}
+            continue
+        st = game["bots"].setdefault(i, {})
+        if role == "diver":
+            if holds_slot(i) and t >= st.get("solve_at", 0):
+                bot_try_solve(i)
+            mv = bot_diver_move(i, st)
+        else:
+            mv = bot_hunter_move(i, st, t)
+        p["input"] = {"x": mv[0], "y": mv[1]}
+
+def set_bots(n):
+    humans = [i for i, p in enumerate(game["players"]) if p and not p.get("bot")]
+    bots = [i for i, p in enumerate(game["players"]) if p and p.get("bot")]
+    n = max(0, min(n, MAX_PLAYERS-len(humans)))
+    while len(bots) > n:  # drop highest seats first
+        i = bots.pop()
+        release_slots(i)
+        game["hunt_counts"].pop(game["players"][i]["id"], None)
+        game["bots"].pop(i, None)
+        game["players"][i] = None; game["roles"][i] = None
+        game["channel"][i] = None
+    used = {p["name"] for p in game["players"] if p}
+    while len(bots) < n:
+        i = next(i for i in range(MAX_PLAYERS) if not game["players"][i])
+        name = next(nm for nm in BOT_NAMES if f"🤖 {nm}" not in used)
+        pid = f"bot-{name}-{random.randrange(1000000)}"
+        game["players"][i] = {"id": pid, "name": f"🤖 {name}", "last_seen": now(),
+                              "ready": True, "input": {"x": 0, "y": 0}, "bot": True}
+        game["bots"][i] = {}
+        used.add(f"🤖 {name}")
+        bots.append(i)
+    return sum(1 for p in game["players"] if p and p.get("bot"))
+
 def game_loop():
     last = time.time()
     while True:
@@ -357,7 +479,7 @@ def game_loop():
         with lock:
             free_stale()
             seated = [p for p in game["players"] if p]
-            if game["phase"] == "waiting" and len(seated) >= 2 and all(p["ready"] for p in seated):
+            if game["phase"] == "waiting" and len(seated) >= 2 and all(p["ready"] for p in seated) and any(not p.get("bot") for p in seated):
                 game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
                 reset_match(); assign_roles()
             step(dt)
@@ -409,6 +531,7 @@ def snapshot(pid):
         "last_collect": game["last_collect"],
         "last_round": game["last_round"],
         "event_id": game["event_id"],
+        "host": game["ips"].get(pid) in ("127.0.0.1", "::1"),
     }
 
 class Handler(SimpleHTTPRequestHandler):
@@ -438,6 +561,7 @@ class Handler(SimpleHTTPRequestHandler):
             qs=urllib.parse.parse_qs(parsed.query)
             pid=(qs.get("id") or [""])[0]
             with lock:
+                if pid: game["ips"][pid] = self.client_address[0]
                 touch(pid)
                 s=snapshot(pid)
             return self._json(s)
@@ -447,6 +571,7 @@ class Handler(SimpleHTTPRequestHandler):
             d=self._body()
             pid=str(d.get("clientId",""))[:32]
             with lock:
+                if pid: game["ips"][pid] = self.client_address[0]
                 if self.path=="/api/join":
                     name=str(d.get("name","Player"))[:32] or "Player"
                     s=slot_of(pid)
@@ -481,11 +606,17 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path=="/api/node_abandon" and s>=0:
                     release_slots(s)
                     return self._json({"ok":True})
+                if self.path=="/api/bot":
+                    if self.client_address[0] not in ("127.0.0.1", "::1"):
+                        return self._json({"ok": False, "err": "host only"})
+                    try: n=int(d.get("n", 0))
+                    except: n=0
+                    return self._json({"ok": True, "bots": set_bots(n)})
                 if self.path=="/api/restart":
                     if game["phase"]=="over":
                         reset_match(); assign_roles()
                         for p in game["players"]:
-                            if p: p["ready"]=False
+                            if p and not p.get("bot"): p["ready"]=False
                         game["phase"]="waiting"; game["winner_side"]=0; game["round"]=1
                     return self._json({"ok":True})
             return self._json({"ok":False},400)
