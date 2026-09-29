@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3003"))
-VERSION = "1.2"  # bump on every update; shown on the site
+VERSION = "1.3"  # bump on every update; shown on the site
 MAX_PLAYERS = 8
 WIN_ROUNDS = 3
 PUBLIC = Path(__file__).parent / "public"
@@ -557,7 +557,7 @@ class Handler(SimpleHTTPRequestHandler):
         b=json.dumps(obj).encode()
         try:
             self.send_response(code); self.send_header("Content-Type","application/json")
-            self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
+            self.send_header("Cache-Control","no-store"); self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
         except (ConnectionResetError, BrokenPipeError):
             pass
     def _body(self):

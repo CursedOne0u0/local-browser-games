@@ -69,7 +69,7 @@ const isTouch='ontouchstart' in window;
 if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};}
 let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
-async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN (bottom-left)':'You are PINK (top-right)'));beep(660,.08);};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(document.activeElement===nameI)return;});
@@ -92,11 +92,11 @@ cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t
 function endTouchTank(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===fireId){fireTouch=false;fireId=null;}}}
 cv.addEventListener('touchend',endTouchTank);
 cv.addEventListener('touchcancel',endTouchTank);
-let pollSeq=0;
+const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
 function poll(){
-  const mySeq=++pollSeq;
-  api('/api/state?id='+cid).then(s=>{
-    if(mySeq!==pollSeq)return;
+  const ctl=new AbortController();
+  const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
+  fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
     state=s;
     if(s.maze&&(s.maze[0].length*CELL!==W||s.maze.length*CELL!==H)){
       W=s.maze[0].length*CELL;H=s.maze.length*CELL;cv.width=W;cv.height=H;
@@ -130,8 +130,7 @@ function poll(){
     }
     else overShown=false;
     lastPhase=s.phase;
-  }).catch(()=>{});
-  setTimeout(poll,16);
+  }).catch(()=>{}).finally(()=>{clearTimeout(kill);setTimeout(poll,POLL_MS);});
 }
 function frame(now){
   requestAnimationFrame(frame);

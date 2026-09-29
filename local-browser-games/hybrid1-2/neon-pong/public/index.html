@@ -96,7 +96,7 @@ async function doOverdrive(){if(!joined||!you)return;try{const r=await api('/api
 odBtn.onclick=doOverdrive;
 let AC=null;function beep(f=440,d=0.08,type='square',v=0.12){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
-async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);botBtn.disabled=(d.you===0);joinMsg.textContent=you===0?'Room full — spectating 👀':(you===1?'You are LEFT (cyan) — P1':'You are RIGHT (pink) — P2');showToast(joinMsg.textContent);beep(660,.08);};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for other player…';beep(700,.07);};
 botBtn.onclick=async()=>{const r=await api('/api/bot',{clientId:cid,on:!lastBot});if(r.ok){beep(700,.07);}else showToast('AI needs an empty P2 seat, lobby only');};
@@ -138,11 +138,12 @@ cv.addEventListener('touchcancel',endTouchNeon);
 let view={p1y:0.5,p2y:0.5,bx:W/2,by:H/2};
 let netBall={x:W/2,y:H/2,vx:0,vy:0,t:performance.now()};
 let frameDt=1/60,lastTrailPush=0;
-let lastMoveSend=0,lastSentY=-1,lastFrame=performance.now(),pollSeq=0;
+let lastMoveSend=0,lastSentY=-1,lastFrame=performance.now();
+const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
 function poll(){
-  const mySeq=++pollSeq; // 60Hz fire-and-forget; only newest response applies
-  api('/api/state?id='+cid).then(s=>{
-    if(mySeq!==pollSeq)return;
+  const ctl=new AbortController();
+  const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
+  fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
     state=s;scores=[s.p1.score,s.p2.score];names=[s.names[0]||'Player 1',s.names[1]||'Player 2'];
     if(s.v)verEl.textContent='v'+s.v;
     paintSettings(s.settings);
@@ -171,8 +172,7 @@ function poll(){
     // dead-reckoning base: newest snapshot + velocity; frame() extrapolates to display rate
     netBall={x:s.ball.x,y:s.ball.y,vx:s.ball.vx||0,vy:s.ball.vy||0,t:performance.now()};
     if(you===0){view.p1y=s.p1.y;view.p2y=s.p2.y;}
-  }).catch(()=>{}).finally(()=>{});
-  setTimeout(poll,16); // ~60Hz state
+  }).catch(()=>{}).finally(()=>{clearTimeout(kill);setTimeout(poll,POLL_MS);});
 }
 function frame(now){
   requestAnimationFrame(frame);

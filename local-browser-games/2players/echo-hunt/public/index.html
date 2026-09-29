@@ -115,7 +115,7 @@ const R_DIVER=280,R_WARDEN=90;
 let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function sweep(f0,f1,d=.3,v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f0,AC.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),AC.currentTime+d);g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
-async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{goFS();const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':'Joined! Ready up ⚡');beep(660,.08);};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for crew…';beep(700,.07);};
 document.getElementById('botPlus').onclick=async()=>{await api('/api/bot',{clientId:cid,n:(botRow._n||0)+1});beep(700,.06);};
@@ -224,11 +224,11 @@ function syncPz(s){
   }
 }
 // ---- net ----
-let pollSeq=0;
+const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
 function poll(){
-  const mySeq=++pollSeq;
-  api('/api/state?id='+cid).then(s=>{
-    if(mySeq!==pollSeq)return;
+  const ctl=new AbortController();
+  const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
+  fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
     state=s;
     if(!synced){synced=true;lastPingId=s.last_ping?s.last_ping.id:0;lastShoutId=s.last_shout?s.last_shout.id:0;
       lastTagId=s.last_tag?s.last_tag.id:0;lastCollectId=s.last_collect?s.last_collect.id:0;
@@ -291,8 +291,7 @@ function poll(){
     if(s.phase!==lastPhase){flashT=0;}
     lastPhase=s.phase;
     syncPz(s);
-  }).catch(()=>{});
-  setTimeout(poll,40);
+  }).catch(()=>{}).finally(()=>{clearTimeout(kill);setTimeout(poll,POLL_MS);});
 }
 function frame(now){
   requestAnimationFrame(frame);
