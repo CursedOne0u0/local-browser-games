@@ -16,7 +16,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #hud{display:flex;gap:12px;font-weight:800;font-size:13px;letter-spacing:.04em;flex-wrap:wrap;justify-content:flex-end}
 #hud b{color:var(--c1)}
 #hud #comboB{color:#ffe14d}
-#stage{position:relative;width:min(860px,96vw);aspect-ratio:860/560;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
+#stage{position:relative;width:min(860px,96vw,calc((100dvh - 150px)*1.5357));aspect-ratio:860/560;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px)}
 .card{width:min(440px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:22px;text-align:center;box-shadow:0 0 30px #00f6ff22;max-height:94%;overflow:auto}
@@ -34,7 +34,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
-    <div id="verBadge">v1.5</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.6</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">
@@ -43,13 +43,13 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <h1 id="title">🧱 BREAKOUT BLAST</h1>
       <p id="msg">Chain bricks without touching the paddle for <b>COMBO x5</b>.<br>
       💣 <b>bombs</b> explode neighbors • ⬛ <b>armored</b> need 2–3 hits (🔥 fire melts them).<br>
-      Move: mouse / touch / <kbd>←</kbd><kbd>→</kbd>. <kbd>Space</kbd> = launch / release sticky.<br>
+      Move: mouse / <kbd>←</kbd><kbd>→</kbd> / touch (hold LEFT or RIGHT half). <kbd>Space</kbd> = launch / release sticky.<br>
       Powers: ⬌ expand • 🐢 slow • ✨ multi • ❤ life • 🔥 fire • <b>🔫 laser</b> (auto-fires 5x every 1.5s, pierces 1) • <b>🩹 sticky</b> • <b>🛡 shield</b> (saves 1 miss)</p>
       <button id="playBtn">Play</button>
     </div></div>
   </div>
-<  <div id="hint">Space = launch • laser auto-fires 5x every 1.5s • sticky: ball sticks, Space releases • P pause • M mute</div>
-  <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
+<  <div id="hint">Space = launch • laser auto-fires 5x every 1.5s • sticky: ball sticks, Space releases • P pause • M mute • F fullscreen</div>
+  <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button><button id="fsBtn" title="Fullscreen">⛶</button></div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -177,11 +177,11 @@ function loop(t){
   update(dt);draw(t);
 }
 function update(dt){
-  const spd=560*dt; // shared cap per second — keyboard and pointer (touch/mouse) alike
-  if(keys['arrowleft']||keys['a'])paddle.x-=spd;
-  if(keys['arrowright']||keys['d'])paddle.x+=spd;
-  if(keys['arrowleft']||keys['a']||keys['arrowright']||keys['d'])targX=paddle.x; // keyboard owns outright
-  else paddle.x+=Math.sign(targX-paddle.x)*Math.min(Math.abs(targX-paddle.x),spd); // pointer glides at the same cap
+  const spd=560*dt; // shared cap per second — keyboard, touch zones and mouse alike
+  if(keys['arrowleft']||keys['a']||touchL)paddle.x-=spd;
+  if(keys['arrowright']||keys['d']||touchR)paddle.x+=spd;
+  if(keys['arrowleft']||keys['a']||keys['arrowright']||keys['d']||touchL||touchR)targX=paddle.x; // held input owns outright
+  else paddle.x+=Math.sign(targX-paddle.x)*Math.min(Math.abs(targX-paddle.x),spd); // mouse glides at the same cap
   paddle.x=Math.max(paddle.w/2+6,Math.min(W-paddle.w/2-6,paddle.x));
   balls.forEach(b=>{if(b.stuck)b.x=paddle.x;});
   powerups.forEach(p=>{p.y+=p.vy*dt;});
@@ -286,6 +286,14 @@ function draw(t){
   balls.forEach(b=>{if(b.fire&&Date.now()<b.fire){ctx.fillStyle='#ffb35c';ctx.fillText('🔥 FIRE '+Math.ceil((b.fire-Date.now())/1000)+'s',12,yy);}});
   ctx.restore();
   if(Date.now()<flashUntil){ctx.save();ctx.textAlign='center';ctx.font='900 52px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(flashTxt,W/2,H/2);ctx.restore();}
+  // fullscreen touch zones: translucent mid-line + side markers
+  if(document.fullscreenElement){
+    ctx.save();ctx.strokeStyle='#ffffff38';ctx.lineWidth=2;ctx.setLineDash([12,12]);
+    ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ffffff55';ctx.font='700 15px system-ui';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('◀',W/2-26,8);ctx.fillText('▶',W/2+26,8);
+    ctx.restore();
+  }
   if(balls.length===1&&balls[0].stuck&&running&&!paused){ctx.save();ctx.textAlign='center';ctx.font='700 18px system-ui';ctx.fillStyle='#ffffffaa';ctx.fillText('SPACE / tap to launch',W/2,H-90);ctx.restore();}
 }
 function gameOver(){
@@ -297,25 +305,51 @@ function gameOver(){
 }
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(k===' '||k==='arrowup')e.preventDefault();
   if(k===' '){if(!running)start();else if(paused)paused=false;else{launch();tryShoot();}}
-  if(k==='p'&&running)paused=!paused;if(k==='m')muted=!muted;});
+  if(k==='p'&&running)paused=!paused;if(k==='m')muted=!muted;if(k==='f')toggleFs();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptr(e){const r=cv.getBoundingClientRect();return r.left+(e.touches?e.touches[0].clientX:e.clientX)-r.left;}
 let dragging=false;
-let targX=W/2; // pointer target — paddle glides toward it at the shared keyboard rate
+let targX=W/2; // mouse target — paddle glides toward it at the shared keyboard rate
+// touch zones: hold LEFT or RIGHT half of the screen to steer (multitouch safe)
+let touchL=false,touchR=false;
+const touches=new Map();
+function sideOf(t){const r=cv.getBoundingClientRect();return ((t.clientX-r.left)/r.width*W)<W/2?'L':'R';}
+function recountSides(){touchL=touchR=false;touches.forEach(s=>{if(s==='L')touchL=true;else touchR=true;});}
+function endTouch(e){for(const t of e.changedTouches)touches.delete(t.identifier);recountSides();stopGlide();}
+// fullscreen: touch devices go fullscreen on sideways rotation (auto + F key + ⛶)
+let autoFs=false;
+function isLandscape(){return window.innerWidth>window.innerHeight;}
+async function enterFs(){try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch(e){}}
+function exitFs(){try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();}catch(e){}}
+function toggleFs(){if(document.fullscreenElement)exitFs();else enterFs();}
+let lastLandscape=isLandscape();
+function onRotate(){
+  const land=isLandscape();
+  if(land!==lastLandscape){
+    lastLandscape=land;
+    if(land&&isTouch&&!document.fullscreenElement){autoFs=true;enterFs();}
+    else if(!land&&autoFs){autoFs=false;exitFs();}
+  }
+}
+let rsT=null;
+window.addEventListener('orientationchange',()=>setTimeout(onRotate,300));
+window.addEventListener('resize',()=>{clearTimeout(rsT);rsT=setTimeout(onRotate,300);});
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)autoFs=false;});
 function setTarget(e){targX=(ptr(e)/cv.getBoundingClientRect().width)*W;}
 function stopGlide(){targX=paddle.x;} // pointer released: stop dead, like keyup
 cv.addEventListener('mousedown',e=>{dragging=true;setTarget(e);if(running){launch();tryShoot();}});
 window.addEventListener('mouseup',()=>{dragging=false;stopGlide();});
 cv.addEventListener('mousemove',e=>{if(dragging)setTarget(e);});
-cv.addEventListener('touchstart',e=>{setTarget(e);if(running){launch();tryShoot();}e.preventDefault();},{passive:false});
-cv.addEventListener('touchmove',e=>{setTarget(e);e.preventDefault();},{passive:false});
-cv.addEventListener('touchend',stopGlide);
-cv.addEventListener('touchcancel',stopGlide);
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches)touches.set(t.identifier,sideOf(t));recountSides();if(running){launch();tryShoot();}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(touches.has(t.identifier))touches.set(t.identifier,sideOf(t));recountSides();e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',endTouch);
+cv.addEventListener('touchcancel',endTouch);
 function start(){score=0;lives=3;level=1;combo=0;mult=1;shield=false;scoreEl.textContent='0';livesEl.textContent='3';levelEl.textContent='1';comboEl.textContent='x1';buildLevel(1);running=true;paused=false;ov.style.display='none';}
 playBtn.onclick=()=>{start();beep(700,.1);};
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'▶':'⏸';}beep(600,.06);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';if(!muted)beep(700,.07);};
-if(isTouch){document.getElementById('hint').textContent='Tap = launch • laser auto-fires 5x every 1.5s • ⏸ pause • 🔊 mute';}
+document.getElementById('fsBtn').onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
+if(isTouch){document.getElementById('hint').textContent='Hold LEFT / RIGHT half to move • tap = launch • laser auto-fires 5x • rotate sideways for fullscreen';}
 document.getElementById('howBtn')?.remove?.();
 requestAnimationFrame(loop);draw(performance.now());
 </script>

@@ -12,4 +12,4 @@ Just open `index.html` (or `./start-linux.sh` / `start-windows.bat`). No server 
 
 ## Controls
 
-Mouse / touch / `←` `→` — move. `Space` — launch, shoot laser, release sticky. `P` pause, `M` mute. Best score is saved in the browser.
+Mouse / `←` `→` / touch (hold LEFT or RIGHT half) — move. `Space` — launch, release sticky (laser auto-fires). `F` fullscreen (touch: rotate sideways; mid-line shows the two zones). `P` pause, `M` mute. Best score is saved in the browser.
