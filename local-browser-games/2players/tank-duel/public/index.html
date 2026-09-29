@@ -93,12 +93,67 @@ cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t
 function endTouchTank(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===fireId){fireTouch=false;fireId=null;}}}
 cv.addEventListener('touchend',endTouchTank);
 cv.addEventListener('touchcancel',endTouchTank);
-const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
+const POLL_MS=8,STATE_TIMEOUT_MS=5000; // ~65Hz chained polls + dead reckoning below
+// ---- dead reckoning: tanks + shells extrapolated between snapshots ----
+let viewTanks=null,viewBullets=[],viewT=0,viewPhase='';
+const DR_TMAXV=420,DR_BMAXV=950,DR_TTL=0.12,DR_SNAP=150;
+function angDiff(a,b){let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;}
+function snapView(s){
+  const now=performance.now();
+  const dt=Math.max(1,(now-viewT))/1000;
+  viewTanks=s.tanks.map((t,i)=>{
+    const p=viewTanks?viewTanks[i]:null;
+    let vx=0,vy=0,va=0;
+    if(p&&p.ok&&viewPhase==='playing'&&s.phase==='playing'){
+      vx=(t.x-p.x)/dt;vy=(t.y-p.y)/dt;va=angDiff(t.ang,p.ang)/dt;
+      const sp=Math.hypot(vx,vy);
+      if(sp>DR_TMAXV){vx*=DR_TMAXV/sp;vy*=DR_TMAXV/sp;}
+      va=Math.max(-4,Math.min(4,va));
+      if(Math.hypot(t.x-p.x,t.y-p.y)>DR_SNAP||Math.abs(angDiff(t.ang,p.ang))>1.5){vx=vy=va=0;}
+    }
+    return {x:t.x,y:t.y,ang:t.ang,vx,vy,va,ok:true,wpn_t:Math.max(0,t.wpn_t||0)};
+  });
+  // shells: match by proximity (spawn/die constantly), new ones start still.
+  // On phase change everything re-snaps with no carryover.
+  const fresh=viewPhase!==s.phase;
+  const used=new Array(viewBullets.length).fill(false);
+  viewBullets=s.bullets.map(b=>{
+    let bi=-1,bd=60*60;
+    for(let k=0;k<viewBullets.length;k++){
+      if(used[k]||!viewBullets[k].ok)continue;
+      const dx=b.x-viewBullets[k].x,dy=b.y-viewBullets[k].y,d=dx*dx+dy*dy;
+      if(d<bd){bd=d;bi=k;}
+    }
+    let vx=0,vy=0;
+    if(bi>=0&&!fresh){
+      used[bi]=true;
+      vx=(b.x-viewBullets[bi].x)/dt;vy=(b.y-viewBullets[bi].y)/dt;
+      const sp=Math.hypot(vx,vy);
+      if(sp>DR_BMAXV){vx*=DR_BMAXV/sp;vy*=DR_BMAXV/sp;}
+    }
+    return {x:b.x,y:b.y,vx,vy,ok:true,a:b.a,home:!!b.home,rail:!!b.rail};
+  });
+  viewT=now;viewPhase=s.phase;
+}
+function viewAge(){return Math.min(DR_TTL,(performance.now()-viewT)/1000);}
+function liveTanks(){
+  if(!viewTanks||!state||state.phase!=='playing')return state?state.tanks:[{x:90,y:630,ang:-1.57,alive:true},{x:930,y:90,ang:1.57,alive:true}];
+  const age=viewAge();
+  return state.tanks.map((t,i)=>{
+    const b=viewTanks[i];
+    return {...t,x:b.x+b.vx*age,y:b.y+b.vy*age,ang:t.ang,wpn_t:Math.max(0,b.wpn_t-age)};
+  });
+}
+function liveBullets(){
+  if(!state||state.phase!=='playing')return [];
+  const age=viewAge();
+  return viewBullets.map(b=>({...b,x:b.x+b.vx*age,y:b.y+b.vy*age}));
+}
 function poll(){
   const ctl=new AbortController();
   const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
   fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
-    state=s;
+    state=s;snapView(s);
     if(s.maze&&(s.maze[0].length*CELL!==W||s.maze.length*CELL!==H)){
       W=s.maze[0].length*CELL;H=s.maze.length*CELL;cv.width=W;cv.height=H;
       stageEl.style.aspectRatio=W+'/'+H;
@@ -219,7 +274,7 @@ function draw(now,dt){
     ctx.strokeStyle=m.owner?'#ff2fd6':'#00f6ff';ctx.lineWidth=2;
     ctx.beginPath();ctx.arc(m.x,m.y,13,0,7);ctx.stroke();ctx.restore();
   });
-  const tanks=state?state.tanks:[{x:90,y:630,ang:-1.57,alive:true},{x:930,y:90,ang:1.57,alive:true}];
+  const tanks=liveTanks();
   tanks.forEach((t,i)=>{
     if(!t.alive){
       ctx.save();ctx.globalAlpha=.5+0.3*Math.sin(now/120);ctx.strokeStyle=i?'#ff2fd6':'#00f6ff';ctx.lineWidth=2;
@@ -254,11 +309,11 @@ function draw(now,dt){
     ctx.fillText('!',(t.x+ex)/2,(t.y+ey)/2-12);
     ctx.restore();
   });
-  (state?state.bullets:[]).forEach(b=>{btrail.push({x:b.x,y:b.y,t:now,rail:!!b.rail});});
+  liveBullets().forEach(b=>{btrail.push({x:b.x,y:b.y,t:now,rail:!!b.rail});});
   while(btrail.length&&now-btrail[0].t>160)btrail.shift();
   if(btrail.length>400)btrail.splice(0,btrail.length-400);
   btrail.forEach(p=>{const a=1-(now-p.t)/160;ctx.globalAlpha=Math.max(0,a)*0.35;ctx.fillStyle=p.rail?'#66ffff':'#ffe14d';ctx.beginPath();ctx.arc(p.x,p.y,p.rail?3:2.2,0,7);ctx.fill();});ctx.globalAlpha=1;
-  (state?state.bullets:[]).forEach(b=>{
+  liveBullets().forEach(b=>{
     ctx.save();
     if(b.rail){ctx.fillStyle='#d8ffff';ctx.fillRect(b.x-9,b.y-3,18,6);}
     else{ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(b.x,b.y,5,0,7);ctx.fill();}

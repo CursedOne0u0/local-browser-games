@@ -16,7 +16,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px}
 #names{font-family:var(--mono);font-size:12px;letter-spacing:.06em;opacity:.85}
 #fusebar{width:min(820px,96vw);height:14px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff2a;overflow:hidden}
-#fusefill{height:100%;width:100%;background:linear-gradient(90deg,#7dff6a,#ffe14d,#ff5555);transition:width .1s linear}
+#fusefill{height:100%;width:100%;background:linear-gradient(90deg,#7dff6a,#ffe14d,#ff5555)}
 #stage{position:relative;width:min(820px,96vw);aspect-ratio:800/560;border-radius:14px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px);padding:14px}
@@ -73,6 +73,44 @@ const DUNES=[
   [[-20,480],[180,455],[360,485],[540,455],[720,485],[820,460]],
 ];
 let prevPos=[null,null]; // per-runner last snapshot -> scarf direction
+// ---- dead reckoning: server sends positions only, so derive velocity between
+// snapshots and extrapolate forward (capped). Makes 60-90Hz displays smooth
+// even when the poll loop runs slower (hotspot), and smooths 80Hz->display.
+let viewRs=null,viewT=0,viewFuseT=0;
+const DR_MAXV=620,DR_TTL=0.12,DR_SNAP=220;
+function snapView(s){
+  const now=performance.now();
+  const dt=Math.max(1,(now-viewT))/1000;
+  viewRs=s.runners.map((r,i)=>{
+    const p=viewRs?viewRs[i]:null;
+    let vx=0,vy=0;
+    if(p&&p.ok){
+      vx=(r.x-p.x)/dt;vy=(r.y-p.y)/dt;
+      const sp=Math.hypot(vx,vy);
+      if(sp>DR_MAXV){vx*=DR_MAXV/sp;vy*=DR_MAXV/sp;}
+      if(Math.hypot(r.x-p.x,r.y-p.y)>DR_SNAP){vx=vy=0;} // teleport/reset: no carryover
+    }
+    return {x:r.x,y:r.y,vx,vy,ok:true,score:r.score,
+      dash:Math.max(0,r.dash),dash_cd:Math.max(0,r.dash_cd),
+      boost:Math.max(0,r.boost),imm:Math.max(0,r.imm)};
+  });
+  viewT=now;viewFuseT=s.fuse;
+}
+function viewAge(){return Math.min(DR_TTL,(performance.now()-viewT)/1000);}
+function viewRunner(i,fb){
+  const base=(viewRs&&viewRs[i])||null;
+  if(!base||!state||state.phase!=='playing')return fb;
+  const age=viewAge();
+  return {...fb,
+    x:Math.max(15,Math.min(W-15,base.x+base.vx*age)),
+    y:Math.max(15,Math.min(H-15,base.y+base.vy*age)),
+    dash:Math.max(0,base.dash-age),dash_cd:Math.max(0,base.dash_cd-age),
+    boost:Math.max(0,base.boost-age),imm:Math.max(0,base.imm-age)};
+}
+function viewFuse(){
+  if(!state||state.phase!=='playing')return state?state.fuse:0;
+  return Math.max(0,viewFuseT-viewAge());
+}
 const isTouch='ontouchstart' in window;
 let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
@@ -98,19 +136,18 @@ cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t
 function endTouchBomb(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===dashId){dashTouch=false;dashId=null;}}}
 cv.addEventListener('touchend',endTouchBomb);
 cv.addEventListener('touchcancel',endTouchBomb);
-const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
+const POLL_MS=8,STATE_TIMEOUT_MS=5000; // ~80Hz chained polls; dead reckoning below covers the gaps
 function poll(){
   const ctl=new AbortController();
   const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
   fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
-    state=s;
+    state=s;snapView(s);
     if(!synced){synced=true;lastPassId=s.last_pass?s.last_pass.id:0;lastBoomId=s.last_boom?s.last_boom.id:0;lastBoostId=s.last_boost?s.last_boost.id:0;lastCd=s.countdown||0;}
     if(s.v)verEl.textContent='v'+s.v;
     scoreEl.textContent=s.runners[0].score+' : '+s.runners[1].score;
     const nm=[s.names[0]||'Player 1',s.names[1]||'Player 2'];
     const holdTxt=s.holder?` — 💣 ${nm[s.holder-1]}`:'';
     namesEl.textContent=`${nm[0]}  ${s.runners[0].score} : ${s.runners[1].score}  ${nm[1]}${holdTxt}${you?` — you are P${you}`:joined?' — spectating':''}`;
-    fusefill.style.width=Math.max(0,Math.min(100,s.fuse/14*100))+'%';
     s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
     s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);
     if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';overShown=false;}
@@ -143,6 +180,7 @@ function frame(now){
     }
   }
   draw(now,dt);
+  fusefill.style.width=Math.max(0,Math.min(100,viewFuse()/14*100))+'%';
 }
 function burst(x,y,color,n=20){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*520,vy:(Math.random()-0.5)*520,life:1,color});}
 function draw(now,dt){
@@ -170,11 +208,11 @@ function draw(now,dt){
     ctx.save();ctx.globalAlpha=dying?(0.3+0.5*Math.abs(Math.sin(now/140))):1;
     ctx.translate(pd.x,pd.y);ctx.rotate(Math.atan2(pd.dy,pd.dx));
     ctx.strokeStyle='#ffb02e';ctx.lineWidth=5;ctx.lineCap='round';
-    for(let k=-1;k<=1;k++){ctx.beginPath();ctx.moveTo(k*18-8,10);ctx.lineTo(k*18+2,-8);ctx.stroke();}
+    for(let k=-1;k<=1;k++){const cx=k*18;ctx.beginPath();ctx.moveTo(cx-8,-10);ctx.lineTo(cx+4,0);ctx.lineTo(cx-8,10);ctx.stroke();}
     ctx.restore();
     if(!dying&&Math.random()<.3)parts.push({x:pd.x+(Math.random()-.5)*30,y:pd.y,vx:(Math.random()-.5)*30,vy:-60-Math.random()*60,life:.8,color:'#ff9f1c'});
   });
-  const rs=state?state.runners:[{x:100,y:280},{x:700,y:280}];
+  const rs=state?state.runners.map((r,i)=>viewRunner(i,r)):[{x:100,y:280},{x:700,y:280}];
   const holder=state?state.holder:0;
   rs.forEach((r,i)=>{
     const col=i?'#ff2fd6':'#00f6ff';
@@ -191,14 +229,15 @@ function draw(now,dt){
     ctx.fillStyle=isH?'#ff8c5a':col;
     ctx.beginPath();ctx.arc(r.x,r.y,15,0,7);ctx.fill();
     ctx.shadowBlur=0;
-    ctx.fillStyle=isH?'#ff8c5a':col;
-    ctx.beginPath();
-    ctx.moveTo(r.x-dx*13-dy*9,r.y-dy*13+dx*9);
-    ctx.lineTo(r.x-dx*13+dy*9,r.y-dy*13-dx*9);
-    ctx.lineTo(r.x-dx*30,r.y-dy*30);
-    ctx.closePath();ctx.fill();
     ctx.fillStyle='#0a1420';
     ctx.beginPath();ctx.arc(r.x,r.y,7,0,7);ctx.fill();
+    // facing nose: white wedge at the disc edge, unmissable motion direction
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(r.x+dx*15,r.y+dy*15);
+    ctx.lineTo(r.x+dx*6-dy*5,r.y+dy*6+dx*5);
+    ctx.lineTo(r.x+dx*6+dy*5,r.y+dy*6-dx*5);
+    ctx.closePath();ctx.fill();
     ctx.restore();
     if(r.dash>0){
       if(!prevDash[i]){beep(240,.14,'sawtooth',.09);setTimeout(()=>beep(520,.1,'sawtooth',.07),60);}
@@ -226,7 +265,7 @@ function draw(now,dt){
       ctx.strokeStyle='#ffdc78';ctx.lineWidth=2;
       for(let k=0;k<4;k++){const a=sa+k*Math.PI/2;ctx.beginPath();ctx.moveTo(bx+12+Math.cos(a)*3,by-12+Math.sin(a)*3);ctx.lineTo(bx+12+Math.cos(a)*8,by-12+Math.sin(a)*8);ctx.stroke();}
       ctx.restore();
-      if(state&&state.phase==='playing'){ctx.save();ctx.textAlign='center';ctx.font='900 20px system-ui';ctx.fillStyle='#ffb02e';ctx.fillText(state.fuse.toFixed(1)+'s',r.x,r.y+36);ctx.restore();}
+      if(state&&state.phase==='playing'){ctx.save();ctx.textAlign='center';ctx.font='900 20px system-ui';ctx.fillStyle='#ffb02e';ctx.fillText(viewFuse().toFixed(1)+'s',r.x,r.y+36);ctx.restore();}
     }
     if(you===i+1){ctx.save();ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(r.x,r.y,24,0,7);ctx.stroke();ctx.restore();}
   });

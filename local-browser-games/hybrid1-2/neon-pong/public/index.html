@@ -140,7 +140,7 @@ let view={p1y:0.5,p2y:0.5,bx:W/2,by:H/2};
 let netBall={x:W/2,y:H/2,vx:0,vy:0,t:performance.now()};
 let frameDt=1/60,lastTrailPush=0;
 let lastMoveSend=0,lastSentY=-1,lastFrame=performance.now();
-const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
+const POLL_MS=8,STATE_TIMEOUT_MS=5000; // ~65Hz chained polls; paddles lerp + ball dead-reckons in frame()
 function poll(){
   const ctl=new AbortController();
   const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);

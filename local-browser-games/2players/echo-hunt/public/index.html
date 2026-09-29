@@ -226,12 +226,41 @@ function syncPz(s){
   }
 }
 // ---- net ----
-const POLL_MS=50,STATE_TIMEOUT_MS=5000; // chained polls: one request in flight, hotspot RTT-safe
+const POLL_MS=8,STATE_TIMEOUT_MS=5000; // ~65Hz chained polls + dead reckoning below
+// ---- dead reckoning: runner positions extrapolated between snapshots ----
+let viewRs=null,viewT=0,viewPhase='';
+const DR_MAXV=400,DR_TTL=0.12,DR_SNAP=200;
+function snapView(s){
+  const now=performance.now();
+  const dt=Math.max(1,(now-viewT))/1000;
+  viewRs=(s.runners||[]).map((r,i)=>{
+    const p=viewRs?viewRs[i]:null;
+    let vx=0,vy=0;
+    if(p&&viewPhase==='playing'&&s.phase==='playing'){
+      vx=(r.x-p.x)/dt;vy=(r.y-p.y)/dt;
+      const sp=Math.hypot(vx,vy);
+      if(sp>DR_MAXV){vx*=DR_MAXV/sp;vy*=DR_MAXV/sp;}
+      if(Math.hypot(r.x-p.x,r.y-p.y)>DR_SNAP){vx=vy=0;}
+    }
+    return {x:r.x,y:r.y,vx,vy};
+  });
+  viewT=now;viewPhase=s.phase;
+}
+function viewAge(){return Math.min(DR_TTL,(performance.now()-viewT)/1000);}
+// display positions for this frame (smooth camera + actors); raw when idle
+function drs(){
+  if(!viewRs||!state||state.phase!=='playing')return state?state.runners||[]:[];
+  const age=viewAge();
+  return state.runners.map((r,i)=>{
+    const b=viewRs[i];if(!b)return r;
+    return {...r,x:b.x+b.vx*age,y:b.y+b.vy*age};
+  });
+}
 function poll(){
   const ctl=new AbortController();
   const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
   fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
-    state=s;
+    state=s;snapView(s);
     if(!synced){synced=true;lastPingId=s.last_ping?s.last_ping.id:0;lastShoutId=s.last_shout?s.last_shout.id:0;
       lastTagId=s.last_tag?s.last_tag.id:0;lastCollectId=s.last_collect?s.last_collect.id:0;
       lastRoundId=s.last_round?s.last_round.id:0;lastCd=s.countdown||0;}
@@ -319,7 +348,7 @@ function frame(now){
 function burst(x,y,color,n=20){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*520,vy:(Math.random()-0.5)*520,life:1,color});}
 function myPos(){
   if(!state||you<1)return {x:W/2,y:H/2};
-  const r=state.runners[you-1];return {x:r.x,y:r.y};
+  const r=drs()[you-1]||state.runners[you-1];return {x:r.x,y:r.y};
 }
 function inFog(x,y,R){const m=myPos();return Math.hypot(x-m.x,y-m.y)<R;}
 function draw(now,dt){
@@ -341,7 +370,7 @@ function draw(now,dt){
       ctx.fillRect(p.x,p.y,p.w,p.h);ctx.strokeStyle='#9adcff66';ctx.lineWidth=2;ctx.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);ctx.restore();
     });
     // live dots, opponents only (self drawn after fog so never hidden)
-    (state.runners||[]).forEach((r,i)=>{
+    drs().forEach((r,i)=>{
       if(i===you-1||!state.connected[i])return;
       const rl=state.roles[i];
       if(!rl)return;
@@ -382,7 +411,7 @@ function draw(now,dt){
     // exempt layer (visible through fog)
     // self
     if(you>0&&state.connected[you-1]){
-      const r=state.runners[you-1];
+      const r=drs()[you-1]||state.runners[you-1];
       const col=myRole==='hunter'?'#ff6b6b':'#00f6ff';
       ctx.save();ctx.globalAlpha=(myRole==='diver'&&!r.alive)?.45:1;
       ctx.fillStyle=col;
@@ -393,7 +422,7 @@ function draw(now,dt){
       ctx.beginPath();ctx.arc(r.x,r.y,23,0,7);ctx.stroke();ctx.restore();
     }
     // teammates dim-global
-    (state.runners||[]).forEach((r,i)=>{
+    drs().forEach((r,i)=>{
       if(i===you-1||!state.connected[i])return;
       const rl=state.roles[i];
       if(myRole==='hunter'&&rl==='hunter'){
