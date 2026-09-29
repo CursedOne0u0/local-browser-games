@@ -4,8 +4,8 @@
 
 Top-down time-trial racer. A fresh seeded track every day — same for everyone, all day.
 Nail every apex — cutting the track invalidates the lap. Top runs are saved **per day**
-(browse days with ◀ ▶); your **best lap is recorded**: watch it back as a ghost,
-export it as JSON, or import a rival's.
+(browse days with ◀ ▶): the top 3 race with you as live ghosts, with live Δ vs your best
+and sector splits every quarter. Watch the best back, export it as JSON, or import a rival's.
 
 ## Run
 
