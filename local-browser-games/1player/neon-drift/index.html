@@ -28,8 +28,9 @@ button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #f
 button:disabled{opacity:.35}
 button.danger{background:#ffffff14;color:#ff8f8f;box-shadow:none;border:1px solid #ff555555}
 #hint{font-size:12px;opacity:.65;text-align:center;line-height:1.7}
-#mbtns{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
-#mbtns button{width:42px;height:42px;min-width:42px;padding:0;margin:0;font-size:18px;border-radius:10px;background:#000000aa;color:#fff;box-shadow:none;border:1px solid #ffffff44;flex:none}
+#underbar{width:min(960px,96vw);display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.uibtn{width:auto;padding:8px 14px;margin:0;font-size:13px;background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a;flex:none}
+.uibtn.off{opacity:.45}
 #tbtns{position:absolute;left:0;right:0;bottom:10px;display:none;justify-content:space-between;padding:0 12px;z-index:4;pointer-events:none}
 .tcluster{display:flex;gap:10px;pointer-events:auto}
 .tbtn{width:64px;height:64px;border-radius:50%;border:1px solid #ffffff44;background:#00000088;color:#fff;font-size:22px;font-weight:900;box-shadow:none;margin:0;padding:0;flex:none}
@@ -49,12 +50,11 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.0</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.1</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
     <canvas id="cv" width="960" height="600"></canvas>
-    <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
     <div id="toast"></div>
     <div id="tbtns">
       <div class="tcluster"><button class="tbtn" id="tLeft">◀</button><button class="tbtn" id="tRight">▶</button></div>
@@ -73,6 +73,9 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       </div>
       <div class="bestline" id="menuBest">…</div>
       <ol id="topList"></ol>
+      <p>Controls: drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset to track •
+      <kbd>T</kbd> restart lap • <kbd>G</kbd> rival ghost • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu.<br>
+      Race against your day's best ghost — magenta car, same track, same start.</p>
       <button id="raceBtn">🏁 Race</button>
       <button id="watchBtn" class="ghost">👻 Watch best replay</button>
       <button id="exportBtn" class="ghost">💾 Export best replay</button>
@@ -81,7 +84,13 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <input type="file" id="fileIn" accept=".json,application/json" style="display:none">
     </div></div>
   </div>
-  <div id="hint">WASD / arrows drive • Space handbrake • R reset to track • T restart lap • P pause • M mute</div>
+  <div id="underbar">
+    <button id="pauseBtn" class="uibtn" title="Pause (P)">⏸ Pause</button>
+    <button id="ghostBtn" class="uibtn" title="Toggle rival ghost (G)">👻 Ghost: on</button>
+    <button id="menuBtn" class="uibtn" title="Back to menu (Esc)">📋 Menu</button>
+    <button id="muteBtn" class="uibtn" title="Mute (M)">🔊 Sound</button>
+  </div>
+  <div id="hint">Drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset • <kbd>T</kbd> restart lap • <kbd>G</kbd> ghost • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -90,6 +99,20 @@ const ov=document.getElementById('overlay'),menuCard=document.getElementById('me
 const raceBtn=document.getElementById('raceBtn'),watchBtn=document.getElementById('watchBtn'),exportBtn=document.getElementById('exportBtn'),importBtn=document.getElementById('importBtn'),clearBtn=document.getElementById('clearBtn'),fileIn=document.getElementById('fileIn');
 const timeEl=document.getElementById('timeB'),lapEl=document.getElementById('lapB'),lastEl=document.getElementById('lastB'),bestEl=document.getElementById('bestB'),toast=document.getElementById('toast');
 const dayLabel=document.getElementById('dayLabel'),prevDay=document.getElementById('prevDay'),nextDay=document.getElementById('nextDay'),todayBtn=document.getElementById('todayBtn'),topList=document.getElementById('topList');
+const pauseBtn=document.getElementById('pauseBtn'),ghostBtn=document.getElementById('ghostBtn'),menuBtn=document.getElementById('menuBtn'),muteBtn=document.getElementById('muteBtn');
+// rival ghost: live magenta replay of the day's best, indexed by current-lap ticks
+let ghostOn=true;
+function refreshGhostBtn(){ghostBtn.textContent=ghostOn?'👻 Ghost: on':'👻 Ghost: off';ghostBtn.classList.toggle('off',!ghostOn);}
+function toggleGhost(){ghostOn=!ghostOn;try{store&&store.setItem('neondrift_ghost',ghostOn?'1':'0');}catch(e){}refreshGhostBtn();}
+function ghostSample(){
+  if(!ghostOn||!best||!best.samples||!best.samples.length||best.track!==TRACK_ID)return null;
+  return best.samples[Math.min(curTicks,best.samples.length-1)];
+}
+function toMenu(){
+  mode='menu';paused=false;replay=null;
+  pauseBtn.textContent='⏸ Pause';
+  ov.style.display='flex';
+}
 let muted=false;
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 // ---- storage (file:// safe) ----
@@ -109,6 +132,7 @@ function loadTop(day){try{const r=store&&store.getItem(topKey(day));const a=r?JS
 function saveTop(day,a){try{store&&store.setItem(topKey(day),JSON.stringify(a.slice(0,5)));}catch(e){}}
 function pushTop(day,ms){const a=loadTop(day);a.push({t:ms,d:new Date().toISOString()});a.sort((x,y)=>x.t-y.t);saveTop(day,a.slice(0,5));}
 let best=loadBest(selectedDay);
+try{if(store&&store.getItem('neondrift_ghost')==='0')ghostOn=false;}catch(e){}
 let AC=null;function beep(f=440,d=.08,type='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function fmt(ms){if(ms==null||!isFinite(ms))return '–';const m=Math.floor(ms/60000),s=Math.floor(ms%60000/1000),x=Math.floor(ms%1000);return m+':'+String(s).padStart(2,'0')+'.'+String(x).padStart(3,'0');}
 // ---- daily seeded tracks: same date = same track, everywhere ----
@@ -354,6 +378,7 @@ function selectDay(day){
   selectedDay=day;TRACK_ID=trackIdFor(day);
   CTRL=genPoints(day);buildTrack();
   mode='menu';paused=false;replay=null;
+  pauseBtn.textContent='⏸ Pause';
   lapCenter=placeOnGrid();lastRaw=lapCenter;prog=0;lapStartProg=0;maxProg=0;lastQuarter=0;
   lapCount=1;curTicks=0;recSamples=[];hist=[];parts=[];
   best=loadBest(day);refreshBestUI();
@@ -449,6 +474,11 @@ function draw(t){
     const s0=replay.samples[i0],s1=replay.samples[i1];
     drawCar(s0[0]+(s1[0]-s0[0])*f,s0[1]+(s1[1]-s0[1])*f,s0[2]+(s1[2]-s0[2])*f,true);
   }else{
+    // live rival ghost during the race, then you on top
+    if(mode==='race'){
+      const gs=ghostSample();
+      if(gs)drawCar(gs[0],gs[1],gs[2],true);
+    }
     drawCar(car.x,car.y,car.a,false);
   }
   // countdown / flash
@@ -475,12 +505,10 @@ function draw(t){
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();keys[k]=true;
   if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
-  if(k==='m'){muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';}
-  if(k==='escape'){
-    if(mode==='replay'){mode='menu';replay=null;ov.style.display='flex';}
-    else if(mode==='race'||mode==='countdown'){mode='menu';ov.style.display='flex';}
-  }
-  if(k==='p'&&(mode==='race'||mode==='countdown'))paused=!paused;
+  if(k==='m'){muted=!muted;muteBtn.textContent=muted?'🔇 Muted':'🔊 Sound';}
+  if(k==='escape'){toMenu();beep(500,.06);}
+  if(k==='p'&&(mode==='race'||mode==='countdown')){paused=!paused;pauseBtn.textContent=paused?'▶ Resume':'⏸ Pause';}
+  if(k==='g'){toggleGhost();showToast(ghostOn?'👻 Rival ghost on':'👻 Rival ghost off');}
   if(k==='r'&&mode==='race'&&!paused)resetToTrack();
   if(k==='t'&&mode==='race'&&!paused)restartLap();
   if(k==='enter'&&mode==='menu')startRace();
@@ -512,12 +540,15 @@ clearBtn.onclick=()=>{wipeDay(selectedDay);best=null;refreshBestUI();showToast('
 prevDay.onclick=()=>{shiftDay(-1);beep(600,.06);};
 nextDay.onclick=()=>{shiftDay(1);beep(600,.06);};
 todayBtn.onclick=()=>{selectDay(todayStr());beep(700,.07);};
-document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'▶':'⏸';}beep(600,.06);};
-document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';if(!muted)beep(700,.07);};
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;pauseBtn.textContent=paused?'▶ Resume':'⏸ Pause';}beep(600,.06);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;muteBtn.textContent=muted?'🔇 Muted':'🔊 Sound';if(!muted)beep(700,.07);};
+menuBtn.onclick=e=>{e.stopPropagation();toMenu();beep(500,.06);};
+ghostBtn.onclick=e=>{e.stopPropagation();toggleGhost();beep(700,.06);};
 // ---- boot ----
 buildTrack();
 placeOnGrid();
 refreshBestUI();
+refreshGhostBtn();
 requestAnimationFrame(loop);draw(performance.now());
 </script>
 </body>

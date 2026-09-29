@@ -14,5 +14,6 @@ Just open `index.html` (or `./start-linux.sh` / `start-windows.bat`). No server 
 ## Controls
 
 `WASD` / arrows drive • `Space` handbrake • `R` reset to track • `T` restart lap •
-`P` pause, `M` mute, `Esc` menu. Touch: ▲ gas, ▼ brake, ◀ ▶ steer, HB handbrake.
-Best lap + replay are saved in the browser.
+`G` rival ghost • `P` pause, `M` mute, `Esc` menu. Touch: ▲ gas, ▼ brake, ◀ ▶ steer, HB handbrake.
+System buttons (pause / ghost / menu / sound) sit below the track, never over it.
+Race your day's best live as a magenta ghost. Best lap + top runs are saved in the browser.
