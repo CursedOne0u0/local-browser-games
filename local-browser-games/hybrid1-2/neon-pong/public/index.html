@@ -66,6 +66,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
         <button id="joinBtn">Join game</button>
         <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
         <button id="botBtn" class="ghost" disabled>🤖 Solo vs AI: OFF</button>
+        <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
         <p id="joinMsg">Tip: host reads the LAN URL from the terminal.</p>
       </div>
       <div class="card" id="endCard" style="display:none">
@@ -95,7 +96,11 @@ let names=['Player 1','Player 2'],scores=[0,0];
 const odBtn=document.getElementById('odBtn'),odStat=document.getElementById('odStat'),verEl=document.getElementById('verBadge');
 async function doOverdrive(){if(!joined||!you)return;try{const r=await api('/api/overdrive',{clientId:cid});if(r.ok){beep(1000,.15,'sawtooth',.14);showToast('⚡ OVERDRIVE!');}else if(r.cd)showToast('Overdrive in '+Math.ceil(r.cd)+'s…');}catch(e){}}
 odBtn.onclick=doOverdrive;
-let AC=null;function beep(f=440,d=0.08,type='square',v=0.12){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+let AC=null;
+let muted=false;
+try{muted=window.localStorage&&window.localStorage.getItem('bgames_muted')==='1';}catch(e){}
+function setMuted(m){muted=m;try{window.localStorage&&window.localStorage.setItem('bgames_muted',m?'1':'0');}catch(e){}}
+function beep(f=440,d=0.08,type='square',v=0.12){if(muted)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);botBtn.disabled=(d.you===0);joinMsg.textContent=you===0?'Room full — spectating 👀':(you===1?'You are LEFT (cyan) — P1':'You are RIGHT (pink) — P2');showToast(joinMsg.textContent);beep(660,.08);};
@@ -123,7 +128,7 @@ function paintSettings(st){
   document.querySelectorAll('#obRow button').forEach(b=>b.classList.toggle('sel',(b.dataset.ob==='1')===st.obstacle));
   document.getElementById('duelSub').textContent='— first to '+st.win;
 }
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k))e.preventDefault();if(k==='e'&&document.activeElement!==nameI)doOverdrive();if(/^[1-6]$/.test(k)&&document.activeElement!==nameI)sendTaunt(TAUNT_KEYS[+k-1]);});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k))e.preventDefault();if(k==='e'&&document.activeElement!==nameI)doOverdrive();if(/^[1-6]$/.test(k)&&document.activeElement!==nameI)sendTaunt(TAUNT_KEYS[+k-1]);if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function yFromClient(clientY){const r=cv.getBoundingClientRect();return Math.max(0,Math.min(1,(clientY-r.top)/r.height));}
 function pointerY(ev){const y=(ev.touches?ev.touches[0].clientY:ev.clientY);return yFromClient(y);}
@@ -153,7 +158,7 @@ function poll(){
     let extra='';
     if(s.sudden)extra+=' ☠ SUDDEN DEATH';
     if(me&&me.frozen)extra+=' ❄ FROZEN!';
-    namesEl.textContent=`${names[0]}  ${scores[0]} : ${scores[1]}  ${names[1]}${you?` — you are P${you}`:joined?' — spectating':''}${extra}`;
+    namesEl.textContent=`${names[0]}  ${scores[0]} : ${scores[1]}  ${names[1]}${you?` — you are P${you}`:joined?' — spectating':''}${extra}${s.phase==='playing'&&s.rally>1?` — RALLY ${s.rally}`:''}`;
     if(me){odStat.textContent=me.od>0?('OVERDRIVE active '+me.od.toFixed(1)+'s'):me.od_cd>0?('overdrive in '+Math.ceil(me.od_cd)+'s'):'overdrive ready — E!';odBtn.disabled=!(me.od_cd<=0&&me.od<=0);}
     s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
     s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);

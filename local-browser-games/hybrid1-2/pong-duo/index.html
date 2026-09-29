@@ -15,6 +15,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #score{font-family:var(--mono);font-weight:900;font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vw,28px)}
 #mode{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
+#rally{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--c1);opacity:.9}
 #stage{position:relative;width:min(860px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
@@ -37,7 +38,8 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.6</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
+  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.7</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
+  <div id="rally">RALLY 0</div>
   <div id="mode">menu</div>
   <div id="stage">
     <canvas id="cv" width="800" height="500"></canvas>
@@ -57,19 +59,25 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <p style="margin-top:10px">P1: <kbd>W</kbd>/<kbd>S</kbd> &nbsp;•&nbsp; P2: <kbd>↑</kbd>/<kbd>↓</kbd> &nbsp;•&nbsp; touch: left/right half drag</p>
       <div id="stub"><span>ADMIT ONE</span></div>
       <div class="row"><button id="startBtn">Start</button></div>
+      <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
-  <div id="hint"><kbd>Space</kbd> launch / pause • first to 7 wins • <span id="hintMode">pick a mode above</span></div>
+  <div id="hint"><kbd>Space</kbd> launch / pause • first to 7, win by 2 (cap 11) • <span id="hintMode">pick a mode above</span></div>
 </div>
 <script>
-const W=800,H=500,WIN=7;
+const W=800,H=500,WIN=7,WINCAP=11; // win by 2, hard cap at 11
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
-const ov=document.getElementById('overlay'),scoreEl=document.getElementById('score'),modeEl=document.getElementById('mode'),hintMode=document.getElementById('hintMode');
+const ov=document.getElementById('overlay'),scoreEl=document.getElementById('score'),modeEl=document.getElementById('mode'),hintMode=document.getElementById('hintMode'),rallyEl=document.getElementById('rally');
+function bumpRally(){rally++;rallyEl.textContent='RALLY '+rally;}
 let mode='1p',diff='medium',running=false,paused=false,over=false;
 let p1={y:.5,h:90,score:0},p2={y:.5,h:90,score:0};
 let ball={x:W/2,y:H/2,vx:0,vy:0,stuck:true,dir:1};
+let rally=0;
 let keys={},parts=[],trail=[],flash='',flashT=0,countdown=0,countT=0;
 let AC=null,muted=false;
+try{muted=window.localStorage.getItem('bgames_muted')==='1';}catch(e){}
+function saveSharedMute(m){try{window.localStorage.setItem('bgames_muted',m?'1':'0');}catch(e){}}
+function refreshMuteBtn(){document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;}
 const ICON_PAUSE='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
 const ICON_PLAY='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>';
 const ICON_SND='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
@@ -81,11 +89,11 @@ document.querySelectorAll('#diffRow button').forEach(b=>b.onclick=()=>{document.
 document.getElementById('b1p').onclick=()=>{mode='1p';hintMode.textContent='solo vs AI ('+diff+') — you are LEFT, move with W/S or mouse';modeEl.textContent='🤖 singleplayer vs AI ('+diff+')';beep(520,.07);};
 document.getElementById('b2p').onclick=()=>{mode='2p';hintMode.textContent='2 players — P1 W/S, P2 arrows';modeEl.textContent='👥 multiplayer local — P1 W/S vs P2 ↑/↓';beep(660,.07);};
 document.getElementById('startBtn').onclick=start;
-function start(){p1.score=0;p2.score=0;p1.h=90;p2.h=90;over=false;running=true;paused=false;targ1=p1.y;targ2=p2.y;ov.style.display='none';modeEl.textContent=mode==='1p'?('🤖 singleplayer vs AI ('+diff+')'):('👥 multiplayer local');resetPoint(ball.dir);countdown=3;countT=performance.now();beep(700,.1);}
+function start(){p1.score=0;p2.score=0;rally=0;rallyEl.textContent='RALLY 0';p1.h=90;p2.h=90;over=false;running=true;paused=false;targ1=p1.y;targ2=p2.y;ov.style.display='none';modeEl.textContent=mode==='1p'?('🤖 singleplayer vs AI ('+diff+')'):('👥 multiplayer local');resetPoint(ball.dir);countdown=3;countT=performance.now();beep(700,.1);}
 function resetPoint(dir){ball.x=W/2;ball.y=H/2;ball.stuck=true;ball.dir=dir||(Math.random()<.5?-1:1);trail=[];}
 function launch(){if(!ball.stuck)return;const a=(Math.random()*.6-.3);const s=400;ball.vx=Math.cos(a)*s*ball.dir;ball.vy=Math.sin(a)*s+(Math.random()<.5?-50:50);ball.stuck=false;beep(880,.12);}
 function burst(x,y,c,n=24){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*500,vy:(Math.random()-.5)*500,life:1,color:c});}
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else paused=!paused;}if(k==='m')muted=!muted;});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else paused=!paused;}if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height,left:(cx-r.left)<r.width/2};}
 function ptrSide(e){const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return ptrFromClient(cx,cy);}
@@ -135,21 +143,22 @@ function update(dt,t){
   const p1x=30,p2x=W-30-14,p1py=p1.y*H,p2py=p2.y*H;
   if(ball.vx<0&&ball.x-8<p1x+14&&ball.x-8>p1x-12&&Math.abs(ball.y-p1py)<p1.h/2+8){
     ball.x=p1x+22;const rel=(ball.y-p1py)/(p1.h/2);const s=Math.min(860,Math.hypot(ball.vx,ball.vy)*1.05+8);
-    ball.vx=Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(520,.06);burst(ball.x,ball.y,'#00f6ff',10);
+    ball.vx=Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(520,.06);burst(ball.x,ball.y,'#00f6ff',10);bumpRally();
   }
   if(ball.vx>0&&ball.x+8>p2x&&ball.x+8<p2x+26&&Math.abs(ball.y-p2py)<p2.h/2+8){
     ball.x=p2x-8;const rel=(ball.y-p2py)/(p2.h/2);const s=Math.min(860,Math.hypot(ball.vx,ball.vy)*1.05+8);
-    ball.vx=-Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(620,.06);burst(ball.x,ball.y,'#ff2fd6',10);
+    ball.vx=-Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(620,.06);burst(ball.x,ball.y,'#ff2fd6',10);bumpRally();
   }
   if(ball.x<-24){scored(2);}else if(ball.x>W+24){scored(1);}
   parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.98;p.vy*=.98;p.life-=dt*1.6;});
 }
 function scored(w){
   if(w===1)p1.score++;else p2.score++;
+  rally=0;rallyEl.textContent='RALLY 0';
   scoreEl.textContent=p1.score+' : '+p2.score;
   beep(w===1?880:220,.25);burst(w===1?60:W-60,H/2,w===1?'#00f6ff':'#ff2fd6',40);
   flash=p1.score+' — '+p2.score;flashT=Date.now()+900;
-  if(p1.score>=WIN||p2.score>=WIN){gameOver(w);return;}
+  if(((p1.score>=WIN||p2.score>=WIN)&&Math.abs(p1.score-p2.score)>=2)||p1.score>=WINCAP||p2.score>=WINCAP){gameOver(w);return;}
   ball.dir=w===1?-1:1;ball.stuck=true;
   setTimeout(()=>{if(running&&!over){resetPoint(ball.dir);countdown=0;launch();}},900);
   ball.vx=ball.vy=0;ball.x=W/2;
@@ -189,7 +198,8 @@ function draw(t){
 }
 function paddle(x,y,c){ctx.save();ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y-45,14,90,7);ctx.fill();ctx.fillStyle='#10131c';ctx.fillRect(x,y-45,14,10);ctx.fillRect(x,y+35,14,10);ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillRect(x+5,y-25,4,50);ctx.restore();}
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running&&!over){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}beep(600,.06);};
-document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;if(!muted)beep(700,.07);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();if(!muted)beep(700,.07);};
+refreshMuteBtn();
 if(isTouch){document.getElementById('hintMode').textContent='touch: drag left/right half (2P = two fingers)';}
 requestAnimationFrame(loop);draw(performance.now());
 </script>

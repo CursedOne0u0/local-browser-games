@@ -39,7 +39,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
-    <div id="verBadge">v1.10</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.11</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div id="heatWrap" title="Combo heat"><div id="heatFill"></div></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">
@@ -50,10 +50,11 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       💣 <b>bombs</b> explode neighbors • ⬛ <b>armored</b> need 2–3 hits (🔥 fire melts them).<br>
       Move: mouse / <kbd>←</kbd><kbd>→</kbd> / touch (hold LEFT or RIGHT half). <kbd>Space</kbd> = launch / release sticky.<br>
       Powers: ⬌ expand • 🐢 slow • ✨ multi • ❤ life • 🔥 fire • <b>🔫 laser</b> (auto-fires 5x every 1.5s, pierces 1) • <b>🩹 sticky</b> • <b>🛡 shield</b> (saves 1 miss)<br>
-      📅 <b>Daily</b> = same seeded levels all day • ▼ the wall descends — clear fast or get <b>overrun</b>!</p>
+      📅 <b>Daily</b> = same seeded levels all day + descending wall — clear fast or get <b>overrun</b>! • 👾 boss core every 5 levels</p>
       <button id="playBtn">🎲 Normal</button>
       <button id="dailyBtn" class="ghost">📅 Daily challenge</button>
       <div id="menuBest"></div>
+      <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
 <  <div id="hint">Space = launch • laser auto-fires 5x every 1.5s • sticky: ball sticks, Space releases • P pause • M mute • F fullscreen</div>
@@ -66,10 +67,12 @@ const ov=document.getElementById('overlay'),title=document.getElementById('title
 const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),levelEl=document.getElementById('level'),bestEl=document.getElementById('best'),comboEl=document.getElementById('comboB'),heatFill=document.getElementById('heatFill');
 function refreshHeat(){heatFill.style.width=((mult-1)/4*100)+'%';}
 const store=(()=>{try{const s=window.localStorage;s.setItem('__t','1');s.removeItem('__t');return s;}catch(e){return null;}})();
+function loadSharedMute(){try{return store&&store.getItem('bgames_muted')==='1';}catch(e){return false;}}
+function saveSharedMute(m){try{store&&store.setItem('bgames_muted',m?'1':'0');}catch(e){}}
 const loadBest=()=>{try{const n=+(store&&store.getItem('breakout_best'));return isFinite(n)&&n>0?n:0;}catch(e){return 0;}};
 const saveBest=v=>{try{store&&store.setItem('breakout_best',String(v));}catch(e){}};
 let best=loadBest();bestEl.textContent=best;
-let score=0,lives=3,level=1,running=false,paused=false,muted=false;
+let score=0,lives=3,level=1,running=false,paused=false,muted=loadSharedMute();
 let combo=0,mult=1;
 let paddle={w:120,h:14,x:W/2,y:H-36};
 let balls=[],bricks=[],powerups=[],parts=[],shots=[];
@@ -137,6 +140,10 @@ function buildLevel(lv){
       put(c,r,hp,type);
     }
   }
+  if(lv%5===0){ // boss core: wide hull, segmented HP, knits fallen bricks back
+    const bw3=(W-60-8*8)/9,bwW=bw3*3+16;
+    bricks.push({x:W/2-bwW/2,y:28,w:bwW,h:34,hp:8+lv,maxhp:8+lv,type:'boss',color:'#ff2fd6',alive:true,minT:0});
+  }
   paddle.w=Math.max(80,120-lv*5);paddle.x=W/2;targX=paddle.x;
   balls=[{x:paddle.x,y:paddle.y-12,vx:0,vy:0,stuck:true,r:9}];
   combo=0;mult=1;comboEl.textContent='x1';refreshHeat();
@@ -183,16 +190,30 @@ function applyPower(k){
   if(k==='shield'){shield=true;}
   beep(1100,.12,'sawtooth',.12);
 }
+function bestKey(){return dailyMode?('breakout_best_'+dayStr(new Date())):'breakout_best';}
+function noteScore(){
+  let bv=0;try{bv=+(store&&store.getItem(bestKey()))||0;}catch(e){}
+  if(score>bv){bv=score;try{store&&store.setItem(bestKey(),String(bv));}catch(e){}}
+  if(!dailyMode)best=bv;
+  bestEl.textContent=bv;
+}
 function damageBrick(br,amt){
+  if(br.type==='boss')amt=Math.min(amt,2); // siege weapon, not one-shot
   br.hp-=amt;
   if(br.hp<=0&&br.alive){
     br.alive=false;
     combo++;mult=Math.min(5,1+Math.floor(combo/4));comboEl.textContent='x'+mult;refreshHeat();
     score+=10*level*mult;scoreEl.textContent=score;
-    if(score>best){best=score;saveBest(best);bestEl.textContent=best;}
+    noteScore();
     burst(br.x+br.w/2,br.y+br.h/2,br.color,br.type==='bomb'?34:18);
     drop(br.x+br.w/2,br.y+br.h/2);
     beep(700+Math.min(400,combo*15),.07);
+    if(br.type==='boss'){
+      score+=500*level;scoreEl.textContent=score;noteScore();
+      flash('💥 CORE DOWN +'+(500*level));flashUntil=Date.now()+1600;
+      drop(br.x+br.w/2-24,br.y+br.h/2);drop(br.x+br.w/2+24,br.y+br.h/2);
+      beep(523,.12);setTimeout(()=>beep(784,.2),120);
+    }
     if(br.type==='bomb'){ // explode neighbors
       beep(150,.25,'sawtooth',.15);
       burst(br.x+br.w/2,br.y+br.h/2,'#ffaa00',26);
@@ -287,9 +308,12 @@ function update(dt){
     balls=[{x:paddle.x,y:paddle.y-12,vx:0,vy:0,stuck:true,r:9}];
   }
   parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.98;p.vy*=.98;p.life-=dt*1.4;});
-  // pressure: the wall descends — clear fast or get overrun
-  pressT+=dt;
-  if(pressT>=pressEvery()){pressT=0;addPressureRow();if(!running)return;}
+  // boss core knits up to 2 fallen bricks back into the wall every 8s
+  const boss=bricks.find(b=>b.alive&&b.type==='boss');
+  if(boss){boss.minT+=dt;if(boss.minT>8){boss.minT=0;let n=0;for(const o of bricks){if(n>=2)break;if(!o.alive&&o.type!=='boss'){o.alive=true;o.hp=1;n++;}}if(n){flash('CORE KNITS +'+n);flashUntil=Date.now()+1200;beep(300,.2,'sawtooth',.1);}}}
+  // pressure (daily only): the wall descends — clear fast or get overrun
+  if(dailyMode){pressT+=dt;
+    if(pressT>=pressEvery()){pressT=0;addPressureRow();if(!running)return;}}
   if(bricks.every(b=>!b.alive)){level++;levelEl.textContent=level;score+=50*mult;scoreEl.textContent=score;buildLevel(level);beep(880,.2);flash('LEVEL '+level);}
 }
 let flashTxt='',flashUntil=0;function flash(t){flashTxt=t;flashUntil=Date.now()+1200;}
@@ -298,7 +322,21 @@ function shade(hex,f){const n=parseInt(hex.slice(1),16);const c=v=>Math.min(255,
 function drawIngot(br){
   const{x,y,w,h}=br;
   ctx.save();
-  if(br.type==='bomb'){
+  if(br.type==='boss'){
+    ctx.fillStyle=shade('#ff2fd6',.35);
+    ctx.beginPath();ctx.roundRect(x,y,w,h,7);ctx.fill();
+    ctx.fillStyle='#ff2fd6';
+    ctx.beginPath();ctx.roundRect(x+4,y+3,w-8,6,3);ctx.fill();
+    ctx.fillStyle='#464e66';
+    for(const[rx,ry]of[[x+8,y+13],[x+w-8,y+13],[x+8,y+h-8],[x+w-8,y+h-8]]){ctx.beginPath();ctx.arc(rx,ry,2.5,0,7);ctx.fill();}
+    // segmented HP bar above the hull
+    const segs=br.maxhp||8,sw=w/segs;
+    for(let i=0;i<segs;i++){ctx.fillStyle=i<br.hp?'#ff2fd6':'#33333f';ctx.fillRect(x+i*sw+1,y-11,sw-2,5);}
+    // pulsing core eye
+    const pr=6+2*Math.sin(Date.now()/200);
+    ctx.fillStyle='#ff2fd6';ctx.beginPath();ctx.arc(x+w/2,y+h/2,pr+3,0,7);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x+w/2,y+h/2,pr,0,7);ctx.fill();
+  }else if(br.type==='bomb'){
     ctx.fillStyle='#2e2833';
     ctx.beginPath();ctx.roundRect(x,y,w,h,7);ctx.fill();
     ctx.fillStyle='#141118';ctx.fillRect(x,y+11,w,4);ctx.fillRect(x,y+h-13,w,4);
@@ -379,7 +417,7 @@ function draw(t){
   let yy=16;
   if(laserShotsLeft>0){ctx.fillStyle='#7dc4ff';ctx.fillText('LASER x'+laserShotsLeft,12,yy);yy+=18;}
   if(Date.now()<stickyUntil){ctx.fillStyle='#c58bff';ctx.fillText('STICKY '+Math.ceil((stickyUntil-Date.now())/1000)+'s',12,yy);yy+=18;}
-  if(running&&!paused){ctx.fillStyle=pressEvery()-pressT<5?'#ff6b6b':'#ff9f1c';ctx.fillText('▼ '+Math.max(0,Math.ceil(pressEvery()-pressT))+'s',12,yy);yy+=18;}
+  if(running&&!paused&&dailyMode){ctx.fillStyle=pressEvery()-pressT<5?'#ff6b6b':'#ff9f1c';ctx.fillText('▼ '+Math.max(0,Math.ceil(pressEvery()-pressT))+'s',12,yy);yy+=18;}
   balls.forEach(b=>{if(b.fire&&Date.now()<b.fire){ctx.fillStyle='#ffb35c';ctx.fillText('FIRE '+Math.ceil((b.fire-Date.now())/1000)+'s',12,yy);}});
   ctx.restore();
   if(Date.now()<flashUntil){ctx.save();ctx.textAlign='center';ctx.font='900 52px system-ui';ctx.shadowColor='#00f6ff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(flashTxt,W/2,H/2);ctx.restore();}
@@ -395,11 +433,8 @@ function draw(t){
 }
 function gameOver(reason){
   running=false;ov.style.display='flex';
-  const key=dailyMode?('breakout_best_'+dayStr(new Date())):'breakout_best';
-  let bv=0;try{bv=+(store&&store.getItem(key))||0;}catch(e){}
-  if(score>bv){bv=score;try{store&&store.setItem(key,String(bv));}catch(e){}}
-  if(!dailyMode){best=bv;}
-  bestEl.textContent=bv;
+  noteScore();
+  const bv=bestEl.textContent;
   refreshMenuBest();
   if(reason==='overrun'){
     title.textContent='🧱 OVERRUN!';
@@ -412,7 +447,7 @@ function gameOver(reason){
 }
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(k===' '||k==='arrowup')e.preventDefault();
   if(k===' '){if(!running)start(dailyMode);else if(paused)paused=false;else{launch();tryShoot();}}
-  if(k==='p'&&running){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}if(k==='m'){muted=!muted;document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;}if(k==='f')toggleFs();});
+  if(k==='p'&&running){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}if(k==='m'){muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;}if(k==='f')toggleFs();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptr(e){const r=cv.getBoundingClientRect();return r.left+(e.touches?e.touches[0].clientX:e.clientX)-r.left;}
 let dragging=false;
@@ -422,7 +457,23 @@ let touchL=false,touchR=false;
 const touches=new Map();
 function sideOf(t){const r=cv.getBoundingClientRect();return ((t.clientX-r.left)/r.width*W)<W/2?'L':'R';}
 function recountSides(){touchL=touchR=false;touches.forEach(s=>{if(s==='L')touchL=true;else touchR=true;});}
-function endTouch(e){for(const t of e.changedTouches)touches.delete(t.identifier);recountSides();stopGlide();}
+function endTouch(e){for(const t of e.changedTouches){touches.delete(t.identifier);touches.delete('w'+t.identifier);}recountSides();stopGlide();}
+// landscape fullscreen: the whole viewport width steers (margins included)
+function isLandscape(){return window.innerWidth>window.innerHeight;}
+function sideOfClient(cx){return cx<window.innerWidth/2?'L':'R';}
+window.addEventListener('touchstart',e=>{
+  if(!(document.fullscreenElement&&isLandscape()&&isTouch))return;
+  for(const t of e.changedTouches)touches.set('w'+t.identifier,sideOfClient(t.clientX));
+  recountSides();if(running){launch();tryShoot();}
+},{passive:true});
+window.addEventListener('touchmove',e=>{
+  if(!(document.fullscreenElement&&isLandscape()&&isTouch))return;
+  for(const t of e.changedTouches)if(touches.has('w'+t.identifier))touches.set('w'+t.identifier,sideOfClient(t.clientX));
+  recountSides();
+},{passive:true});
+function endTouchWin(e){for(const t of e.changedTouches){touches.delete(t.identifier);touches.delete('w'+t.identifier);}recountSides();}
+window.addEventListener('touchend',endTouchWin);
+window.addEventListener('touchcancel',endTouchWin);
 // fullscreen: touch devices go fullscreen on sideways rotation (auto + F key + ⛶)
 let autoFs=false;
 function isLandscape(){return window.innerWidth>window.innerHeight;}
@@ -464,12 +515,13 @@ function refreshMenuBest(){
   let nb=0,db=0;
   try{nb=+(store&&store.getItem('breakout_best'))||0;db=+(store&&store.getItem('breakout_best_'+dayStr(new Date())))||0;}catch(e){}
   menuBest.textContent='🏆 Normal best '+nb+' • 📅 Today '+db;
+  document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;
 }
 playBtn.onclick=()=>{start(false);beep(700,.1);};
 dailyBtn.onclick=()=>{start(true);beep(700,.1);};
 refreshMenuBest();
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}beep(600,.06);};
-document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;if(!muted)beep(700,.07);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;if(!muted)beep(700,.07);};
 document.getElementById('fsBtn').onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
 if(isTouch){document.getElementById('hint').textContent='Hold LEFT / RIGHT half to move • tap = launch • laser auto-fires 5x • rotate sideways for fullscreen';}
 document.getElementById('howBtn')?.remove?.();

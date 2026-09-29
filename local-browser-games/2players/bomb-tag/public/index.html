@@ -51,6 +51,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <input id="name" maxlength="32" placeholder="Your name…" value="Player">
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
+      <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
   <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> run • <kbd>Space</kbd> dash (3s cooldown) • orange pads sling you along their arrows • touch: drag to run, button to dash</div>
@@ -112,12 +113,16 @@ function viewFuse(){
   return Math.max(0,viewFuseT-viewAge());
 }
 const isTouch='ontouchstart' in window;
-let AC=null;function beep(f=440,d=.08,t='square',v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+let AC=null;
+let muted=false;
+try{muted=window.localStorage&&window.localStorage.getItem('bgames_muted')==='1';}catch(e){}
+function setMuted(m){muted=m;try{window.localStorage&&window.localStorage.setItem('bgames_muted',m?'1':'0');}catch(e){}}
+function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function input(){
   let x=0,y=0,fire=false;

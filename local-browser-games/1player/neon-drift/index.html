@@ -60,7 +60,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.9</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.10</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
@@ -83,7 +83,9 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
         <button id="todayBtn" class="ghost small">Today</button>
       </div>
       <div class="bestline" id="menuBest">…</div>
+      <div class="bestline" id="rivalLine"></div>
       <ol id="topList"></ol>
+      <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
       <p>Controls: drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset to track •
       <kbd>T</kbd> restart lap • <kbd>G</kbd> rival ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu.<br>
       Race against your day's best ghost — magenta car, same track, same start.<br>
@@ -92,6 +94,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <button id="watchBtn" class="ghost">👻 Watch best replay</button>
       <button id="exportBtn" class="ghost">💾 Export best replay</button>
       <button id="importBtn" class="ghost">📥 Import replay</button>
+      <button id="rivalBtn" class="ghost">👻 Load rival ghost</button>
       <button id="clearBtn" class="danger">🗑 Clear this day</button>
       <input type="file" id="fileIn" accept=".json,application/json" style="display:none">
     </div></div>
@@ -109,7 +112,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const W=960,H=600;
 const ov=document.getElementById('overlay'),menuCard=document.getElementById('menuCard'),menuBest=document.getElementById('menuBest');
-const raceBtn=document.getElementById('raceBtn'),watchBtn=document.getElementById('watchBtn'),exportBtn=document.getElementById('exportBtn'),importBtn=document.getElementById('importBtn'),clearBtn=document.getElementById('clearBtn'),fileIn=document.getElementById('fileIn');
+const raceBtn=document.getElementById('raceBtn'),watchBtn=document.getElementById('watchBtn'),exportBtn=document.getElementById('exportBtn'),importBtn=document.getElementById('importBtn'),clearBtn=document.getElementById('clearBtn'),fileIn=document.getElementById('fileIn'),rivalBtn=document.getElementById('rivalBtn'),rivalLine=document.getElementById('rivalLine');
 const timeEl=document.getElementById('timeB'),lapEl=document.getElementById('lapB'),lastEl=document.getElementById('lastB'),bestEl=document.getElementById('bestB'),toast=document.getElementById('toast'),deltaEl=document.getElementById('deltaB');
 const dayLabel=document.getElementById('dayLabel'),prevDay=document.getElementById('prevDay'),nextDay=document.getElementById('nextDay'),todayBtn=document.getElementById('todayBtn'),topList=document.getElementById('topList');
 const pauseBtn=document.getElementById('pauseBtn'),ghostBtn=document.getElementById('ghostBtn'),menuBtn=document.getElementById('menuBtn'),muteBtn=document.getElementById('muteBtn');
@@ -181,6 +184,18 @@ function pushRun(day,ms,samples){const a=loadRuns(day);a.push({t:ms,s:samples,d:
 const GHOST_COLS=['#ff2fd6','#ff9f1c','#c58bff'];
 let best=loadBest(selectedDay);
 try{if(store&&store.getItem('neondrift_ghost')==='0')ghostOn=false;}catch(e){}
+try{muted=!!(store&&store.getItem('bgames_muted')==='1');}catch(e){}
+function saveSharedMute(m){try{store&&store.setItem('bgames_muted',m?'1':'0');}catch(e){}}
+function refreshMuteBtn(){muteBtn.innerHTML=(muted?ICON_MUTE:ICON_SND)+(muted?' Muted':' Sound');}
+// rival ghost: someone else's exported file, raced live (must match this day's track)
+function rivalKey(day){return 'neondrift_rival_'+day;}
+function loadRival(day){try{const r=store&&store.getItem(rivalKey(day));const b=r?JSON.parse(r):null;return (b&&b.track===trackIdFor(day)&&Array.isArray(b.samples)&&b.samples.length&&isFinite(b.timeMs))?b:null;}catch(e){return null;}}
+function saveRival(day,b){try{store&&store.setItem(rivalKey(day),JSON.stringify(b));}catch(e){}}
+function wipeRival(day){try{store&&store.removeItem(rivalKey(day));}catch(e){}}
+let rivalRun=loadRival(selectedDay);
+function refreshRivalLine(){
+  rivalLine.textContent=rivalRun?('👻 Rival '+fmt(rivalRun.timeMs)+' — on track with you'):'No rival loaded — race anyone\'s exported file.';
+}
 let AC=null;function beep(f=440,d=.08,type='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function fmt(ms){if(ms==null||!isFinite(ms))return '–';const m=Math.floor(ms/60000),s=Math.floor(ms%60000/1000),x=Math.floor(ms%1000);return m+':'+String(s).padStart(2,'0')+'.'+String(x).padStart(3,'0');}
 // ---- daily seeded tracks: same date = same track, everywhere ----
@@ -403,6 +418,25 @@ function exportBest(){
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
   showToast('💾 Replay exported');
 }
+function loadRivalFile(f){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const b=JSON.parse(rd.result);
+      if(!b||b.game!=='neon-drift'||typeof b.timeMs!=='number'||!isFinite(b.timeMs)||b.timeMs<=0)throw 0;
+      if(!Array.isArray(b.samples)||!b.samples.length)throw 0;
+      const expect=Math.round(b.timeMs/1000*60);
+      if(Math.abs(b.samples.length-expect)>4)throw 0;
+      for(const s of b.samples){if(!Array.isArray(s)||s.length!==3||!s.every(isFinite))throw 0;}
+      if(b.track!==TRACK_ID)throw 'day';
+      rivalRun={game:'neon-drift',track:TRACK_ID,day:selectedDay,tickHz:60,timeMs:Math.round(b.timeMs),samples:b.samples,date:b.date||new Date().toISOString()};
+      saveRival(selectedDay,rivalRun);refreshRivalLine();
+      showToast('👻 Rival '+fmt(rivalRun.timeMs)+' loaded — see you out there');
+      beep(880,.15);
+    }catch(e){showToast(e==='day'?'❌ That replay is from another day/track':'❌ Not a valid Neon Drift replay');beep(200,.25,'sawtooth');}
+  };
+  rd.readAsText(f);
+}
 function importReplayFile(f){
   const rd=new FileReader();
   rd.onload=()=>{
@@ -425,6 +459,7 @@ function importReplayFile(f){
   };
   rd.readAsText(f);
 }
+let fileMode='import';
 function refreshBestUI(){
   bestEl.textContent=fmt(best?best.timeMs:null);
   dayLabel.innerHTML=selectedDay+(selectedDay===todayStr()?' <span>• TODAY</span>':'');
@@ -456,7 +491,7 @@ function selectDay(day){
   pauseBtn.innerHTML=ICON_PAUSE+' Pause';
   lapCenter=placeOnGrid();lastRaw=lapCenter;prog=0;lapStartProg=0;maxProg=0;lastQuarter=0;
   lapCount=1;curTicks=0;recSamples=[];hist=[];parts=[];
-  best=loadBest(day);lapRuns=loadRuns(day);lastDeltaMs=null;qStart=0;refreshBestUI();
+  best=loadBest(day);lapRuns=loadRuns(day);rivalRun=loadRival(day);lastDeltaMs=null;qStart=0;refreshBestUI();refreshRivalLine();
   ov.style.display='flex';
 }
 function shiftDay(d){
@@ -589,13 +624,17 @@ function draw(t){
     const s0=replay.samples[i0],s1=replay.samples[i1];
     drawCar(s0[0]+(s1[0]-s0[0])*f,s0[1]+(s1[1]-s0[1])*f,s0[2]+(s1[2]-s0[2])*f,'#ff2fd6');
   }else{
-    // live ghost field (top-3 runs) during the race, then you on top
+    // live ghost field (top-3 runs + loaded rival) during the race, then you on top
     if(mode==='race'&&ghostOn){
       for(let gi=0;gi<lapRuns.length;gi++){
         const run=lapRuns[gi];
         if(!run||!run.s||!run.s.length)continue;
         const s=run.s[Math.min(curTicks,run.s.length-1)];
         drawCar(s[0],s[1],s[2],GHOST_COLS[gi%GHOST_COLS.length]);
+      }
+      if(rivalRun&&rivalRun.samples&&rivalRun.samples.length){
+        const s=rivalRun.samples[Math.min(curTicks,rivalRun.samples.length-1)];
+        drawCar(s[0],s[1],s[2],'#ffffff');
       }
     }
     drawCar(car.x,car.y,car.a,null);
@@ -624,7 +663,7 @@ function draw(t){
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();keys[k]=true;
   if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
-  if(k==='m'){muted=!muted;muteBtn.innerHTML=muted?ICON_MUTE+' Muted':ICON_SND+' Sound';}
+  if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}
   if(k==='escape'){toMenu();beep(500,.06);}
   if(k==='p'&&(mode==='race'||mode==='countdown')){paused=!paused;pauseBtn.innerHTML=paused?ICON_PLAY+' Resume':ICON_PAUSE+' Pause';}
   if(k==='g'){toggleGhost();showToast(ghostOn?'👻 Rival ghost on':'👻 Rival ghost off');}
@@ -654,14 +693,15 @@ if(isTouch){
 raceBtn.onclick=()=>{startRace();beep(700,.1);};
 watchBtn.onclick=()=>{startReplay();};
 exportBtn.onclick=()=>{exportBest();};
-importBtn.onclick=()=>{fileIn.click();};
-fileIn.onchange=()=>{if(fileIn.files[0])importReplayFile(fileIn.files[0]);fileIn.value='';};
-clearBtn.onclick=()=>{wipeDay(selectedDay);best=null;refreshBestUI();showToast('Runs cleared for '+selectedDay);};
+importBtn.onclick=()=>{fileMode='import';fileIn.click();};
+rivalBtn.onclick=()=>{fileMode='rival';fileIn.click();};
+fileIn.onchange=()=>{if(fileIn.files[0]){if(fileMode==='rival')loadRivalFile(fileIn.files[0]);else importReplayFile(fileIn.files[0]);}fileIn.value='';};
+clearBtn.onclick=()=>{wipeDay(selectedDay);wipeRival(selectedDay);best=null;rivalRun=null;refreshBestUI();refreshRivalLine();showToast('Runs cleared for '+selectedDay);};
 prevDay.onclick=()=>{shiftDay(-1);beep(600,.06);};
 nextDay.onclick=()=>{shiftDay(1);beep(600,.06);};
 todayBtn.onclick=()=>{selectDay(todayStr());beep(700,.07);};
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;pauseBtn.innerHTML=paused?ICON_PLAY+' Resume':ICON_PAUSE+' Pause';}beep(600,.06);};
-document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;muteBtn.innerHTML=muted?ICON_MUTE+' Muted':ICON_SND+' Sound';if(!muted)beep(700,.07);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();if(!muted)beep(700,.07);};
 menuBtn.onclick=e=>{e.stopPropagation();toMenu();beep(500,.06);};
 ghostBtn.onclick=e=>{e.stopPropagation();toggleGhost();beep(700,.06);};
 fsBtn.onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
@@ -670,8 +710,10 @@ fsPrompt.onclick=e=>{e.stopPropagation();fsPrompt.style.display='none';enterFs()
 buildTrack();
 placeOnGrid();
 refreshBestUI();
+refreshRivalLine();
 refreshGhostBtn();
 refreshFsUI();
+refreshMuteBtn();
 lapRuns=loadRuns(selectedDay);
 requestAnimationFrame(loop);draw(performance.now());
 </script>

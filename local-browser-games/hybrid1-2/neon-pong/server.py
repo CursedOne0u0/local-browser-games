@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.28"  # bump on every update; shown on the site
+VERSION = "1.29"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
@@ -28,6 +28,7 @@ game = {
     "p1": {"y": 0.5, "h": BASE_PADDLE_H, "score": 0, "effect_until": 0},
     "p2": {"y": 0.5, "h": BASE_PADDLE_H, "score": 0, "effect_until": 0},
     "ball": {"x": W/2, "y": H/2, "vx": 0, "vy": 0, "speed": 420, "last_hit": 0, "spin": 0},
+    "rally": 0,  # paddle hits since the last point
     "wind": 0,  # -1/0/+1: vertical drift this rally (wind round after every 3rd scored point)
     "powerup": None,
     "powerup_timer": 5,
@@ -79,13 +80,14 @@ def reset_positions():
     game["sudden"] = False
 def reset_scores():
     game["p1"]["score"] = 0; game["p2"]["score"] = 0; game["winner"] = 0
+    game["rally"] = 0
     game["sudden"] = False; game["last_block"] = None
 def serve():
     b = game["ball"]
     b["x"] = W/2; b["y"] = 120 + random.random()*(H-240)
     ang = random.random()*0.6 - 0.3
     s = game["settings"]["speed"]  # default serve speed, reset every point
-    b["speed"] = s; b["spin"] = 0; b["last_hit"] = 0
+    b["speed"] = s; b["spin"] = 0; b["last_hit"] = 0; game["rally"] = 0
     vx = math.cos(ang)*s*game["serve_dir"]
     vy = math.sin(ang)*s + (-60 if random.random()<0.5 else 60)
     # hold the ball briefly so players see where it's going
@@ -162,11 +164,13 @@ def point(winner):
         return
     if winner==1: game["p1"]["score"]+=1
     else: game["p2"]["score"]+=1
+    game["rally"]=0
     game["powerup"]=None
     game["event_id"]+=1
     game["last_point"]={"scored":winner,"scores":[game["p1"]["score"],game["p2"]["score"]],"id":game["event_id"]}
     win = game["settings"]["win"]
-    if game["p1"]["score"]>=win or game["p2"]["score"]>=win:
+    a, b = game["p1"]["score"], game["p2"]["score"]
+    if ((a>=win or b>=win) and abs(a-b)>=2) or a>=win+4 or b>=win+4:
         game["phase"]="over"; game["winner"]=winner
     else:
         game["phase"]="point"; game["point_scored"]=winner; game["point_end"]=now()+1.2
@@ -328,14 +332,14 @@ def step(dt):
         rel=(b["y"]-p1ypx)/(game["p1"]["h"]/2+1e-6)
         bounce=max(-1,min(1,rel))*0.9
         sp=min(920, math.hypot(b["vx"],b["vy"])*1.045+8)
-        b["speed"]=sp; b["vx"]=math.cos(bounce)*sp; b["vy"]=math.sin(bounce)*sp + p1v*H*0.12; b["last_hit"]=1
+        b["speed"]=sp; b["vx"]=math.cos(bounce)*sp; b["vy"]=math.sin(bounce)*sp + p1v*H*0.12; b["last_hit"]=1; game["rally"]+=1
         b["spin"]=max(-0.5,min(0.5,p1v*0.7))
     if b["vx"]>0 and b["x"]+8>p2x and b["x"]+8<p2x+14+12 and abs(b["y"]-p2ypx)<game["p2"]["h"]/2+8:
         b["x"]=p2x-8
         rel=(b["y"]-p2ypx)/(game["p2"]["h"]/2+1e-6)
         bounce=max(-1,min(1,rel))*0.9
         sp=min(920, math.hypot(b["vx"],b["vy"])*1.045+8)
-        b["speed"]=sp; b["vx"]=-math.cos(bounce)*sp; b["vy"]=math.sin(bounce)*sp + p2v*H*0.12; b["last_hit"]=2
+        b["speed"]=sp; b["vx"]=-math.cos(bounce)*sp; b["vy"]=math.sin(bounce)*sp + p2v*H*0.12; b["last_hit"]=2; game["rally"]+=1
         b["spin"]=max(-0.5,min(0.5,p2v*0.7))
     obstacle_collide()
     if game["powerup"] and b["last_hit"]:
@@ -407,6 +411,7 @@ def snapshot():
         "p2": {"y": game["p2"]["y"], "h": game["p2"]["h"], "score": game["p2"]["score"], **pinfo(1)},
         "ball": {"x": round(game["ball"]["x"],1), "y": round(game["ball"]["y"],1),
                  "vx": round(game["ball"]["vx"],1), "vy": round(game["ball"]["vy"],1)},
+        "rally": game["rally"],
         "powerup": game["powerup"],
         "obstacle": game["obstacle"],
         "last_obounce": game["last_obounce"],
@@ -577,6 +582,6 @@ if __name__=="__main__":
     srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle delay on small packets
     print(f"\n  NEON PONG SHOWDOWN running!\n  On this laptop:  http://localhost:{PORT}")
     for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
-    print(f"\n  1. Host runs:  python3 server.py\n  2. Friend opens the LAN URL above (same WiFi)\n  3. Both enter names -> Join -> Ready -> first to {game['settings']['win']} wins (changeable in lobby)!\n")
+    print(f"\n  1. Host runs:  python3 server.py\n  2. Friend opens the LAN URL above (same WiFi)\n  3. Both enter names -> Join -> Ready -> first to {game['settings']['win']}, win by 2 (changeable in lobby)!\n")
     try: srv.serve_forever()
     except KeyboardInterrupt: print("\nbye!")
