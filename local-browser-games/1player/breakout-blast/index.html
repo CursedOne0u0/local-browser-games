@@ -34,7 +34,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
-    <div id="verBadge">v1.4</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.5</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">
@@ -43,12 +43,12 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <h1 id="title">🧱 BREAKOUT BLAST</h1>
       <p id="msg">Chain bricks without touching the paddle for <b>COMBO x5</b>.<br>
       💣 <b>bombs</b> explode neighbors • ⬛ <b>armored</b> need 2–3 hits (🔥 fire melts them).<br>
-      Move: mouse / touch / <kbd>←</kbd><kbd>→</kbd>. <kbd>Space</kbd> = launch / shoot laser / release sticky.<br>
-      Powers: ⬌ expand • 🐢 slow • ✨ multi • ❤ life • 🔥 fire • <b>🔫 laser</b> • <b>🩹 sticky</b> • <b>🛡 shield</b> (saves 1 miss)</p>
+      Move: mouse / touch / <kbd>←</kbd><kbd>→</kbd>. <kbd>Space</kbd> = launch / release sticky.<br>
+      Powers: ⬌ expand • 🐢 slow • ✨ multi • ❤ life • 🔥 fire • <b>🔫 laser</b> (auto-fires 5x every 1.5s, pierces 1) • <b>🩹 sticky</b> • <b>🛡 shield</b> (saves 1 miss)</p>
       <button id="playBtn">Play</button>
     </div></div>
   </div>
-  <div id="hint">Space = launch • laser auto-equips, Space shoots • sticky: ball sticks, Space releases • P pause • M mute</div>
+<  <div id="hint">Space = launch • laser auto-fires 5x every 1.5s • sticky: ball sticks, Space releases • P pause • M mute</div>
   <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
 </div>
 <script>
@@ -64,7 +64,7 @@ let score=0,lives=3,level=1,running=false,paused=false,muted=false;
 let combo=0,mult=1;
 let paddle={w:120,h:14,x:W/2,y:H-36};
 let balls=[],bricks=[],powerups=[],parts=[],shots=[];
-let laserUntil=0,stickyUntil=0,shield=false,lastShot=0;
+let laserUntil=0,laserShotsLeft=0,laserNextAt=0,stickyUntil=0,shield=false,lastShot=0;
 let keys={};
 const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};}
@@ -72,7 +72,7 @@ let AC=null;function beep(f=440,d=.08,type='square',v=.1){if(muted)return;try{AC
 const COLORS=['#00f6ff','#7dff6a','#ffe14d','#ff9f1c','#ff2fd6'];
 // ---- levels ----
 function buildLevel(lv){
-  bricks=[];powerups=[];shots=[];laserUntil=0;stickyUntil=0;
+  bricks=[];powerups=[];shots=[];laserUntil=0;laserShotsLeft=0;laserNextAt=0;stickyUntil=0;
   const pat=(lv-1)%4;
   const cols=9,bw=(W-60-(cols-1)*8)/cols,bh=26,top=70;
   const put=(c,r,hp,type)=>{bricks.push({x:30+c*(bw+8),y:top+r*(bh+8),w:bw,h:bh,hp,maxhp:hp,type:type||'norm',color:type==='bomb'?'#ff4444':type==='armor'?'#9aa7ff':COLORS[r%COLORS.length],alive:true});};
@@ -114,10 +114,11 @@ function launch(){
   // laser shooting handled separately on key repeat
 }
 function tryShoot(){
-  if(Date.now()>laserUntil||!running||paused)return;
-  const nowT=performance.now();
-  if(nowT-lastShot<220)return;lastShot=nowT;
-  shots.push({x:paddle.x-20,y:paddle.y-10,vy:-700},{x:paddle.x+20,y:paddle.y-10,vy:-700});
+  // legacy manual hook: laser is auto-fire only now (5 volleys, 1.5s apart)
+  return;
+}
+function fireLaserVolley(){
+  shots.push({x:paddle.x-20,y:paddle.y-10,vy:-700,pierce:0,hit:new Set()},{x:paddle.x+20,y:paddle.y-10,vy:-700,pierce:0,hit:new Set()});
   beep(950,.06,'square',.08);
 }
 function burst(x,y,color,n=16){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*420,vy:(Math.random()-.5)*420,life:1,color});}
@@ -143,7 +144,7 @@ function applyPower(k){
   });balls=balls.concat(extra).slice(0,6);}
   if(k==='life'){lives=Math.min(5,lives+1);livesEl.textContent=lives;}
   if(k==='fire'){balls.forEach(b=>{b.fire=nowT+8000;});}
-  if(k==='laser'){laserUntil=nowT+12000;}
+  if(k==='laser'){laserShotsLeft=5;laserNextAt=nowT;laserUntil=nowT+5*1500+500;}
   if(k==='sticky'){stickyUntil=nowT+15000;}
   if(k==='shield'){shield=true;}
   beep(1100,.12,'sawtooth',.12);
@@ -189,10 +190,23 @@ function update(dt){
     if(p.y>paddle.y-14&&p.y<paddle.y+14&&Math.abs(p.x-paddle.x)<paddle.w/2+10){applyPower(p.kind);return false;}
     return true;
   });
-  // lasers
+  // laser auto-fire: 5 volleys, one every 1.5s, then expires — no input needed
+  if(laserShotsLeft>0){
+    const nowA=Date.now();
+    if(nowA>=laserNextAt){
+      fireLaserVolley();
+      laserShotsLeft--;
+      laserNextAt=nowA+1500;
+      if(laserShotsLeft<=0){laserUntil=0;laserNextAt=0;}
+    }
+  }
+  // lasers (pierce 1 block, die on 2nd distinct hit)
   shots.forEach(s=>{s.y+=s.vy*dt;
-    for(const br of bricks){if(!br.alive)continue;
-      if(s.x>br.x&&s.x<br.x+br.w&&s.y>br.y&&s.y<br.y+br.h){damageBrick(br,1);s.dead=true;break;}
+    for(const br of bricks){if(!br.alive||s.hit.has(br))continue;
+      if(s.x>br.x&&s.x<br.x+br.w&&s.y>br.y&&s.y<br.y+br.h){
+        damageBrick(br,1);s.hit.add(br);s.pierce=(s.pierce||0)+1;
+        if(s.pierce>=2){s.dead=true;break;}
+      }
     }
   });
   shots=shots.filter(s=>!s.dead&&s.y>-20);
@@ -260,14 +274,14 @@ function draw(t){
   ctx.save();ctx.shadowColor=Date.now()<stickyUntil?'#c58bff':'#00f6ff';ctx.shadowBlur=18;
   const g=ctx.createLinearGradient(paddle.x-paddle.w/2,0,paddle.x+paddle.w/2,0);g.addColorStop(0,'#00f6ff');g.addColorStop(1,'#7dffcb');ctx.fillStyle=g;
   ctx.beginPath();ctx.roundRect(paddle.x-paddle.w/2,paddle.y-7,paddle.w,14,7);ctx.fill();
-  if(Date.now()<laserUntil){ctx.fillStyle='#223';ctx.fillRect(paddle.x-26,paddle.y-16,12,10);ctx.fillRect(paddle.x+14,paddle.y-16,12,10);ctx.fillStyle='#0af';ctx.fillRect(paddle.x-23,paddle.y-16,6,6);ctx.fillRect(paddle.x+17,paddle.y-16,6,6);}
+  if(laserShotsLeft>0){ctx.fillStyle='#223';ctx.fillRect(paddle.x-26,paddle.y-16,12,10);ctx.fillRect(paddle.x+14,paddle.y-16,12,10);ctx.fillStyle='#0af';ctx.fillRect(paddle.x-23,paddle.y-16,6,6);ctx.fillRect(paddle.x+17,paddle.y-16,6,6);}
   ctx.restore();
   balls.forEach(b=>{ctx.save();const fire=b.fire&&Date.now()<b.fire;ctx.shadowColor=b.stuck?'#c58bff':fire?'#ff9f1c':'#fff';ctx.shadowBlur=20;ctx.fillStyle=b.stuck?'#e6ccff':fire?'#ffd166':'#fff';ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();ctx.restore();});
   parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
   // active timers
   ctx.save();ctx.font='700 13px system-ui';ctx.textAlign='left';
   let yy=16;
-  if(Date.now()<laserUntil){ctx.fillStyle='#7dc4ff';ctx.fillText('🔫 LASER '+Math.ceil((laserUntil-Date.now())/1000)+'s (SPACE shoot / auto on touch)',12,yy);yy+=18;}
+  if(laserShotsLeft>0){ctx.fillStyle='#7dc4ff';ctx.fillText('🔫 LASER x'+laserShotsLeft,12,yy);yy+=18;}
   if(Date.now()<stickyUntil){ctx.fillStyle='#c58bff';ctx.fillText('🩹 STICKY '+Math.ceil((stickyUntil-Date.now())/1000)+'s',12,yy);yy+=18;}
   balls.forEach(b=>{if(b.fire&&Date.now()<b.fire){ctx.fillStyle='#ffb35c';ctx.fillText('🔥 FIRE '+Math.ceil((b.fire-Date.now())/1000)+'s',12,yy);}});
   ctx.restore();
@@ -301,7 +315,7 @@ function start(){score=0;lives=3;level=1;combo=0;mult=1;shield=false;scoreEl.tex
 playBtn.onclick=()=>{start();beep(700,.1);};
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'▶':'⏸';}beep(600,.06);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';if(!muted)beep(700,.07);};
-if(isTouch){document.getElementById('hint').textContent='Tap = launch • laser auto-fires while active • ⏸ pause • 🔊 mute';}
+if(isTouch){document.getElementById('hint').textContent='Tap = launch • laser auto-fires 5x every 1.5s • ⏸ pause • 🔊 mute';}
 document.getElementById('howBtn')?.remove?.();
 requestAnimationFrame(loop);draw(performance.now());
 </script>
