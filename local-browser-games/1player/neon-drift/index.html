@@ -7,7 +7,7 @@
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden;touch-action:none;-webkit-touch-callout:none}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
 #top{width:min(960px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
@@ -690,6 +690,7 @@ if(isTouch){
   document.getElementById('hint').textContent='▲ gas • ▼ brake • ◀ ▶ steer • HB handbrake • tap ⏸ to pause';
 }
 // ---- menu wiring ----
+window.addEventListener('contextmenu',e=>e.preventDefault());
 raceBtn.onclick=()=>{startRace();beep(700,.1);};
 watchBtn.onclick=()=>{startReplay();};
 exportBtn.onclick=()=>{exportBest();};

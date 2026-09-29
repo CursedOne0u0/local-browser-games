@@ -7,7 +7,7 @@
 <style>
 :root{--c1:#ece7db;--c2:#e0558a;--bg:#120e1a;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#2a1f3d 0%,var(--bg) 60%) fixed,var(--bg);color:#ece7db;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#2a1f3d 0%,var(--bg) 60%) fixed,var(--bg);color:#ece7db;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden;touch-action:none;-webkit-touch-callout:none}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
 #top{width:min(860px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
@@ -85,7 +85,7 @@ const ICON_MUTE='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="tr
 const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};}
 let AC=null;function beep(f=440,d=.08,type='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
-const COLORS=['#4f7fe0','#3cb893','#9a6ff0','#e0558a','#45c8ce'];
+const COLORS=['#3b9dff','#22dd99','#a678ff','#ff5e8a','#2fd8d0'];
 // ---- levels (daily challenge = seeded layout, same for everyone all day) ----
 let dailyMode=false,R=Math.random,pressT=0;
 const BH=26;
@@ -323,6 +323,7 @@ function drawIngot(br){
   const{x,y,w,h}=br;
   ctx.save();
   if(br.type==='boss'){
+    ctx.shadowColor='#ff2fd6';ctx.shadowBlur=10;
     ctx.fillStyle=shade('#ff2fd6',.35);
     ctx.beginPath();ctx.roundRect(x,y,w,h,7);ctx.fill();
     ctx.fillStyle='#ff2fd6';
@@ -337,6 +338,7 @@ function drawIngot(br){
     ctx.fillStyle='#ff2fd6';ctx.beginPath();ctx.arc(x+w/2,y+h/2,pr+3,0,7);ctx.fill();
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x+w/2,y+h/2,pr,0,7);ctx.fill();
   }else   if(br.type==='bomb'){
+    ctx.shadowColor='#e03a5f';ctx.shadowBlur=8;
     ctx.fillStyle='#2b2130';
     ctx.beginPath();ctx.roundRect(x,y,w,h,7);ctx.fill();
     ctx.fillStyle='#171221';ctx.fillRect(x,y+11,w,4);ctx.fillRect(x,y+h-13,w,4);
@@ -348,8 +350,11 @@ function drawIngot(br){
     for(const tx of [x+9,x+w-9])for(let k=0;k<2;k++)ctx.fillRect(tx-3,y+h+3+k*5,6,2);
   }else{
     const base=br.type==='armor'?(br.hp>1?'#dfe6ff':'#9aa7ff'):br.color;
-    ctx.fillStyle=shade(base,.55);
+    const glow=br.type==='armor'?'#e0558a':base;
+    ctx.shadowColor=glow;ctx.shadowBlur=8;
+    ctx.fillStyle=shade(base,.78);
     ctx.beginPath();ctx.roundRect(x,y,w,h,7);ctx.fill();
+    ctx.shadowBlur=0;
     ctx.fillStyle=br.type==='armor'?'#e0558a':base;
     ctx.beginPath();ctx.roundRect(x+4,y+3,w-8,6,3);ctx.fill();
     ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(x+4,y+h-4,w-8,2);
@@ -388,7 +393,7 @@ function draw(t){
   // foundry girders
   for(const gx of [10,W-22]){ctx.fillStyle='#241c36';ctx.fillRect(gx,0,12,H);ctx.fillStyle='#4a4360';for(let y=14;y<H;y+=46)ctx.fillRect(gx+3,y,6,5);}
   bricks.forEach(br=>{if(br.alive)drawIngot(br);});
-  powerups.forEach(p=>{const c=PCOL[p.kind]||'#fff';ctx.save();ctx.fillStyle='#171222';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.stroke();drawGlyph(p.kind,p.x,p.y,c);ctx.restore();});
+  powerups.forEach(p=>{const c=PCOL[p.kind]||'#fff';ctx.save();ctx.fillStyle='#171222';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();ctx.shadowColor=c;ctx.shadowBlur=6;ctx.strokeStyle=c;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.stroke();ctx.shadowBlur=0;drawGlyph(p.kind,p.x,p.y,c);ctx.restore();});
   shots.forEach(s=>{ctx.fillStyle='#bff';ctx.fillRect(s.x-2,s.y-12,4,12);});
   // shield line
   if(shield){ctx.save();ctx.strokeStyle='#7dffcb';ctx.lineWidth=4;ctx.setLineDash([10,8]);ctx.beginPath();ctx.moveTo(8,H-6);ctx.lineTo(W-8,H-6);ctx.stroke();ctx.restore();ctx.setLineDash([]);}
@@ -407,8 +412,11 @@ function draw(t){
   if(laserShotsLeft>0){ctx.fillStyle='#223';ctx.fillRect(paddle.x-26,paddle.y-16,12,10);ctx.fillRect(paddle.x+14,paddle.y-16,12,10);ctx.fillStyle='#0af';ctx.fillRect(paddle.x-23,paddle.y-16,6,6);ctx.fillRect(paddle.x+17,paddle.y-16,6,6);}
   ctx.restore();
   balls.forEach(b=>{ctx.save();const fire=b.fire&&Date.now()<b.fire;
-    ctx.fillStyle=b.stuck?'#c58bff':fire?'#ff7a1a':'#e0558a';
+    const rim=b.stuck?'#c58bff':fire?'#ff7a1a':'#e0558a';
+    ctx.shadowColor=rim;ctx.shadowBlur=10;
+    ctx.fillStyle=rim;
     ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();
+    ctx.shadowBlur=0;
     ctx.fillStyle=b.stuck?'#f2e6ff':fire?'#fff3c4':'#f6f1e6';
     ctx.beginPath();ctx.arc(b.x,b.y,b.r*0.55,0,7);ctx.fill();ctx.restore();});
   parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
@@ -497,6 +505,7 @@ function setTarget(e){targX=(ptr(e)/cv.getBoundingClientRect().width)*W;}
 function stopGlide(){targX=paddle.x;} // pointer released: stop dead, like keyup
 cv.addEventListener('mousedown',e=>{dragging=true;setTarget(e);if(running){launch();tryShoot();}});
 window.addEventListener('mouseup',()=>{dragging=false;stopGlide();});
+window.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('mousemove',e=>{if(dragging)setTarget(e);});
 cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches)touches.set(t.identifier,sideOf(t));recountSides();if(running){launch();tryShoot();}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(touches.has(t.identifier))touches.set(t.identifier,sideOf(t));recountSides();e.preventDefault();},{passive:false});
