@@ -27,6 +27,8 @@ button svg{vertical-align:-3px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
 #hint{font-size:12px;opacity:.65;text-align:center;line-height:1.7}
 #mbtns{display:flex;gap:8px;justify-content:center}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
+#pveil .card{width:min(340px,92%)}
 #menuBest{font-size:13px;color:#ece7db;font-weight:800;margin-top:8px}
 #title::after{content:"";display:block;height:6px;margin:10px auto 0;width:140px;background:repeating-linear-gradient(90deg,#e0558a 0 12px,#ece7db 12px 14px,#241a2e 14px 26px);border-radius:3px}
 #heatWrap{width:90px;height:10px;border:1px solid #ffffff33;border-radius:5px;align-self:center;overflow:hidden;background:#ffffff0d}
@@ -59,6 +61,14 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
   </div>
 <  <div id="hint">Space = launch • laser auto-fires 5x every 1.5s • sticky: ball sticks, Space releases • P pause • M mute • F fullscreen</div>
   <div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div>
+  <div id="pveil"><div class="card">
+    <h1>⏸ PAUSED</h1>
+    <button id="resumeBtn">Resume</button>
+    <button id="restartBtn" class="ghost">Restart run</button>
+    <button id="quitBtn" class="ghost">Quit to menu</button>
+    <button id="pmuteBtn" class="ghost">Mute: off</button>
+    <button id="pfsBtn" class="ghost">Fullscreen</button>
+  </div></div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -441,6 +451,7 @@ function draw(t){
 }
 function gameOver(reason){
   running=false;ov.style.display='flex';
+  pveil.style.display='none';
   noteScore();
   const bv=bestEl.textContent;
   refreshMenuBest();
@@ -454,8 +465,8 @@ function gameOver(reason){
   playBtn.textContent='Play again';
 }
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(k===' '||k==='arrowup')e.preventDefault();
-  if(k===' '){if(!running)start(dailyMode);else if(paused)paused=false;else{launch();tryShoot();}}
-  if(k==='p'&&running){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}if(k==='m'){muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;}if(k==='f')toggleFs();});
+  if(k===' '){if(!running)start(dailyMode);else if(paused)resumeGame();else{launch();tryShoot();}}
+  if(k==='p')togglePauseMenu();if(k==='escape')togglePauseMenu();if(k==='m'){muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;}if(k==='f')toggleFs();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptr(e){const r=cv.getBoundingClientRect();return r.left+(e.touches?e.touches[0].clientX:e.clientX)-r.left;}
 let dragging=false;
@@ -519,6 +530,7 @@ function start(daily){
   bestEl.textContent=bv;
   scoreEl.textContent='0';livesEl.textContent='3';levelEl.textContent='1';comboEl.textContent='x1';refreshHeat();
   buildLevel(1);running=true;paused=false;ov.style.display='none';
+  document.getElementById('pveil').style.display='none';
 }
 function refreshMenuBest(){
   let nb=0,db=0;
@@ -529,7 +541,36 @@ function refreshMenuBest(){
 playBtn.onclick=()=>{start(false);beep(700,.1);};
 dailyBtn.onclick=()=>{start(true);beep(700,.1);};
 refreshMenuBest();
-document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}beep(600,.06);};
+// ---- pause menu ----
+const pveil=document.getElementById('pveil');
+const MENU_MSG=msg.innerHTML;
+function syncPauseIcon(){document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}
+function openPause(){
+  if(!running||pveil.style.display==='flex')return;
+  paused=true;syncPauseIcon();
+  document.getElementById('pmuteBtn').textContent='Mute: '+(muted?'on':'off');
+  pveil.style.display='flex';beep(500,.06);
+}
+function resumeGame(){
+  if(!running)return;
+  paused=false;syncPauseIcon();pveil.style.display='none';beep(600,.06);
+}
+function showMenu(){
+  running=false;paused=false;syncPauseIcon();pveil.style.display='none';
+  title.textContent='🧱 BREAKOUT BLAST';msg.innerHTML=MENU_MSG;
+  playBtn.textContent='🎲 Normal';playBtn.style.display='';dailyBtn.style.display='';
+  refreshMenuBest();ov.style.display='flex';
+}
+function togglePauseMenu(){
+  if(!running)return;
+  if(pveil.style.display==='flex')resumeGame();else openPause();
+}
+document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();resumeGame();};
+document.getElementById('restartBtn').onclick=e=>{e.stopPropagation();pveil.style.display='none';start(dailyMode);beep(700,.1);};
+document.getElementById('quitBtn').onclick=e=>{e.stopPropagation();showMenu();beep(500,.06);};
+document.getElementById('pmuteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;document.getElementById('pmuteBtn').textContent='Mute: '+(muted?'on':'off');if(!muted)beep(700,.07);};
+document.getElementById('pfsBtn').onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();togglePauseMenu();beep(600,.06);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;if(!muted)beep(700,.07);};
 document.getElementById('fsBtn').onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
 if(isTouch){document.getElementById('hint').textContent='Hold LEFT / RIGHT half to move • tap = launch • laser auto-fires 5x • rotate sideways for fullscreen';}

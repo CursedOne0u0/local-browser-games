@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.15"  # bump on every update; shown on the site
+VERSION = "1.17"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -73,6 +73,7 @@ game = {
     "last_beam": None,  # {x1,y1,x2,y2,by,id}
     "last_pop": None,  # {x,y,id} bullet shattered on final bounce
     "bounce_n": 0,
+    "paused": False, "paused_by": "", "paused_since": 0,
 }
 SPAWNS = [
     {"cx": 1.5, "cy": 10.5, "ang": -math.pi/2},
@@ -382,12 +383,27 @@ def game_loop():
         t = time.time(); dt = min(0.05, t-last); last = t
         with lock:
             free_stale()
-            p0, p1 = game["players"]
-            if game["phase"] == "waiting" and p0 and p1 and p0["ready"] and p1["ready"]:
-                game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
-                reset_scores(); reset_tanks()
-            step(dt)
+            if game["paused"]:
+                pass  # frozen for all: no sim, no transitions, no deadlines
+            else:
+                p0, p1 = game["players"]
+                if game["phase"] == "waiting" and p0 and p1 and p0["ready"] and p1["ready"]:
+                    game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
+                    reset_scores(); reset_tanks()
+                step(dt)
         time.sleep(1/60)
+
+def shift_paused(d):
+    # thaw every absolute deadline by the paused duration (presence timers untouched)
+    game["countdown_end"] += d; game["round_end"] += d
+    for t in game["tanks"]:
+        if t.get("wpn_until"): t["wpn_until"] += d
+    for m in game["mines"]:
+        m["armed_at"] += d
+    for b in game["bullets"]:
+        b["born"] += d; b["grace"] += d
+    for p in game["pickups"]:
+        p["born"] += d
 
 def snapshot():
     cd = 0
@@ -422,6 +438,8 @@ def snapshot():
         "ready": [bool(game["players"][0] and game["players"][0]["ready"]), bool(game["players"][1] and game["players"][1]["ready"])],
         "connected": [bool(game["players"][0]), bool(game["players"][1])],
         "last_kill": game["last_kill"],
+        "paused": game["paused"],
+        "paused_by": game["paused_by"],
         "event_id": game["event_id"],
     }
 
@@ -489,6 +507,17 @@ class Handler(SimpleHTTPRequestHandler):
                     if s>=0:  # browser closed: free the seat now, don't wait out the 8s timeout
                         game["players"][s]=None
                     return self._json({"ok":True})
+                if self.path=="/api/pause":
+                    # pause-vote: any player freezes the sim for all; any resume thaws deadlines
+                    if game["paused"]:
+                        shift_paused(now()-game["paused_since"])
+                        game["paused"]=False; game["paused_by"]=""
+                    else:
+                        p = game["players"][s] if s>=0 else None
+                        game["paused"]=True
+                        game["paused_by"]=(p["name"] if p and p.get("name") else "Someone")
+                        game["paused_since"]=now()
+                    return self._json({"ok":True,"paused":game["paused"],"by":game["paused_by"]})
                 if self.path=="/api/restart":
                     if game["phase"]=="over":
                         reset_scores(); reset_tanks()

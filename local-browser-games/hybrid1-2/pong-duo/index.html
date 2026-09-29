@@ -21,6 +21,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
 .card{width:min(440px,93%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:94%;overflow:auto}
 #mbtns{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
+#pveil .card{width:min(340px,92%)}
 #mbtns button{width:42px;height:42px;min-width:42px;padding:0;margin:0;border-radius:10px;background:#000000aa;color:#fff;box-shadow:none;border:1px solid #ffffff44;flex:none;display:flex;align-items:center;justify-content:center}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:13px;opacity:.85;line-height:1.6}
@@ -43,10 +45,10 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
   <div id="mode">menu</div>
   <div id="stage">
     <canvas id="cv" width="800" height="500"></canvas>
-    <div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></div>
+    <div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></div>
     <div id="overlay"><div class="card">
       <h1>🏓 PONG DUO</h1>
-      <p>Play <b>alone vs AI</b> or <b>2 players, one keyboard</b>. First to 7.</p>
+      <p>Play <b>alone vs AI</b> or <b>2 players, one keyboard</b>. First to 7, win by 2.</p>
       <div class="row">
         <button id="b1p">🤖 1 Player</button>
         <button id="b2p" class="pink">👥 2 Players</button>
@@ -63,6 +65,13 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     </div></div>
   </div>
   <div id="hint"><kbd>Space</kbd> launch / pause • first to 7, win by 2 (cap 11) • <span id="hintMode">pick a mode above</span></div>
+  <div id="pveil"><div class="card">
+    <h1>⏸ PAUSED</h1>
+    <div class="row"><button id="resumeBtn">Resume</button></div>
+    <div class="row"><button id="restartBtn" class="ghost">Restart match</button></div>
+    <div class="row"><button id="quitBtn" class="ghost">Quit to menu</button></div>
+    <div class="row"><button id="pmuteBtn" class="ghost">Mute: off</button></div>
+  </div></div>
 </div>
 <script>
 const W=800,H=500,WIN=7,WINCAP=11; // win by 2, hard cap at 11
@@ -89,11 +98,39 @@ document.querySelectorAll('#diffRow button').forEach(b=>b.onclick=()=>{document.
 document.getElementById('b1p').onclick=()=>{mode='1p';hintMode.textContent='solo vs AI ('+diff+') — you are LEFT, move with W/S or mouse';modeEl.textContent='🤖 singleplayer vs AI ('+diff+')';beep(520,.07);};
 document.getElementById('b2p').onclick=()=>{mode='2p';hintMode.textContent='2 players — P1 W/S, P2 arrows';modeEl.textContent='👥 multiplayer local — P1 W/S vs P2 ↑/↓';beep(660,.07);};
 document.getElementById('startBtn').onclick=start;
-function start(){p1.score=0;p2.score=0;rally=0;rallyEl.textContent='RALLY 0';p1.h=90;p2.h=90;over=false;running=true;paused=false;targ1=p1.y;targ2=p2.y;ov.style.display='none';modeEl.textContent=mode==='1p'?('🤖 singleplayer vs AI ('+diff+')'):('👥 multiplayer local');resetPoint(ball.dir);countdown=3;countT=performance.now();beep(700,.1);}
+function hideVeil(){document.getElementById('pveil').style.display='none';}
+function start(){p1.score=0;p2.score=0;rally=0;rallyEl.textContent='RALLY 0';p1.h=90;p2.h=90;over=false;running=true;paused=false;hideVeil();targ1=p1.y;targ2=p2.y;ov.style.display='none';modeEl.textContent=mode==='1p'?('🤖 singleplayer vs AI ('+diff+')'):('👥 multiplayer local');resetPoint(ball.dir);countdown=3;countT=performance.now();beep(700,.1);}
+const MENU_H1='🏓 PONG DUO';
+const MENU_P='Play <b>alone vs AI</b> or <b>2 players, one keyboard</b>. First to 7, win by 2.';
+function hideVeil(){document.getElementById('pveil').style.display='none';}
+function showMenu(){
+  running=false;over=false;paused=false;hideVeil();
+  ov.querySelector('h1').textContent=MENU_H1;
+  ov.querySelector('p').innerHTML=MENU_P;
+  document.getElementById('startBtn').textContent='Start';
+  ov.style.display='flex';
+}
+function openPause(){
+  if(!running||over)return;
+  const v=document.getElementById('pveil');
+  if(v.style.display==='flex')return;
+  paused=true;syncPauseIcon();
+  document.getElementById('pmuteBtn').textContent='Mute: '+(muted?'on':'off');
+  v.style.display='flex';beep(600,.06);
+}
+function resumeGame(){
+  if(!running||over)return;
+  paused=false;syncPauseIcon();hideVeil();beep(600,.06);
+}
+function togglePauseMenu(){
+  if(!running||over)return;
+  if(document.getElementById('pveil').style.display==='flex')resumeGame();else openPause();
+}
+function syncPauseIcon(){document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}
 function resetPoint(dir){ball.x=W/2;ball.y=H/2;ball.stuck=true;ball.dir=dir||(Math.random()<.5?-1:1);trail=[];}
 function launch(){if(!ball.stuck)return;const a=(Math.random()*.6-.3);const s=400;ball.vx=Math.cos(a)*s*ball.dir;ball.vy=Math.sin(a)*s+(Math.random()<.5?-50:50);ball.stuck=false;beep(880,.12);}
 function burst(x,y,c,n=24){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*500,vy:(Math.random()-.5)*500,life:1,color:c});}
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else paused=!paused;}if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else togglePauseMenu();}if(k==='escape'||k==='p')togglePauseMenu();if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height,left:(cx-r.left)<r.width/2};}
 function ptrSide(e){const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return ptrFromClient(cx,cy);}
@@ -164,7 +201,7 @@ function scored(w){
   ball.vx=ball.vy=0;ball.x=W/2;
 }
 function gameOver(w){
-  over=true;running=false;
+  over=true;running=false;hideVeil();
   ov.style.display='flex';
   const champ=mode==='1p'?(w===1?'YOU WIN! 🏆':'AI WINS 🤖'):(w===1?'PLAYER 1 WINS! 🏆':'PLAYER 2 WINS! 🏆');
   ov.querySelector('h1').textContent=champ;
@@ -197,7 +234,12 @@ function draw(t){
   else if(ball.stuck&&running){ctx.save();ctx.textAlign='center';ctx.font='700 18px system-ui';ctx.fillStyle='#ffffffaa';ctx.fillText(mode==='1p'?'Space / tap to launch':'Space / tap to launch',W/2,70);ctx.restore();}
 }
 function paddle(x,y,c){ctx.save();ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y-45,14,90,7);ctx.fill();ctx.fillStyle='#10131c';ctx.fillRect(x,y-45,14,10);ctx.fillRect(x,y+35,14,10);ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillRect(x+5,y-25,4,50);ctx.restore();}
-document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(running&&!over){paused=!paused;document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}beep(600,.06);};
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();togglePauseMenu();beep(600,.06);};
+document.getElementById('menuBtn').onclick=e=>{e.stopPropagation();togglePauseMenu();beep(600,.06);};
+document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();resumeGame();};
+document.getElementById('restartBtn').onclick=e=>{e.stopPropagation();hideVeil();start();beep(700,.1);};
+document.getElementById('quitBtn').onclick=e=>{e.stopPropagation();showMenu();beep(500,.06);};
+document.getElementById('pmuteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();document.getElementById('pmuteBtn').textContent='Mute: '+(muted?'on':'off');if(!muted)beep(700,.07);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();if(!muted)beep(700,.07);};
 refreshMuteBtn();
 if(isTouch){document.getElementById('hintMode').textContent='touch: drag left/right half (2P = two fingers)';}

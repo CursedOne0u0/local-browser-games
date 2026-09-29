@@ -41,6 +41,8 @@ button.danger{background:#ffffff14;color:#ff8f8f;box-shadow:none;border:1px soli
 .tbtn.on{background:#ffffff33}
 kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
+#pveil .card{width:min(340px,92%)}
 #fsPrompt{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;width:auto;padding:10px 18px;margin:0;background:#00f6ff;color:#04121a;font-weight:900;font-size:14px;border-radius:99px;box-shadow:0 0 18px #00f6ff88;white-space:nowrap}
 @media (orientation:landscape) and (display-mode:fullscreen){#hint{display:none}}
 /* landscape fullscreen (touch): driving buttons leave the track, dock to the side margins */
@@ -106,6 +108,12 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <button id="fsBtn" class="uibtn" title="Fullscreen (F)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg> Fullscreen</button>
     <button id="muteBtn" class="uibtn" title="Mute (M)"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg> Sound</button>
   </div>
+  <div id="pveil"><div class="card">
+    <h1>⏸ PAUSED</h1>
+    <button id="resumeBtn">Resume</button>
+    <button id="restartBtn" class="ghost">Restart race</button>
+    <button id="quitBtn" class="ghost">Quit to menu</button>
+  </div></div>
   <div id="hint">Drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset • <kbd>T</kbd> restart lap • <kbd>G</kbd> ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu</div>
 </div>
 <script>
@@ -156,7 +164,23 @@ function toggleGhost(){ghostOn=!ghostOn;try{store&&store.setItem('neondrift_ghos
 function toMenu(){
   mode='menu';paused=false;replay=null;
   pauseBtn.innerHTML=ICON_PAUSE+' Pause';
+  pveil.style.display='none';
   ov.style.display='flex';
+}
+// ---- pause menu ----
+const pveil=document.getElementById('pveil');
+function syncPauseIcon(){pauseBtn.innerHTML=(paused?ICON_PLAY:ICON_PAUSE)+' '+(paused?'Resume':'Pause');}
+function openPause(){
+  if((mode!=='race'&&mode!=='countdown')||pveil.style.display==='flex')return;
+  paused=true;syncPauseIcon();pveil.style.display='flex';beep(500,.06);
+}
+function resumeGame(){
+  if(mode!=='race'&&mode!=='countdown')return;
+  paused=false;syncPauseIcon();pveil.style.display='none';beep(600,.06);
+}
+function togglePauseMenu(){
+  if(mode!=='race'&&mode!=='countdown')return;
+  if(pveil.style.display==='flex')resumeGame();else openPause();
 }
 let muted=false;
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
@@ -664,8 +688,8 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();keys[k]=true;
   if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
   if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}
-  if(k==='escape'){toMenu();beep(500,.06);}
-  if(k==='p'&&(mode==='race'||mode==='countdown')){paused=!paused;pauseBtn.innerHTML=paused?ICON_PLAY+' Resume':ICON_PAUSE+' Pause';}
+  if(k==='escape'){togglePauseMenu();beep(500,.06);}
+  if(k==='p'){togglePauseMenu();}
   if(k==='g'){toggleGhost();showToast(ghostOn?'👻 Rival ghost on':'👻 Rival ghost off');}
   if(k==='f'){toggleFs();}
   if(k==='r'&&mode==='race'&&!paused)resetToTrack();
@@ -701,7 +725,10 @@ clearBtn.onclick=()=>{wipeDay(selectedDay);wipeRival(selectedDay);best=null;riva
 prevDay.onclick=()=>{shiftDay(-1);beep(600,.06);};
 nextDay.onclick=()=>{shiftDay(1);beep(600,.06);};
 todayBtn.onclick=()=>{selectDay(todayStr());beep(700,.07);};
-document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;pauseBtn.innerHTML=paused?ICON_PLAY+' Resume':ICON_PAUSE+' Pause';}beep(600,.06);};
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();togglePauseMenu();};
+document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();resumeGame();};
+document.getElementById('restartBtn').onclick=e=>{e.stopPropagation();pveil.style.display='none';startRace();beep(700,.1);};
+document.getElementById('quitBtn').onclick=e=>{e.stopPropagation();pveil.style.display='none';toMenu();beep(500,.06);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();if(!muted)beep(700,.07);};
 menuBtn.onclick=e=>{e.stopPropagation();toMenu();beep(500,.06);};
 ghostBtn.onclick=e=>{e.stopPropagation();toggleGhost();beep(700,.06);};

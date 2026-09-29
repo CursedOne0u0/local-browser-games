@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3003"))
-VERSION = "1.7"  # bump on every update; shown on the site
+VERSION = "1.9"  # bump on every update; shown on the site
 MAX_PLAYERS = 8
 WIN_ROUNDS = 3
 PUBLIC = Path(__file__).parent / "public"
@@ -72,6 +72,7 @@ game = {
     "rings": [],  # {x,y,born} sonar pulses (audible = visible to all)
     "blips": [],  # {x,y,str,until} hunter contacts
     "next_ping_at": 0,
+    "paused": False, "paused_by": "", "paused_since": 0,
     "round_time_end": 0,
     "event_id": 0,
     "last_ping": None,  # {id}
@@ -487,12 +488,24 @@ def game_loop():
         t = time.time(); dt = min(0.05, t-last); last = t
         with lock:
             free_stale()
-            seated = [p for p in game["players"] if p]
-            if game["phase"] == "waiting" and len(seated) >= 2 and all(p["ready"] for p in seated) and any(not p.get("bot") for p in seated):
-                game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
-                reset_match(); assign_roles()
-            step(dt)
+            if game["paused"]:
+                pass  # frozen for all: no sim, no transitions, no deadlines
+            else:
+                seated = [p for p in game["players"] if p]
+                if game["phase"] == "waiting" and len(seated) >= 2 and all(p["ready"] for p in seated) and any(not p.get("bot") for p in seated):
+                    game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
+                    reset_match(); assign_roles()
+                step(dt)
         time.sleep(1/60)
+
+def shift_paused(d):
+    # thaw every absolute deadline by the paused duration (presence timers untouched)
+    game["countdown_end"] += d; game["round_time_end"] += d
+    game["next_ping_at"] += d
+    for b in game["blips"]:
+        b["until"] += d
+    for ch in game["channel"]:
+        if ch: ch["since"] += d
 
 def snapshot(pid):
     me = slot_of(pid)
@@ -518,6 +531,8 @@ def snapshot(pid):
         "round": game["round"],
         "h_wins": game["h_wins"], "d_wins": game["d_wins"],
         "winner_side": game["winner_side"],
+        "paused": game["paused"],
+        "paused_by": game["paused_by"],
         "timeleft": round(max(0, game["round_time_end"]-t), 1) if game["phase"] == "playing" else 0,
         "you": {"slot": me+1 if me >= 0 else 0, "role": role or ""},
         "roles": game["roles"],
@@ -610,6 +625,17 @@ class Handler(SimpleHTTPRequestHandler):
                         release_slots(s)
                         game["players"][s]=None; game["roles"][s]=None
                     return self._json({"ok":True})
+                if self.path=="/api/pause":
+                    # pause-vote: any player freezes the sim for all; any resume thaws deadlines
+                    if game["paused"]:
+                        shift_paused(now()-game["paused_since"])
+                        game["paused"]=False; game["paused_by"]=""
+                    else:
+                        p = game["players"][s] if s>=0 else None
+                        game["paused"]=True
+                        game["paused_by"]=(p["name"] if p and p.get("name") else "Someone")
+                        game["paused_since"]=now()
+                    return self._json({"ok":True,"paused":game["paused"],"by":game["paused_by"]})
                 if self.path=="/api/node_done" and s>=0:
                     return self._json(solve_attempt(s, d.get("links", [])))
                 if self.path=="/api/node_abandon" and s>=0:

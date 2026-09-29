@@ -32,11 +32,14 @@ button:disabled{opacity:.4}
 #hint{width:min(800px,96vw);font-size:11px;opacity:.65;text-align:center;line-height:1.6}
 kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
+#pveil .card{width:min(340px,92%)}
+#pveil.show{display:flex}
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">TANK <span>DUEL</span></div><div id="verBadge">v…</div><div id="score">0 : 0</div></div>
+  <div id="topbar"><div class="logo">TANK <span>DUEL</span></div><div id="verBadge">v…</div><div id="score">0 : 0</div><button id="pauseBtn" class="ghost" title="Pause for everyone (P)" style="width:auto;margin:0;padding:8px 14px;flex:none"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button></div>
   <div id="names">connecting…</div>
   <div id="stage">
     <canvas id="cv" width="780" height="600"></canvas>
@@ -53,6 +56,11 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     </div></div>
   </div>
   <div id="hint"><kbd>W</kbd><kbd>S</kbd> drive • <kbd>A</kbd><kbd>D</kbd> rotate • <kbd>Space</kbd> fire — shells bounce 6×, watch your own ricochets! Pickups: <b style="color:#ff9f1c">✹ spread</b> • <b style="color:#ffe14d">⚡ rapid</b> • <b style="color:#7dffcb">🛡 shield</b> • <b style="color:#ff6b6b">🎯 homing</b> (125° seeker cone) • <b style="color:#b9a7ff">💣 mines</b> • <b style="color:#66ffff">🔫 rail</b> (0.9s red telegraph, then a hitscan beam — dodge!)</div>
+  <div id="pveil"><div class="card">
+    <h1>⏸ PAUSED</h1>
+    <p id="pveilBy"></p>
+    <button id="resumeBtn" class="ghost">Resume (P)</button>
+  </div></div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),stageEl=document.getElementById('stage');
@@ -78,7 +86,10 @@ function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeo
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN (bottom-left)':'You are PINK (top-right)'));beep(660,.08);};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(document.activeElement===nameI)return;if(k==='m')setMuted(!muted);});
+async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(600,.06);}
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
+document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(document.activeElement===nameI)return;if(k==='m')setMuted(!muted);if(k==='p')votePause();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function input(){
   let fwd=0,turn=0,fire=false;
@@ -170,6 +181,9 @@ function poll(){
     s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
     s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);
     if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';}
+    const pv=document.getElementById('pveil');
+    if(s.paused){document.getElementById('pveilBy').textContent='Paused by '+(s.paused_by||'someone')+' — press P to resume';pv.classList.add('show');}
+    else pv.classList.remove('show');
     if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
     if(s.last_kill&&s.last_kill.id!==lastKillId){lastKillId=s.last_kill.id;const by=s.last_kill.by,v=s.last_kill.victim;beep(by===you?880:220,.3);burst(s.tanks[v-1].x,s.tanks[v-1].y,by===1?'#00f6ff':'#ff2fd6',46);flash=s.last_kill.suicide?'SUICIDE!':nm[by-1]+' SCORES!';flashT=Date.now()+1400;showToast(s.last_kill.suicide?('🤦 '+nm[v-1]+' blew themselves up!'):('💥 '+nm[by-1]+' takes round '+s.round));}
     if(s.last_shot&&s.last_shot.id!==lastShotId){lastShotId=s.last_shot.id;const mine=s.last_shot.by===you;
@@ -187,6 +201,7 @@ function poll(){
     if(s.last_pickup&&s.last_pickup.id!==lastPickupId){lastPickupId=s.last_pickup.id;const tn=s.last_pickup.tank;beep(1100,.1,'sawtooth',.1);showToast({spread:'✹',rapid:'⚡',shield:'🛡',homing:'🎯',mines:'💣',rail:'🔫'}[s.last_pickup.kind]+' '+nm[tn-1]+' grabbed '+s.last_pickup.kind.toUpperCase()+'!');}
     if(s.phase==='over'){
       ov.style.display='flex';
+      if(!joined)return; // newcomer mid-aftermath: keep the pristine join lobby
       if(!overShown){overShown=true;joinCard.innerHTML=`<h1>🏆 ${(s.winner?nm[s.winner-1]:'Nobody')} WINS!</h1><p>Final ${s.tanks[0].score} : ${s.tanks[1].score}</p><button id="againBtn">Back to lobby</button>`;document.getElementById('againBtn').onclick=async()=>{await api('/api/restart',{clientId:cid});location.reload();};beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);}
     }
     else overShown=false;

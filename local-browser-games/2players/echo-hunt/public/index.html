@@ -12,6 +12,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#0a1230 0%,var
 #topbar{position:absolute;top:6px;left:8px;right:8px;display:flex;align-items:center;justify-content:space-between;z-index:4;pointer-events:none}
 #topbar button{pointer-events:auto}
 #fsBtn{width:auto;margin:0;padding:8px 14px;flex:none;display:flex;align-items:center;justify-content:center}
+#pauseBtn{width:auto;margin:0;padding:8px 14px;flex:none;display:flex;align-items:center;justify-content:center}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
 .logo span{color:#9adcff}
 #verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
@@ -44,6 +45,9 @@ button:disabled{opacity:.4}
 #hint{position:absolute;bottom:6px;left:0;right:0;font-size:11px;opacity:.65;text-align:center;line-height:1.6;z-index:4;pointer-events:none}
 kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
+#pveil .card{width:min(340px,92%)}
+#pveil.show{display:flex}
 /* wire minigame */
 #pz{position:absolute;inset:0;display:none;flex-direction:column;background:rgba(2,3,10,.96);z-index:5;padding:12px;gap:8px}
 #pzHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -59,7 +63,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.2</div><div id="score">0 : 0</div><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.2</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
@@ -85,6 +89,11 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     </div></div>
   </div>
     <div id="hint">tap the fullscreen button (landscape best) • <kbd>WASD</kbd>/<kbd>arrows</kbd> swim • touch: drag anywhere • divers: hold a node 2s to rewire • heartbeat = hunter close — RUN</div>
+    <div id="pveil"><div class="card">
+      <h1>⏸ PAUSED</h1>
+      <p id="pveilBy"></p>
+      <button id="resumeBtn" class="ghost">Resume (P)</button>
+    </div></div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -124,10 +133,13 @@ function sweep(f0,f1,d=.3,v=.1){try{AC=AC||new(window.AudioContext||window.webki
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{goFS();const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':'Joined! Ready up ⚡');beep(660,.08);};
+async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(660,.08);}
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
+document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for crew…';beep(700,.07);};
 document.getElementById('botPlus').onclick=async()=>{await api('/api/bot',{clientId:cid,n:(botRow._n||0)+1});beep(700,.06);};
 document.getElementById('botMinus').onclick=async()=>{await api('/api/bot',{clientId:cid,n:Math.max(0,(botRow._n||0)-1)});beep(500,.06);};
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);if(k==='p'&&document.activeElement!==nameI)votePause();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function input(){
   let x=0,y=0;
@@ -299,6 +311,9 @@ function poll(){
     botRow._n=nBots;botCount.textContent=nBots;
     botRow.style.display=s.host?'flex':'none';
     if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';overShown=false;}
+    const pv=document.getElementById('pveil');
+    if(s.paused){document.getElementById('pveilBy').textContent='Paused by '+(s.paused_by||'someone')+' — press P to resume';pv.classList.add('show');}
+    else pv.classList.remove('show');
     if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
     if(s.last_ping&&s.last_ping.id!==lastPingId){lastPingId=s.last_ping.id;sweep(1200,300,.35,.08);}
     if(s.last_shout&&s.last_shout.id!==lastShoutId){lastShoutId=s.last_shout.id;
@@ -318,7 +333,7 @@ function poll(){
       flashT=Date.now()+1800;beep(523,.12);setTimeout(()=>beep(784,.2),140);}
     if(s.phase==='over'){
       ov.style.display='flex';
-      if(!overShown){overShown=true;
+      if(joined&&!overShown){overShown=true;
         const w=s.winner_side===1?'🛰️ WARDENS':'🤿 DIVERS';
         joinCard.innerHTML=`<h1>${w} WIN!</h1><p>Final ${s.h_wins} : ${s.d_wins}</p><button id="againBtn">Back to lobby</button>`;
         document.getElementById('againBtn').onclick=async()=>{await api('/api/restart',{clientId:cid});location.reload();};

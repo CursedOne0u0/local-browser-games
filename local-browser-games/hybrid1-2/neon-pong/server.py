@@ -8,7 +8,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.29"  # bump on every update; shown on the site
+VERSION = "1.30"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
@@ -50,6 +50,7 @@ game = {
     "vortex": None,  # {x,y,until,id} gravity well
     "bot": False,  # AI holds P2 seat for solo play
     "bot_vy": 0.0, "bot_prev_y": 0.5, "bot_prev_t": 0.0, "bot_err": 0.0,
+    "paused": False, "paused_by": "", "paused_since": 0,
     "event_id": 0,
     "last_power": None,  # {kind,by,id}
     "last_point": None,  # {scored,scores,id}
@@ -362,24 +363,39 @@ def game_loop():
         t=time.time(); dt=min(0.05,t-last); last=t
         with lock:
             free_stale()
-            # auto-start countdown when both humans ready, or human P1 + bot
-            p0,p1=game["players"]
-            foe_ready = (p1 and p1["ready"]) or (game["bot"] and not p1)
-            if game["phase"]=="waiting" and p0 and p0["ready"] and foe_ready:
-                game["phase"]="countdown"; game["countdown_end"]=now()+2.4
-                reset_scores(); reset_positions()
-                for p in (p0, p1):
-                    if not p: continue
-                    p["shield"]=False; p["frozen_until"]=0; p["od_until"]=0; p["od_ready_at"]=0; p["vy"]=0; p["magnet_until"]=0
-                game["bot_vy"]=0.0; game["bot_err"]=0.0; game["bot_prev_y"]=0.5
-                game["ghost_until"]=0; game["ghost_hidden_for"]=0; game["vortex"]=None
-                game["ball"]["speed"]=game["settings"]["speed"]; game["ball"]["last_hit"]=0; game["ball"]["spin"]=0
-                game["wind"]=0
-                game["obstacle"]=None; game["ob_next"]=now()+6; game["last_obounce"]=None
-                game["serve_dir"]=-1 if random.random()<0.5 else 1
-                game["powerup"]=None; game["powerup_timer"]=5
-            step(dt)
+            if game["paused"]:
+                pass  # frozen for all: no sim, no transitions, no deadlines
+            else:
+                # auto-start countdown when both humans ready, or human P1 + bot
+                p0,p1=game["players"]
+                foe_ready = (p1 and p1["ready"]) or (game["bot"] and not p1)
+                if game["phase"]=="waiting" and p0 and p0["ready"] and foe_ready:
+                    game["phase"]="countdown"; game["countdown_end"]=now()+2.4
+                    reset_scores(); reset_positions()
+                    for p in (p0, p1):
+                        if not p: continue
+                        p["shield"]=False; p["frozen_until"]=0; p["od_until"]=0; p["od_ready_at"]=0; p["vy"]=0; p["magnet_until"]=0
+                    game["bot_vy"]=0.0; game["bot_err"]=0.0; game["bot_prev_y"]=0.5
+                    game["ghost_until"]=0; game["ghost_hidden_for"]=0; game["vortex"]=None
+                    game["ball"]["speed"]=game["settings"]["speed"]; game["ball"]["last_hit"]=0; game["ball"]["spin"]=0
+                    game["wind"]=0
+                    game["obstacle"]=None; game["ob_next"]=now()+6; game["last_obounce"]=None
+                    game["serve_dir"]=-1 if random.random()<0.5 else 1
+                    game["powerup"]=None; game["powerup_timer"]=5
+                step(dt)
         time.sleep(1/60)
+
+def shift_paused(d):
+    # thaw every absolute deadline by the paused duration (presence timers untouched)
+    game["countdown_end"] += d; game["point_end"] += d
+    game["serve_preview_until"] += d; game["ob_next"] += d; game["ghost_until"] += d
+    if game["obstacle"] and game["obstacle"].get("until"): game["obstacle"]["until"] += d
+    if game["vortex"] and game["vortex"].get("until"): game["vortex"]["until"] += d
+    if game["powerup"] and game["powerup"].get("born"): game["powerup"]["born"] += d
+    for p in game["players"]:
+        if not p: continue
+        for k in ("effect_until", "frozen_until", "magnet_until", "od_until", "od_ready_at"):
+            if p.get(k): p[k] += d
 
 def snapshot():
     cd = 0
@@ -422,6 +438,8 @@ def snapshot():
         "settings": dict(game["settings"]),
         "last_taunt": game["last_taunt"],
         "winner": game["winner"],
+        "paused": game["paused"],
+        "paused_by": game["paused_by"],
         "bot": game["bot"],
         "names": [(game["players"][0] or {}).get("name","") or "",
                   (game["players"][1] or {}).get("name","") or ("AI 🤖" if game["bot"] else "")],
@@ -521,6 +539,17 @@ class Handler(SimpleHTTPRequestHandler):
                     if s>=0:  # browser closed: free the seat now, don't wait out the 8s timeout
                         game["players"][s]=None
                     return self._json({"ok":True})
+                if self.path=="/api/pause":
+                    # pause-vote: any player freezes the sim for all; any resume thaws deadlines
+                    if game["paused"]:
+                        shift_paused(now()-game["paused_since"])
+                        game["paused"]=False; game["paused_by"]=""
+                    else:
+                        p = game["players"][s] if s>=0 else None
+                        game["paused"]=True
+                        game["paused_by"]=(p["name"] if p and p.get("name") else "Someone")
+                        game["paused_since"]=now()
+                    return self._json({"ok":True,"paused":game["paused"],"by":game["paused_by"]})
                 if self.path=="/api/bot" and s>=0:
                     want = bool(d.get("on", not game["bot"]))
                     if want:

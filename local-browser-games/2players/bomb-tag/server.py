@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3002"))
-VERSION = "1.14"  # bump on every update; shown on the site
+VERSION = "1.16"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -59,9 +59,18 @@ game = {
     "event_id": 0,
     "last_pass": None,  # {holder,id}
     "last_boom": None,  # {x,y,scorer,id}
+    "paused": False, "paused_by": "", "paused_since": 0,
 }
 
 def now(): return time.time()
+
+def shift_paused(d):
+    # thaw every absolute deadline by the paused duration (presence timers untouched)
+    game["countdown_end"] += d; game["round_end"] += d
+    for k in ("dash_until", "dash_cd", "imm_until", "boost_until"):
+        game[k] = [t+d if t else t for t in game[k]]
+    for pd in game["pads"]:
+        pd["expires"] += d
 
 def reset_positions():
     for i, s in enumerate(SPAWNS):
@@ -217,12 +226,15 @@ def game_loop():
         t = time.time(); dt = min(0.05, t-last); last = t
         with lock:
             free_stale()
-            p0, p1 = game["players"]
-            if game["phase"] == "waiting" and p0 and p1 and p0["ready"] and p1["ready"]:
-                game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
-                reset_scores(); new_round()
-                game["last_pass"] = None; game["last_boom"] = None  # no stale toasts
-            step(dt)
+            if game["paused"]:
+                pass  # frozen for all: no sim, no transitions, no deadlines
+            else:
+                p0, p1 = game["players"]
+                if game["phase"] == "waiting" and p0 and p1 and p0["ready"] and p1["ready"]:
+                    game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
+                    reset_scores(); new_round()
+                    game["last_pass"] = None; game["last_boom"] = None  # no stale toasts
+                step(dt)
         time.sleep(1/60)
 
 def snapshot():
@@ -253,6 +265,8 @@ def snapshot():
         "last_pass": game["last_pass"],
         "last_boom": game["last_boom"],
         "last_boost": game["last_boost"],
+        "paused": game["paused"],
+        "paused_by": game["paused_by"],
         "event_id": game["event_id"],
     }
 
@@ -320,6 +334,17 @@ class Handler(SimpleHTTPRequestHandler):
                     if s>=0:  # browser closed: free the seat now, don't wait out the 8s timeout
                         game["players"][s]=None
                     return self._json({"ok":True})
+                if self.path=="/api/pause":
+                    # pause-vote: any player freezes the sim for all; any resume thaws deadlines
+                    if game["paused"]:
+                        shift_paused(now()-game["paused_since"])
+                        game["paused"]=False; game["paused_by"]=""
+                    else:
+                        p = game["players"][s] if s>=0 else None
+                        game["paused"]=True
+                        game["paused_by"]=(p["name"] if p and p.get("name") else "Someone")
+                        game["paused_since"]=now()
+                    return self._json({"ok":True,"paused":game["paused"],"by":game["paused_by"]})
                 if self.path=="/api/restart":
                     if game["phase"]=="over":
                         reset_scores(); new_round()
