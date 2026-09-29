@@ -1,0 +1,18 @@
+# Neon Drift — Solo 🏁
+
+![Gameplay](screenshot.png)
+
+Top-down time-trial racer. A fresh seeded track every day — same for everyone, all day.
+Nail every apex — cutting the track invalidates the lap. Top runs are saved **per day**
+(browse days with ◀ ▶); your **best lap is recorded**: watch it back as a ghost,
+export it as JSON, or import a rival's.
+
+## Run
+
+Just open `index.html` (or `./start-linux.sh` / `start-windows.bat`). No server needed.
+
+## Controls
+
+`WASD` / arrows drive • `Space` handbrake • `R` reset to track • `T` restart lap •
+`P` pause, `M` mute, `Esc` menu. Touch: ▲ gas, ▼ brake, ◀ ▶ steer, HB handbrake.
+Best lap + replay are saved in the browser.

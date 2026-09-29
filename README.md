@@ -14,6 +14,12 @@ Zero installs (besides Python for the LAN ones), zero internet needed.
 
 `1player/breakout-blast/` — brick-breaker with combos, bombs, lasers and shields.
 
+### Neon Drift
+
+<img src="local-browser-games/1player/neon-drift/screenshot.png" width="500">
+
+`1player/neon-drift/` — top-down time-trial racer: fresh seeded track every day, per-day top runs, exportable ghost replays.
+
 ## 2players — LAN duel: host runs the server, both open the printed `http://<host-ip>:<port>` URL on the same Wi-Fi
 
 ### Tank Duel

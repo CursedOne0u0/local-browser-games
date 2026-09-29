@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Neon Drift — Solo Time Trial</title>
+<style>
+:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
+#top{width:min(960px,96vw);display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
+.logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
+#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);white-space:nowrap}
+#hud{display:flex;gap:12px;font-weight:800;font-size:13px;letter-spacing:.04em;flex-wrap:wrap;justify-content:flex-end}
+#hud b{color:var(--c1)}
+#hud #timeB{color:#ffe14d;min-width:92px;display:inline-block}
+#stage{position:relative;width:min(960px,96vw);aspect-ratio:960/600;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px)}
+.card{width:min(460px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:22px;text-align:center;box-shadow:0 0 30px #00f6ff22;max-height:94%;overflow:auto}
+.card h1{margin:.2em 0;font-size:24px}
+.card p{font-size:12.5px;opacity:.85;line-height:1.7}
+.card .bestline{font-size:13px;margin:6px 0 0;color:#ffe14d;font-weight:800}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,var(--c1),#7dffcb);box-shadow:0 0 18px #00f6ff88;width:100%;margin-top:10px}
+button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
+button:disabled{opacity:.35}
+button.danger{background:#ffffff14;color:#ff8f8f;box-shadow:none;border:1px solid #ff555555}
+#hint{font-size:12px;opacity:.65;text-align:center;line-height:1.7}
+#mbtns{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
+#mbtns button{width:42px;height:42px;min-width:42px;padding:0;margin:0;font-size:18px;border-radius:10px;background:#000000aa;color:#fff;box-shadow:none;border:1px solid #ffffff44;flex:none}
+#tbtns{position:absolute;left:0;right:0;bottom:10px;display:none;justify-content:space-between;padding:0 12px;z-index:4;pointer-events:none}
+.tcluster{display:flex;gap:10px;pointer-events:auto}
+.tbtn{width:64px;height:64px;border-radius:50%;border:1px solid #ffffff44;background:#00000088;color:#fff;font-size:22px;font-weight:900;box-shadow:none;margin:0;padding:0;flex:none}
+.tbtn.gas{border-color:#7dff6a;color:#7dff6a}
+.tbtn.on{background:#ffffff33}
+kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
+#toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
+.dayrow{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
+.dayrow button.small{width:auto;padding:8px 14px;margin-top:0;flex:none}
+#dayLabel{font-weight:900;font-size:14px;min-width:150px}
+#dayLabel span{color:var(--c1);font-size:11px}
+#topList{text-align:left;font-size:13px;font-weight:700;margin:8px auto 0;display:inline-block;padding-left:22px;line-height:1.8}
+#topList li:first-child{color:#ffe14d}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <div class="logo">NEON <span>DRIFT</span></div>
+    <div id="verBadge">v1.0</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="960" height="600"></canvas>
+    <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
+    <div id="toast"></div>
+    <div id="tbtns">
+      <div class="tcluster"><button class="tbtn" id="tLeft">◀</button><button class="tbtn" id="tRight">▶</button></div>
+      <div class="tcluster"><button class="tbtn" id="tHb">HB</button><button class="tbtn" id="tBrk">▼</button><button class="tbtn gas" id="tGas">▲</button></div>
+    </div>
+    <div id="overlay"><div class="card" id="menuCard">
+      <h1>🏁 NEON DRIFT</h1>
+      <p>A fresh track every day — same seed for everyone, all day.<br>
+      Top runs are saved <b>per day</b>. Cutting invalidates the lap.<br>
+      Your <b>best lap is recorded</b>: watch it back, export it, import a rival's.</p>
+      <div class="dayrow">
+        <button id="prevDay" class="ghost small">◀</button>
+        <div id="dayLabel">…</div>
+        <button id="nextDay" class="ghost small">▶</button>
+        <button id="todayBtn" class="ghost small">Today</button>
+      </div>
+      <div class="bestline" id="menuBest">…</div>
+      <ol id="topList"></ol>
+      <button id="raceBtn">🏁 Race</button>
+      <button id="watchBtn" class="ghost">👻 Watch best replay</button>
+      <button id="exportBtn" class="ghost">💾 Export best replay</button>
+      <button id="importBtn" class="ghost">📥 Import replay</button>
+      <button id="clearBtn" class="danger">🗑 Clear this day</button>
+      <input type="file" id="fileIn" accept=".json,application/json" style="display:none">
+    </div></div>
+  </div>
+  <div id="hint">WASD / arrows drive • Space handbrake • R reset to track • T restart lap • P pause • M mute</div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=960,H=600;
+const ov=document.getElementById('overlay'),menuCard=document.getElementById('menuCard'),menuBest=document.getElementById('menuBest');
+const raceBtn=document.getElementById('raceBtn'),watchBtn=document.getElementById('watchBtn'),exportBtn=document.getElementById('exportBtn'),importBtn=document.getElementById('importBtn'),clearBtn=document.getElementById('clearBtn'),fileIn=document.getElementById('fileIn');
+const timeEl=document.getElementById('timeB'),lapEl=document.getElementById('lapB'),lastEl=document.getElementById('lastB'),bestEl=document.getElementById('bestB'),toast=document.getElementById('toast');
+const dayLabel=document.getElementById('dayLabel'),prevDay=document.getElementById('prevDay'),nextDay=document.getElementById('nextDay'),todayBtn=document.getElementById('todayBtn'),topList=document.getElementById('topList');
+let muted=false;
+function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
+// ---- storage (file:// safe) ----
+const store=(()=>{try{const s=window.localStorage;s.setItem('__t','1');s.removeItem('__t');return s;}catch(e){return null;}})();
+const BEST_KEY='neondrift_best_v1';
+function dayStr(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function todayStr(){return dayStr(new Date());}
+let selectedDay=todayStr();
+function trackIdFor(day){return 'neondrift-'+day;}
+let TRACK_ID=trackIdFor(selectedDay);
+function bestKey(day){return 'neondrift_best_'+day;}
+function topKey(day){return 'neondrift_top_'+day;}
+function loadBest(day){try{const r=store&&store.getItem(bestKey(day||selectedDay));return r?JSON.parse(r):null;}catch(e){return null;}}
+function saveBest(day,b){try{store&&store.setItem(bestKey(day),JSON.stringify(b));}catch(e){}}
+function wipeDay(day){try{store&&store.removeItem(bestKey(day));store&&store.removeItem(topKey(day));}catch(e){}}
+function loadTop(day){try{const r=store&&store.getItem(topKey(day));const a=r?JSON.parse(r):[];return Array.isArray(a)?a.filter(e=>e&&isFinite(e.t)).slice(0,5):[];}catch(e){return[];}}
+function saveTop(day,a){try{store&&store.setItem(topKey(day),JSON.stringify(a.slice(0,5)));}catch(e){}}
+function pushTop(day,ms){const a=loadTop(day);a.push({t:ms,d:new Date().toISOString()});a.sort((x,y)=>x.t-y.t);saveTop(day,a.slice(0,5));}
+let best=loadBest(selectedDay);
+let AC=null;function beep(f=440,d=.08,type='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+function fmt(ms){if(ms==null||!isFinite(ms))return '–';const m=Math.floor(ms/60000),s=Math.floor(ms%60000/1000),x=Math.floor(ms%1000);return m+':'+String(s).padStart(2,'0')+'.'+String(x).padStart(3,'0');}
+// ---- daily seeded tracks: same date = same track, everywhere ----
+const HW=46,SEG=40,TICK=1/60;
+function seedFromStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const FALLBACK_CTRL=[[480,70],[650,82],[790,140],[830,260],[758,332],[800,432],[680,512],[520,500],[430,432],[300,452],[180,400],[150,280],[232,210],[182,120],[330,70],[415,155]];
+// pure centerline for a control-point set (also used to validate candidates)
+function centerlineOf(pts,seg){
+  const n=pts.length,cx=[],cy=[];
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],p3=pts[(i+2)%n];
+    for(let j=0;j<seg;j++){
+      const t=j/seg,t2=t*t,t3=t2*t;
+      cx.push(0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3));
+      cy.push(0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3));
+    }
+  }
+  let len=0;const m=cx.length;
+  for(let i=0;i<m;i++)len+=Math.hypot(cx[(i+1)%m]-cx[i],cy[(i+1)%m]-cy[i]);
+  return {cx,cy,n:m,len};
+}
+function validPoints(pts){
+  const c=centerlineOf(pts,SEG);
+  if(!isFinite(c.len)||c.len<1500||c.len>6000)return false;
+  for(let i=0;i<c.n;i++)if(!isFinite(c.cx[i])||!isFinite(c.cy[i]))return false;
+  if(Math.hypot(c.cx[0]-c.cx[c.n-1],c.cy[0]-c.cy[c.n-1])>60)return false;
+  const excl=Math.floor(c.n*0.12);
+  let minD=1e9;
+  for(let i=0;i<c.n;i+=4)for(let j=i+excl;j<c.n-excl+4;j+=4){
+    const d=Math.hypot(c.cx[i]-c.cx[j],c.cy[i]-c.cy[j]);
+    if(d<minD)minD=d;
+  }
+  return minD>HW*2+15;
+}
+function genPoints(dateStr){
+  for(let attempt=0;attempt<60;attempt++){
+    const rng=mulberry32(seedFromStr(dateStr+(attempt?'#'+attempt:'')));
+    const K=14+Math.floor(rng()*3);
+    const pts=[];
+    for(let i=0;i<K;i++){
+      const a=(i/K)*Math.PI*2+(rng()-0.5)*(Math.PI*2/K)*0.7;
+      const rx=330+(rng()-0.5)*120,ry=200+(rng()-0.5)*100;
+      pts.push([Math.round(Math.max(100,Math.min(860,480+Math.cos(a)*rx))),Math.round(Math.max(100,Math.min(500,300+Math.sin(a)*ry)))]);
+    }
+    if(validPoints(pts))return pts;
+  }
+  return FALLBACK_CTRL.slice();
+}
+let CTRL=genPoints(selectedDay);
+let CX=[],CY=[],TX=[],TY=[],NX=[],NY=[],N=0,SEG_LEN=0,TOTAL_LEN=0;
+function buildTrack(){
+  const c=centerlineOf(CTRL,SEG);
+  CX=c.cx;CY=c.cy;N=c.n;TOTAL_LEN=c.len;SEG_LEN=TOTAL_LEN/N;
+  TX=new Array(N);TY=new Array(N);NX=new Array(N);NY=new Array(N);
+  for(let i=0;i<N;i++){
+    const dx=CX[(i+1)%N]-CX[(i-1+N)%N],dy=CY[(i+1)%N]-CY[(i-1+N)%N],l=Math.hypot(dx,dy)||1;
+    TX[i]=dx/l;TY[i]=dy/l;NX[i]=-TY[i];NY[i]=TX[i];
+  }
+}
+function nearestFull(x,y){let bi=0,bd=1e18;for(let i=0;i<N;i++){const dx=x-CX[i],dy=y-CY[i],d=dx*dx+dy*dy;if(d<bd){bd=d;bi=i;}}return {i:bi,d:Math.sqrt(bd)};}
+function nearestWin(x,y,c){let bi=c,bd=1e18;for(let k=-28;k<=28;k++){const i=(c+k+N*4)%N,dx=x-CX[i],dy=y-CY[i],d=dx*dx+dy*dy;if(d<bd){bd=d;bi=i;}}return {i:bi,d:Math.sqrt(bd)};}
+// ---- car ----
+const car={x:0,y:0,a:0,vx:0,vy:0};
+let parts=[];
+function burst(x,y,color,n=14,spd=260){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*spd,vy:(Math.random()-.5)*spd,life:1,color});}
+function placeOnGrid(){
+  const i=(N-15)%N;
+  car.x=CX[i];car.y=CY[i];car.a=Math.atan2(TY[i],TX[i]);car.vx=0;car.vy=0;
+  return i;
+}
+function stepCar(inp,dt){
+  const fx=Math.cos(car.a),fy=Math.sin(car.a);
+  const spd0=car.vx*fx+car.vy*fy;
+  const near=nearestWin(car.x,car.y,lapCenter);
+  const off=near.d>HW+6;
+  const maxF=off?170:460;
+  if(inp.up){const a=off?260:430;car.vx+=fx*a*dt;car.vy+=fy*a*dt;}
+  if(inp.down){if(spd0>20){car.vx-=fx*620*dt;car.vy-=fy*620*dt;}else{car.vx-=fx*220*dt;car.vy-=fy*220*dt;}}
+  const auth=Math.min(1,Math.abs(spd0)/150)*(spd0>=0?1:-1);
+  const rate=3.0*(off?0.8:1);
+  if(inp.left)car.a-=rate*auth*dt;
+  if(inp.right)car.a+=rate*auth*dt;
+  const gx=Math.cos(car.a),gy=Math.sin(car.a);
+  let f=car.vx*gx+car.vy*gy,lx=car.vx-f*gx,ly=car.vy-f*gy;
+  const damp=Math.exp(-(inp.hb?2.0:9.0)*dt);lx*=damp;ly*=damp;
+  f-=f*(off?2.2:0.35)*dt;
+  f=Math.max(-150,Math.min(maxF,f));
+  car.vx=f*gx+lx;car.vy=f*gy+ly;
+  car.x+=car.vx*dt;car.y+=car.vy*dt;
+  if(car.x<14){car.x=14;car.vx=0;}if(car.x>W-14){car.x=W-14;car.vx=0;}
+  if(car.y<14){car.y=14;car.vy=0;}if(car.y>H-14){car.y=H-14;car.vy=0;}
+  return {off,spd:f,near};
+}
+// ---- race state ----
+let mode='menu'; // menu|countdown|race|replay
+let paused=false,lapCount=0,lapCenter=0,lastRaw=0,prog=0,lapStartProg=0,maxProg=0,lastQuarter=0,curTicks=0,recSamples=[];
+let cdTicks=0,flash='',flashT=0,hist=[];
+let cdTime=0;
+let replay=null,rIdx=0,rPlaying=false;
+let keys={},touchIn={up:false,down:false,left:false,right:false,hb:false};
+const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+function input(){
+  return {
+    up:!!(keys['arrowup']||keys['w']||touchIn.up),
+    down:!!(keys['arrowdown']||keys['s']||touchIn.down),
+    left:!!(keys['arrowleft']||keys['a']||touchIn.left),
+    right:!!(keys['arrowright']||keys['d']||touchIn.right),
+    hb:!!(keys[' ']||touchIn.hb)
+  };
+}
+function startRace(){
+  lapCenter=placeOnGrid();lastRaw=lapCenter;prog=0;lapStartProg=0;maxProg=0;lastQuarter=0;
+  lapCount=1;curTicks=0;recSamples=[];hist=[];parts=[];
+  paused=false;mode='countdown';cdTime=3.2;
+  ov.style.display='none';flash='';beep(440,.15);
+}
+function restartLap(){
+  lapCenter=placeOnGrid();lastRaw=lapCenter;prog=0;lapStartProg=0;maxProg=0;lastQuarter=0;
+  curTicks=0;recSamples=[];hist=[];
+  flash='RESTART';flashT=Date.now()+700;
+}
+function resetToTrack(){
+  const n=nearestFull(car.x,car.y);
+  car.x=CX[n.i];car.y=CY[n.i];car.a=Math.atan2(TY[n.i],TX[n.i]);car.vx=0;car.vy=0;
+  lapCenter=n.i;lastRaw=n.i;
+  showToast('Back on track');
+}
+function finishLap(){
+  const ms=Math.round(curTicks*TICK*1000);
+  pushTop(selectedDay,ms);
+  const dayBest=loadBest(selectedDay);
+  if(dayBest==null||ms<dayBest.timeMs){
+    best={game:'neon-drift',track:TRACK_ID,day:selectedDay,tickHz:60,timeMs:ms,samples:recSamples,date:new Date().toISOString()};
+    saveBest(selectedDay,best);refreshBestUI();
+    flash='🏆 BEST '+fmt(ms);flashT=Date.now()+2200;
+    beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
+  }else{
+    flash=fmt(ms);flashT=Date.now()+1600;
+    beep(880,.2);
+  }
+  burst(car.x,car.y,'#7dff6a',30);
+  lapCount++;curTicks=0;recSamples=[];lapStartProg=prog;maxProg=0;lastQuarter=0;
+}
+function invalidateLap(){
+  flash='✂ CUT — LAP INVALID';flashT=Date.now()+1600;
+  beep(160,.3,'sawtooth',.14);
+  curTicks=0;recSamples=[];lapStartProg=prog;maxProg=0;lastQuarter=0;
+}
+function stepSim(){
+  const inp=input();
+  const r=stepCar(inp,TICK);
+  lapCenter=r.near.i;
+  let d=lapCenter-lastRaw;
+  if(d<-N/2)d+=N;if(d>N/2)d-=N;
+  lastRaw=lapCenter;prog+=d;
+  const rel=prog-lapStartProg;
+  if(rel>maxProg)maxProg=rel;
+  // quarter toasts
+  const q=Math.floor(rel/N*4);
+  if(q>lastQuarter&&q<4){lastQuarter=q;beep(660+q*90,.07);burst(car.x,car.y,'#00f6ff',8,180);}
+  // wrong way (progress over last second)
+  hist.push(prog);if(hist.length>70)hist.shift();
+  const back=hist.length>60?prog-hist[hist.length-61]:0;
+  wrongWay=hist.length>60&&back<-30;
+  // off-track dust + drift smoke
+  if(r.off&&Math.abs(r.spd)>60&&Math.random()<.5)parts.push({x:car.x+(Math.random()-.5)*14,y:car.y+(Math.random()-.5)*14,vx:(Math.random()-.5)*120,vy:(Math.random()-.5)*120-40,life:.7,color:'#8a7a5a'});
+  if(inp.hb&&Math.abs(r.spd)>200&&Math.random()<.6)parts.push({x:car.x-Math.cos(car.a)*12,y:car.y-Math.sin(car.a)*12,vx:(Math.random()-.5)*80,vy:(Math.random()-.5)*80,life:.6,color:'#aab4dd'});
+  // record replay sample
+  recSamples.push([Math.round(car.x*10)/10,Math.round(car.y*10)/10,Math.round(car.a*1000)/1000]);
+  curTicks++;
+  // start/finish crossing
+  if(rel>=N){
+    if(maxProg>=N*0.9)finishLap();
+    else invalidateLap();
+  }
+}
+let wrongWay=false;
+// ---- replay watch ----
+function startReplay(){
+  if(!best||!best.samples||!best.samples.length)return;
+  replay=best;rIdx=0;rPlaying=true;mode='replay';paused=false;
+  ov.style.display='none';
+  showToast('👻 Replaying best '+fmt(replay.timeMs)+' — Esc exits');
+}
+// ---- export / import ----
+function exportBest(){
+  if(!best)return;
+  const s=fmt(best.timeMs).replace(':','m')+'s';
+  const blob=new Blob([JSON.stringify(best)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='neon-drift-'+selectedDay+'-best-'+s+'.json';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  showToast('💾 Replay exported');
+}
+function importReplayFile(f){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const b=JSON.parse(rd.result);
+      if(!b||b.game!=='neon-drift'||typeof b.day!=='string'||!Array.isArray(b.samples)||!b.samples.length)throw 0;
+      if(b.day>todayStr())throw 0; // no future days
+      if(b.track!==trackIdFor(b.day))throw 0;
+      if(typeof b.timeMs!=='number'||!isFinite(b.timeMs)||b.timeMs<=0)throw 0;
+      const expect=Math.round(b.timeMs/1000*60);
+      if(Math.abs(b.samples.length-expect)>4)throw 0;
+      for(const s of b.samples){if(!Array.isArray(s)||s.length!==3||!s.every(isFinite))throw 0;}
+      if(b.day!==selectedDay)selectDay(b.day); // jump to the replay's day
+      best={game:'neon-drift',track:TRACK_ID,day:selectedDay,tickHz:60,timeMs:Math.round(b.timeMs),samples:b.samples,date:b.date||new Date().toISOString()};
+      saveBest(selectedDay,best);pushTop(selectedDay,best.timeMs);refreshBestUI();
+      showToast('📥 Imported best '+fmt(best.timeMs));
+      beep(880,.15);
+    }catch(e){showToast('❌ Not a valid Neon Drift replay');beep(200,.25,'sawtooth');}
+  };
+  rd.readAsText(f);
+}
+function refreshBestUI(){
+  bestEl.textContent=fmt(best?best.timeMs:null);
+  dayLabel.innerHTML=selectedDay+(selectedDay===todayStr()?' <span>• TODAY</span>':'');
+  nextDay.disabled=selectedDay>=todayStr();
+  if(best){
+    menuBest.textContent='🏆 Best '+fmt(best.timeMs)+' • '+best.samples.length+' samples'+(best.date?' • '+best.date.slice(0,10):'');
+    watchBtn.disabled=false;exportBtn.disabled=false;clearBtn.disabled=false;
+  }else{
+    menuBest.textContent='No runs on '+selectedDay+' yet — set one!';
+    watchBtn.disabled=true;exportBtn.disabled=true;clearBtn.disabled=true;
+  }
+  const top=loadTop(selectedDay);
+  topList.innerHTML='';
+  if(!top.length){
+    const li=document.createElement('li');li.textContent='No runs yet — set one!';topList.appendChild(li);
+  }else top.forEach((e,i)=>{
+    const li=document.createElement('li');
+    li.textContent='#'+(i+1)+' '+fmt(e.t)+(e.d?' • '+e.d.slice(11,16)+'h':'');
+    topList.appendChild(li);
+  });
+  lastEl.textContent='–';
+}
+// ---- day selector ----
+function selectDay(day){
+  if(day>todayStr())return;
+  selectedDay=day;TRACK_ID=trackIdFor(day);
+  CTRL=genPoints(day);buildTrack();
+  mode='menu';paused=false;replay=null;
+  lapCenter=placeOnGrid();lastRaw=lapCenter;prog=0;lapStartProg=0;maxProg=0;lastQuarter=0;
+  lapCount=1;curTicks=0;recSamples=[];hist=[];parts=[];
+  best=loadBest(day);refreshBestUI();
+  ov.style.display='flex';
+}
+function shiftDay(d){
+  const dt=new Date(selectedDay+'T12:00:00');
+  dt.setDate(dt.getDate()+d);
+  selectDay(dayStr(dt));
+}
+// ---- main loop (fixed-step sim) ----
+let last=performance.now(),acc=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  let dt=(t-last)/1000;last=t;
+  if(dt>0.25)dt=0.25;
+  if(!paused&&(mode==='race'||mode==='countdown')){
+    if(mode==='countdown'){
+      cdTime-=dt;
+      const s=Math.ceil(cdTime);
+      if(cdTime<=0){mode='race';flash='GO!';flashT=Date.now()+700;beep(880,.25);lapStartProg=prog;}
+      else{const want=String(s);if(flash!==want){flash=want;flashT=Date.now()+900;beep(440+s*80,.12);}}
+    }else{
+      acc+=dt;
+      let n=0;
+      while(acc>=TICK&&n<5){stepSim();acc-=TICK;n++;}
+      if(n===5)acc=0;
+    }
+  }
+  if(mode==='replay'&&rPlaying&&!paused&&replay){
+    rIdx+=dt*60;
+    if(rIdx>=replay.samples.length){rIdx=replay.samples.length-1;rPlaying=false;flash='🏁 '+fmt(replay.timeMs);flashT=Date.now()+2000;beep(880,.2);}
+  }
+  parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.2,dt);p.vy*=Math.pow(.2,dt);p.life-=dt*1.2;});
+  updateHud();
+  draw(t);
+}
+function updateHud(){
+  if(mode==='replay'&&replay){timeEl.textContent=fmt(Math.round(rIdx/60*1000));lapEl.textContent='👻';}
+  else{timeEl.textContent=mode==='menu'?'0:00.000':fmt(Math.round(curTicks*TICK*1000));lapEl.textContent=mode==='menu'?'–':String(lapCount);}
+}
+// ---- draw ----
+function trackPath(){ctx.beginPath();ctx.moveTo(CX[0],CY[0]);for(let i=1;i<N;i++)ctx.lineTo(CX[i],CY[i]);ctx.closePath();}
+function drawCar(x,y,a,ghost){
+  ctx.save();ctx.translate(x,y);ctx.rotate(a);
+  ctx.shadowColor=ghost?'#ff2fd6':'#00f6ff';ctx.shadowBlur=ghost?10:16;
+  ctx.globalAlpha=ghost?0.75:1;
+  ctx.fillStyle=ghost?'#ff2fd6':'#00f6ff';
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(-13,-7,26,14,4);else ctx.rect(-13,-7,26,14);
+  ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle=ghost?'#7a1450':'#06333a';
+  ctx.fillRect(-2,-5,9,10);
+  ctx.fillStyle=ghost?'#ffd7f2':'#d8fbff';
+  ctx.fillRect(6,-4,5,8);
+  ctx.restore();ctx.globalAlpha=1;
+}
+function draw(t){
+  ctx.fillStyle='#070a18';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#ffffff0a';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  // track
+  ctx.lineJoin='round';ctx.lineCap='round';
+  trackPath();ctx.strokeStyle='#00f6ff2e';ctx.lineWidth=HW*2+12;ctx.stroke();
+  trackPath();ctx.strokeStyle='#20263f';ctx.lineWidth=HW*2;ctx.stroke();
+  trackPath();ctx.setLineDash([18,22]);ctx.strokeStyle='#ffffff22';ctx.lineWidth=3;ctx.stroke();ctx.setLineDash([]);
+  // direction chevrons
+  ctx.save();ctx.fillStyle='#00f6ff55';
+  for(let i=0;i<N;i+=40){
+    const x=CX[i],y=CY[i],a=Math.atan2(TY[i],TX[i]);
+    ctx.save();ctx.translate(x,y);ctx.rotate(a);
+    ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(-6,-9);ctx.lineTo(-6,9);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+  // start/finish checker
+  (function(){
+    const x=CX[0],y=CY[0],a=Math.atan2(TY[0],TX[0]);
+    ctx.save();ctx.translate(x,y);ctx.rotate(a);
+    const sq=8,cols=Math.floor(HW*2/sq);
+    for(let r=0;r<2;r++)for(let c=0;c<cols;c++){
+      ctx.fillStyle=(r+c)%2?'#0a0a0a':'#f2f2f2';
+      ctx.fillRect(-sq+r*sq,-HW+c*sq,sq,sq);
+    }
+    ctx.restore();
+  })();
+  // particles
+  parts.forEach(p=>{ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
+  if(mode==='replay'&&replay){
+    const i0=Math.floor(rIdx),i1=Math.min(replay.samples.length-1,i0+1),f=rIdx-i0;
+    const s0=replay.samples[i0],s1=replay.samples[i1];
+    drawCar(s0[0]+(s1[0]-s0[0])*f,s0[1]+(s1[1]-s0[1])*f,s0[2]+(s1[2]-s0[2])*f,true);
+  }else{
+    drawCar(car.x,car.y,car.a,false);
+  }
+  // countdown / flash
+  const showCd=mode==='countdown';
+  if(showCd||Date.now()<flashT){
+    ctx.save();ctx.textAlign='center';ctx.font='900 64px system-ui';
+    ctx.shadowColor='#00f6ff';ctx.shadowBlur=30;ctx.fillStyle='#fff';
+    ctx.fillText(showCd?flash:(flash||''),W/2,H/2-40);
+    ctx.restore();
+  }
+  if(mode==='race'&&wrongWay){
+    ctx.save();ctx.textAlign='center';ctx.font='900 30px system-ui';
+    ctx.shadowColor='#ff4444';ctx.shadowBlur=20;ctx.fillStyle='#ffb3b3';
+    ctx.fillText('↩ WRONG WAY!',W/2,60);
+    ctx.restore();
+  }
+  if(mode==='race'&&paused){
+    ctx.save();ctx.textAlign='center';ctx.font='900 40px system-ui';ctx.fillStyle='#ffffffcc';
+    ctx.fillText('⏸ PAUSED',W/2,H/2);
+    ctx.restore();
+  }
+}
+// ---- input ----
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();keys[k]=true;
+  if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+  if(k==='m'){muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';}
+  if(k==='escape'){
+    if(mode==='replay'){mode='menu';replay=null;ov.style.display='flex';}
+    else if(mode==='race'||mode==='countdown'){mode='menu';ov.style.display='flex';}
+  }
+  if(k==='p'&&(mode==='race'||mode==='countdown'))paused=!paused;
+  if(k==='r'&&mode==='race'&&!paused)resetToTrack();
+  if(k==='t'&&mode==='race'&&!paused)restartLap();
+  if(k==='enter'&&mode==='menu')startRace();
+});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function bindHold(el,on,off){
+  const s=e=>{e.preventDefault();el.classList.add('on');on();};
+  const x=e=>{e.preventDefault();el.classList.remove('on');off();};
+  el.addEventListener('touchstart',s,{passive:false});
+  el.addEventListener('touchend',x);el.addEventListener('touchcancel',x);
+  el.addEventListener('mousedown',s);el.addEventListener('mouseup',x);el.addEventListener('mouseleave',x);
+}
+bindHold(document.getElementById('tGas'),()=>touchIn.up=true,()=>touchIn.up=false);
+bindHold(document.getElementById('tBrk'),()=>touchIn.down=true,()=>touchIn.down=false);
+bindHold(document.getElementById('tLeft'),()=>touchIn.left=true,()=>touchIn.left=false);
+bindHold(document.getElementById('tRight'),()=>touchIn.right=true,()=>touchIn.right=false);
+bindHold(document.getElementById('tHb'),()=>touchIn.hb=true,()=>touchIn.hb=false);
+if(isTouch){
+  document.getElementById('tbtns').style.display='flex';
+  document.getElementById('hint').textContent='▲ gas • ▼ brake • ◀ ▶ steer • HB handbrake • tap ⏸ to pause';
+}
+// ---- menu wiring ----
+raceBtn.onclick=()=>{startRace();beep(700,.1);};
+watchBtn.onclick=()=>{startReplay();};
+exportBtn.onclick=()=>{exportBest();};
+importBtn.onclick=()=>{fileIn.click();};
+fileIn.onchange=()=>{if(fileIn.files[0])importReplayFile(fileIn.files[0]);fileIn.value='';};
+clearBtn.onclick=()=>{wipeDay(selectedDay);best=null;refreshBestUI();showToast('Runs cleared for '+selectedDay);};
+prevDay.onclick=()=>{shiftDay(-1);beep(600,.06);};
+nextDay.onclick=()=>{shiftDay(1);beep(600,.06);};
+todayBtn.onclick=()=>{selectDay(todayStr());beep(700,.07);};
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'▶':'⏸';}beep(600,.06);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';if(!muted)beep(700,.07);};
+// ---- boot ----
+buildTrack();
+placeOnGrid();
+refreshBestUI();
+requestAnimationFrame(loop);draw(performance.now());
+</script>
+</body>
+</html>
