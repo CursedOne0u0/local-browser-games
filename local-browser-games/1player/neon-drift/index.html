@@ -38,6 +38,8 @@ button.danger{background:#ffffff14;color:#ff8f8f;box-shadow:none;border:1px soli
 .tbtn.on{background:#ffffff33}
 kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
+#fsPrompt{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;width:auto;padding:10px 18px;margin:0;background:#00f6ff;color:#04121a;font-weight:900;font-size:14px;border-radius:99px;box-shadow:0 0 18px #00f6ff88;white-space:nowrap}
+@media (orientation:landscape) and (display-mode:fullscreen){#hint{display:none}}
 .dayrow{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
 .dayrow button.small{width:auto;padding:8px 14px;margin-top:0;flex:none}
 #dayLabel{font-weight:900;font-size:14px;min-width:150px}
@@ -50,12 +52,13 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.1</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.2</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
     <canvas id="cv" width="960" height="600"></canvas>
     <div id="toast"></div>
+    <button id="fsPrompt">⛶ Tap for fullscreen</button>
     <div id="tbtns">
       <div class="tcluster"><button class="tbtn" id="tLeft">◀</button><button class="tbtn" id="tRight">▶</button></div>
       <div class="tcluster"><button class="tbtn" id="tHb">HB</button><button class="tbtn" id="tBrk">▼</button><button class="tbtn gas" id="tGas">▲</button></div>
@@ -74,8 +77,9 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <div class="bestline" id="menuBest">…</div>
       <ol id="topList"></ol>
       <p>Controls: drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset to track •
-      <kbd>T</kbd> restart lap • <kbd>G</kbd> rival ghost • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu.<br>
-      Race against your day's best ghost — magenta car, same track, same start.</p>
+      <kbd>T</kbd> restart lap • <kbd>G</kbd> rival ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu.<br>
+      Race against your day's best ghost — magenta car, same track, same start.<br>
+      On touch: rotate sideways for fullscreen.</p>
       <button id="raceBtn">🏁 Race</button>
       <button id="watchBtn" class="ghost">👻 Watch best replay</button>
       <button id="exportBtn" class="ghost">💾 Export best replay</button>
@@ -88,9 +92,10 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
     <button id="pauseBtn" class="uibtn" title="Pause (P)">⏸ Pause</button>
     <button id="ghostBtn" class="uibtn" title="Toggle rival ghost (G)">👻 Ghost: on</button>
     <button id="menuBtn" class="uibtn" title="Back to menu (Esc)">📋 Menu</button>
+    <button id="fsBtn" class="uibtn" title="Fullscreen (F)">⛶ Fullscreen</button>
     <button id="muteBtn" class="uibtn" title="Mute (M)">🔊 Sound</button>
   </div>
-  <div id="hint">Drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset • <kbd>T</kbd> restart lap • <kbd>G</kbd> ghost • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu</div>
+  <div id="hint">Drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset • <kbd>T</kbd> restart lap • <kbd>G</kbd> ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -100,6 +105,34 @@ const raceBtn=document.getElementById('raceBtn'),watchBtn=document.getElementByI
 const timeEl=document.getElementById('timeB'),lapEl=document.getElementById('lapB'),lastEl=document.getElementById('lastB'),bestEl=document.getElementById('bestB'),toast=document.getElementById('toast');
 const dayLabel=document.getElementById('dayLabel'),prevDay=document.getElementById('prevDay'),nextDay=document.getElementById('nextDay'),todayBtn=document.getElementById('todayBtn'),topList=document.getElementById('topList');
 const pauseBtn=document.getElementById('pauseBtn'),ghostBtn=document.getElementById('ghostBtn'),menuBtn=document.getElementById('menuBtn'),muteBtn=document.getElementById('muteBtn');
+const fsBtn=document.getElementById('fsBtn'),fsPrompt=document.getElementById('fsPrompt');
+// fullscreen: touch devices go fullscreen on sideways rotation (auto attempt +
+// tap prompt, since mobile browsers only grant fullscreen from a gesture)
+let autoFs=false;
+function isLandscape(){return window.innerWidth>window.innerHeight;}
+async function enterFs(){try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch(e){}}
+function exitFs(){try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();}catch(e){}}
+function toggleFs(){if(document.fullscreenElement)exitFs();else enterFs();}
+function refreshFsUI(){
+  const fs=!!document.fullscreenElement;
+  fsBtn.textContent=fs?'⛶ Exit':'⛶ Fullscreen';
+  fsBtn.style.display=isTouch?'':'none';
+  fsPrompt.style.display=(isTouch&&isLandscape()&&!fs)?'block':'none';
+}
+let lastLandscape=isLandscape();
+function onRotate(){
+  const land=isLandscape();
+  if(land!==lastLandscape){
+    lastLandscape=land;
+    if(land&&isTouch&&!document.fullscreenElement){autoFs=true;enterFs();}
+    else if(!land&&autoFs){autoFs=false;exitFs();}
+  }
+  refreshFsUI();
+}
+let rsT=null;
+window.addEventListener('orientationchange',()=>setTimeout(onRotate,300));
+window.addEventListener('resize',()=>{clearTimeout(rsT);rsT=setTimeout(onRotate,300);});
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)autoFs=false;refreshFsUI();});
 // rival ghost: live magenta replay of the day's best, indexed by current-lap ticks
 let ghostOn=true;
 function refreshGhostBtn(){ghostBtn.textContent=ghostOn?'👻 Ghost: on':'👻 Ghost: off';ghostBtn.classList.toggle('off',!ghostOn);}
@@ -509,6 +542,7 @@ window.addEventListener('keydown',e=>{
   if(k==='escape'){toMenu();beep(500,.06);}
   if(k==='p'&&(mode==='race'||mode==='countdown')){paused=!paused;pauseBtn.textContent=paused?'▶ Resume':'⏸ Pause';}
   if(k==='g'){toggleGhost();showToast(ghostOn?'👻 Rival ghost on':'👻 Rival ghost off');}
+  if(k==='f'){toggleFs();}
   if(k==='r'&&mode==='race'&&!paused)resetToTrack();
   if(k==='t'&&mode==='race'&&!paused)restartLap();
   if(k==='enter'&&mode==='menu')startRace();
@@ -544,11 +578,14 @@ document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='r
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;muteBtn.textContent=muted?'🔇 Muted':'🔊 Sound';if(!muted)beep(700,.07);};
 menuBtn.onclick=e=>{e.stopPropagation();toMenu();beep(500,.06);};
 ghostBtn.onclick=e=>{e.stopPropagation();toggleGhost();beep(700,.06);};
+fsBtn.onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
+fsPrompt.onclick=e=>{e.stopPropagation();fsPrompt.style.display='none';enterFs();};
 // ---- boot ----
 buildTrack();
 placeOnGrid();
 refreshBestUI();
 refreshGhostBtn();
+refreshFsUI();
 requestAnimationFrame(loop);draw(performance.now());
 </script>
 </body>
