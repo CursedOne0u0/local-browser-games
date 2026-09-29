@@ -17,8 +17,8 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #names{font-family:var(--mono);font-size:12px;letter-spacing:.06em;opacity:.85}
 #stage{position:relative;width:min(800px,96vw);aspect-ratio:780/600;border-radius:14px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
-#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px);padding:14px}
-.card{width:min(420px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(420px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:92dvh;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
 .card h1::after{content:"";display:block;height:8px;margin:10px auto 0;width:150px;border-radius:2px;background:repeating-linear-gradient(90deg,#f5a623 0 12px,#1a1a1a 12px 24px)}
 .card p{font-size:13px;opacity:.8;line-height:1.6}

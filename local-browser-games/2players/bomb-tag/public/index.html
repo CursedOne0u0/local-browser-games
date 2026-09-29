@@ -19,8 +19,8 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #fusefill{height:100%;width:100%;background:linear-gradient(90deg,#7dff6a,#ffe14d,#ff5555);transition:width .1s linear}
 #stage{position:relative;width:min(820px,96vw);aspect-ratio:800/560;border-radius:14px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
-#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px);padding:14px}
-.card{width:min(420px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(420px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:92dvh;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
 #joinCard h1::after{content:"";display:block;height:8px;margin:10px auto 0;width:150px;border-radius:2px;background:linear-gradient(180deg,#ffb02e 0 2px,#8a5a2e 2px 4px,#4c4258 4px 6px,#2a2430 6px 8px)}
 .card p{font-size:13px;opacity:.8;line-height:1.6}

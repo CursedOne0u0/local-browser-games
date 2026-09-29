@@ -24,7 +24,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#0a1230 0%,var
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #vig{position:absolute;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at center,transparent 52%,rgba(0,0,0,.55) 100%)}
 #terror{position:absolute;inset:0;pointer-events:none;z-index:3;opacity:0;background:radial-gradient(ellipse at center,transparent 46%,rgba(255,20,20,.5) 100%)}
-#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
 .card{width:min(440px,94%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:96%;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:13px;opacity:.8;line-height:1.6}

@@ -18,7 +18,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var
 #hud #comboB{color:#ffe14d}
 #stage{position:relative;width:min(860px,96vw,calc((100dvh - 150px)*1.5357));aspect-ratio:860/560;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
-#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px)}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px)}
 .card{width:min(440px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:22px;text-align:center;max-height:94%;overflow:auto}
 .card h1{margin:.2em 0;font-size:24px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:12.5px;opacity:.85;line-height:1.7}
@@ -39,7 +39,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
-    <div id="verBadge">v1.9</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.10</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div id="heatWrap" title="Combo heat"><div id="heatFill"></div></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">
