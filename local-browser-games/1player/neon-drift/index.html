@@ -43,6 +43,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 /* landscape fullscreen (touch): driving buttons leave the track, dock to the side margins */
 @media (orientation:landscape){
   html:fullscreen #tbtns{position:fixed;left:0;right:0;top:50%;bottom:auto;transform:translateY(-50%);padding:0 14px;}
+  html:fullscreen #tbtns .tcluster:first-child .tbtn{width:96px;height:96px;font-size:30px;}
 }
 .dayrow{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
 .dayrow button.small{width:auto;padding:8px 14px;margin-top:0;flex:none}
@@ -56,7 +57,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.4</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.5</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
