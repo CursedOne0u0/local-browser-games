@@ -40,6 +40,10 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
 #fsPrompt{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;width:auto;padding:10px 18px;margin:0;background:#00f6ff;color:#04121a;font-weight:900;font-size:14px;border-radius:99px;box-shadow:0 0 18px #00f6ff88;white-space:nowrap}
 @media (orientation:landscape) and (display-mode:fullscreen){#hint{display:none}}
+/* landscape fullscreen (touch): driving buttons leave the track, dock to the side margins */
+@media (orientation:landscape){
+  html:fullscreen #tbtns{position:fixed;left:0;right:0;top:50%;bottom:auto;transform:translateY(-50%);padding:0 14px;}
+}
 .dayrow{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
 .dayrow button.small{width:auto;padding:8px 14px;margin-top:0;flex:none}
 #dayLabel{font-weight:900;font-size:14px;min-width:150px}
@@ -52,7 +56,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.3</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.4</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
