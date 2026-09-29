@@ -23,6 +23,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .card h1{margin:.2em 0;font-size:24px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:12.5px;opacity:.85;line-height:1.7}
 .card .bestline{font-size:13px;margin:6px 0 0;color:#ffe14d;font-weight:800}
+#menuCard h1::after{content:"";display:block;height:8px;margin:10px auto 0;width:150px;border-radius:2px;background:repeating-linear-gradient(90deg,#c82828 0 14px,#e8e8e8 14px 28px)}
 button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#04121a;background:var(--c1);box-shadow:none;width:100%;margin-top:10px}
 button svg{vertical-align:-3px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
@@ -59,7 +60,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.7</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.8</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
@@ -230,7 +231,7 @@ function genPoints(dateStr){
   return FALLBACK_CTRL.slice();
 }
 let CTRL=genPoints(selectedDay);
-let CX=[],CY=[],TX=[],TY=[],NX=[],NY=[],N=0,SEG_LEN=0,TOTAL_LEN=0;
+let CX=[],CY=[],TX=[],TY=[],NX=[],NY=[],N=0,SEG_LEN=0,TOTAL_LEN=0,CURB=[];
 function buildTrack(){
   const c=centerlineOf(CTRL,SEG);
   CX=c.cx;CY=c.cy;N=c.n;TOTAL_LEN=c.len;SEG_LEN=TOTAL_LEN/N;
@@ -238,6 +239,14 @@ function buildTrack(){
   for(let i=0;i<N;i++){
     const dx=CX[(i+1)%N]-CX[(i-1+N)%N],dy=CY[(i+1)%N]-CY[(i-1+N)%N],l=Math.hypot(dx,dy)||1;
     TX[i]=dx/l;TY[i]=dy/l;NX[i]=-TY[i];NY[i]=TX[i];
+  }
+  // curb zones: high-curvature samples get red/white ink on both edges
+  CURB=new Uint8Array(N);
+  for(let i=0;i<N;i++){
+    const a1=Math.atan2(TY[(i-2+N)%N],TX[(i-2+N)%N]);
+    const a2=Math.atan2(TY[(i+2)%N],TX[(i+2)%N]);
+    let d=a2-a1;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+    CURB[i]=Math.abs(d)>0.09?1:0;
   }
 }
 function nearestFull(x,y){let bi=0,bd=1e18;for(let i=0;i<N;i++){const dx=x-CX[i],dy=y-CY[i],d=dx*dx+dy*dy;if(d<bd){bd=d;bi=i;}}return {i:bi,d:Math.sqrt(bd)};}
@@ -493,20 +502,26 @@ function updateHud(){
 }
 // ---- draw ----
 function trackPath(){ctx.beginPath();ctx.moveTo(CX[0],CY[0]);for(let i=1;i<N;i++)ctx.lineTo(CX[i],CY[i]);ctx.closePath();}
+function carBodyPath(){
+  ctx.beginPath();
+  ctx.moveTo(16,0);ctx.lineTo(2,-7);ctx.lineTo(-12,-7);ctx.lineTo(-12,7);ctx.lineTo(2,7);ctx.closePath();
+}
+// single-seaters; ghosts are outline-only so the field reads at a glance
 function drawCar(x,y,a,col){
   const ghost=!!col;
   ctx.save();ctx.translate(x,y);ctx.rotate(a);
-  ctx.shadowColor=ghost?col:'#00f6ff';ctx.shadowBlur=ghost?10:16;
-  ctx.globalAlpha=ghost?0.7:1;
-  ctx.fillStyle=ghost?col:'#00f6ff';
-  ctx.beginPath();
-  if(ctx.roundRect)ctx.roundRect(-13,-7,26,14,4);else ctx.rect(-13,-7,26,14);
-  ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.fillStyle=ghost?'#10101c':'#06333a';
-  ctx.fillRect(-2,-5,9,10);
-  ctx.fillStyle=ghost?'#ffffff':'#d8fbff';
-  ctx.fillRect(6,-4,5,8);
+  ctx.globalAlpha=ghost?0.9:1;
+  if(ghost){
+    ctx.strokeStyle=col;ctx.lineWidth=2.5;
+    carBodyPath();ctx.stroke();
+    ctx.strokeRect(-22,-11,12,22);
+    ctx.beginPath();ctx.arc(-2,0,4,0,7);ctx.stroke();
+  }else{
+    ctx.fillStyle='#00f6ff';carBodyPath();ctx.fill();
+    ctx.fillRect(-22,-11,12,22);
+    ctx.fillStyle='#0a1420';ctx.beginPath();ctx.arc(-2,0,4,0,7);ctx.fill();
+    ctx.fillStyle='#fff6da';ctx.fillRect(8,-5,3,3);ctx.fillRect(8,2,3,3);
+  }
   ctx.restore();ctx.globalAlpha=1;
 }
 function draw(t){
@@ -516,9 +531,37 @@ function draw(t){
   for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
   // track
   ctx.lineJoin='round';ctx.lineCap='round';
-  trackPath();ctx.strokeStyle='#00f6ff2e';ctx.lineWidth=HW*2+12;ctx.stroke();
   trackPath();ctx.strokeStyle='#20263f';ctx.lineWidth=HW*2;ctx.stroke();
+  // curbs: red/white ink on both edges through high-curvature zones
+  ctx.save();ctx.lineWidth=9;ctx.lineCap='butt';
+  for(const pair of [['#c82828',0],['#e8e8e8',1]]){
+    ctx.strokeStyle=pair[0];ctx.beginPath();
+    for(let i=0;i<N;i++){
+      if(!CURB[i]||(((i/6)|0)%2)!==pair[1])continue;
+      const j=(i+1)%N;
+      for(const s of [-1,1]){
+        ctx.moveTo(CX[i]+NX[i]*s*(HW-5),CY[i]+NY[i]*s*(HW-5));
+        ctx.lineTo(CX[j]+NX[j]*s*(HW-5),CY[j]+NY[j]*s*(HW-5));
+      }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
   trackPath();ctx.setLineDash([18,22]);ctx.strokeStyle='#ffffff22';ctx.lineWidth=3;ctx.stroke();ctx.setLineDash([]);
+  // start gantry over the checker line
+  (function(){
+    const x=CX[0],y=CY[0],px=NX[0]*(HW+14),py=NY[0]*(HW+14);
+    ctx.save();
+    ctx.fillStyle='#282c38';
+    ctx.fillRect(x+px-4,y+py-46,8,46);ctx.fillRect(x-px-4,y-py-46,8,46);
+    ctx.fillStyle='#3a3f52';
+    ctx.fillRect(x+px-4,y+py-46,8,6);ctx.fillRect(x-px-4,y-py-46,8,6);
+    ctx.strokeStyle='#282c38';ctx.lineWidth=10;
+    ctx.beginPath();ctx.moveTo(x+px,y+py-46);ctx.lineTo(x-px,y-py-46);ctx.stroke();
+    ctx.strokeStyle='#f5a623';ctx.lineWidth=10;ctx.setLineDash([18,18]);
+    ctx.beginPath();ctx.moveTo(x+px,y+py-46);ctx.lineTo(x-px,y-py-46);ctx.stroke();ctx.setLineDash([]);
+    ctx.restore();
+  })();
   // direction chevrons
   ctx.save();ctx.fillStyle='#00f6ff55';
   for(let i=0;i<N;i+=40){
