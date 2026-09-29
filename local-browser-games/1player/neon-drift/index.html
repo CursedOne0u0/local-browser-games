@@ -5,38 +5,40 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Neon Drift — Solo Time Trial</title>
 <style>
-:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f}
+:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
 #top{width:min(960px,96vw);display:flex;justify-content:space-between;align-items:center}
-.logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
-.logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
-#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);white-space:nowrap}
-#hud{display:flex;gap:12px;font-weight:800;font-size:13px;letter-spacing:.04em;flex-wrap:wrap;justify-content:flex-end}
+.logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
+.logo span{color:var(--c2)}
+#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
+#hud{display:flex;gap:12px;font-family:var(--mono);font-weight:800;font-size:13px;letter-spacing:.04em;flex-wrap:wrap;justify-content:flex-end;font-variant-numeric:tabular-nums}
 #hud b{color:var(--c1)}
 #hud #timeB{color:#ffe14d;min-width:92px;display:inline-block}
-#stage{position:relative;width:min(960px,96vw,calc((100dvh - 150px)*1.6));aspect-ratio:960/600;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18;box-shadow:0 0 40px #00f6ff22}
+#stage{position:relative;width:min(960px,96vw,calc((100dvh - 150px)*1.6));aspect-ratio:960/600;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px)}
-.card{width:min(460px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:22px;text-align:center;box-shadow:0 0 30px #00f6ff22;max-height:94%;overflow:auto}
-.card h1{margin:.2em 0;font-size:24px}
+.card{width:min(460px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:22px;text-align:center;max-height:94%;overflow:auto}
+.card h1{margin:.2em 0;font-size:24px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:12.5px;opacity:.85;line-height:1.7}
 .card .bestline{font-size:13px;margin:6px 0 0;color:#ffe14d;font-weight:800}
-button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,var(--c1),#7dffcb);box-shadow:0 0 18px #00f6ff88;width:100%;margin-top:10px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#04121a;background:var(--c1);box-shadow:none;width:100%;margin-top:10px}
+button svg{vertical-align:-3px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
 button:disabled{opacity:.35}
 button.danger{background:#ffffff14;color:#ff8f8f;box-shadow:none;border:1px solid #ff555555}
 #hint{font-size:12px;opacity:.65;text-align:center;line-height:1.7}
 #underbar{width:min(960px,96vw);display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.uibtn{width:auto;padding:8px 14px;margin:0;font-size:13px;background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a;flex:none}
+.uibtn{width:auto;padding:8px 14px;margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a;flex:none}
+.uibtn svg{vertical-align:-3px}
 .uibtn.off{opacity:.45}
 #tbtns{position:absolute;left:0;right:0;bottom:10px;display:none;justify-content:space-between;padding:0 12px;z-index:4;pointer-events:none}
 .tcluster{display:flex;gap:10px;pointer-events:auto}
 .tbtn{width:64px;height:64px;border-radius:50%;border:1px solid #ffffff44;background:#00000088;color:#fff;font-size:22px;font-weight:900;box-shadow:none;margin:0;padding:0;flex:none}
 .tbtn.gas{border-color:#7dff6a;color:#7dff6a}
 .tbtn.on{background:#ffffff33}
-kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
+kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
 #fsPrompt{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;width:auto;padding:10px 18px;margin:0;background:#00f6ff;color:#04121a;font-weight:900;font-size:14px;border-radius:99px;box-shadow:0 0 18px #00f6ff88;white-space:nowrap}
 @media (orientation:landscape) and (display-mode:fullscreen){#hint{display:none}}
@@ -57,7 +59,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.6</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.7</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
@@ -94,11 +96,11 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
     </div></div>
   </div>
   <div id="underbar">
-    <button id="pauseBtn" class="uibtn" title="Pause (P)">⏸ Pause</button>
-    <button id="ghostBtn" class="uibtn" title="Toggle rival ghost (G)">👻 Ghost: on</button>
-    <button id="menuBtn" class="uibtn" title="Back to menu (Esc)">📋 Menu</button>
-    <button id="fsBtn" class="uibtn" title="Fullscreen (F)">⛶ Fullscreen</button>
-    <button id="muteBtn" class="uibtn" title="Mute (M)">🔊 Sound</button>
+    <button id="pauseBtn" class="uibtn" title="Pause (P)"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg> Pause</button>
+    <button id="ghostBtn" class="uibtn" title="Toggle rival ghost (G)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 21V11a5 5 0 0110 0v10l-2.5-2-2.5 2-2.5-2L7 21z"/><circle cx="10" cy="11" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="11" r="1.2" fill="currentColor" stroke="none"/></svg> Ghost: on</button>
+    <button id="menuBtn" class="uibtn" title="Back to menu (Esc)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg> Menu</button>
+    <button id="fsBtn" class="uibtn" title="Fullscreen (F)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg> Fullscreen</button>
+    <button id="muteBtn" class="uibtn" title="Mute (M)"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg> Sound</button>
   </div>
   <div id="hint">Drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset • <kbd>T</kbd> restart lap • <kbd>G</kbd> ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu</div>
 </div>
@@ -111,6 +113,11 @@ const timeEl=document.getElementById('timeB'),lapEl=document.getElementById('lap
 const dayLabel=document.getElementById('dayLabel'),prevDay=document.getElementById('prevDay'),nextDay=document.getElementById('nextDay'),todayBtn=document.getElementById('todayBtn'),topList=document.getElementById('topList');
 const pauseBtn=document.getElementById('pauseBtn'),ghostBtn=document.getElementById('ghostBtn'),menuBtn=document.getElementById('menuBtn'),muteBtn=document.getElementById('muteBtn');
 const fsBtn=document.getElementById('fsBtn'),fsPrompt=document.getElementById('fsPrompt');
+const ICON_PAUSE='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+const ICON_PLAY='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>';
+const ICON_SND='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+const ICON_MUTE='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const ICON_GHOST='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 21V11a5 5 0 0110 0v10l-2.5-2-2.5 2-2.5-2L7 21z"/><circle cx="10" cy="11" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="11" r="1.2" fill="currentColor" stroke="none"/></svg>';
 // fullscreen: touch devices go fullscreen on sideways rotation (auto attempt +
 // tap prompt, since mobile browsers only grant fullscreen from a gesture)
 let autoFs=false;
@@ -140,11 +147,11 @@ window.addEventListener('resize',()=>{clearTimeout(rsT);rsT=setTimeout(onRotate,
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)autoFs=false;refreshFsUI();});
 // rival ghost: live magenta replay of the day's best, indexed by current-lap ticks
 let ghostOn=true;
-function refreshGhostBtn(){ghostBtn.textContent=ghostOn?'👻 Ghost: on':'👻 Ghost: off';ghostBtn.classList.toggle('off',!ghostOn);}
+function refreshGhostBtn(){ghostBtn.innerHTML=ICON_GHOST+' Ghost: '+(ghostOn?'on':'off');ghostBtn.classList.toggle('off',!ghostOn);}
 function toggleGhost(){ghostOn=!ghostOn;try{store&&store.setItem('neondrift_ghost',ghostOn?'1':'0');}catch(e){}refreshGhostBtn();}
 function toMenu(){
   mode='menu';paused=false;replay=null;
-  pauseBtn.textContent='⏸ Pause';
+  pauseBtn.innerHTML=ICON_PAUSE+' Pause';
   ov.style.display='flex';
 }
 let muted=false;
@@ -437,7 +444,7 @@ function selectDay(day){
   selectedDay=day;TRACK_ID=trackIdFor(day);
   CTRL=genPoints(day);buildTrack();
   mode='menu';paused=false;replay=null;
-  pauseBtn.textContent='⏸ Pause';
+  pauseBtn.innerHTML=ICON_PAUSE+' Pause';
   lapCenter=placeOnGrid();lastRaw=lapCenter;prog=0;lapStartProg=0;maxProg=0;lastQuarter=0;
   lapCount=1;curTicks=0;recSamples=[];hist=[];parts=[];
   best=loadBest(day);lapRuns=loadRuns(day);lastDeltaMs=null;qStart=0;refreshBestUI();
@@ -574,9 +581,9 @@ function draw(t){
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();keys[k]=true;
   if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
-  if(k==='m'){muted=!muted;muteBtn.textContent=muted?'🔇 Muted':'🔊 Sound';}
+  if(k==='m'){muted=!muted;muteBtn.innerHTML=muted?ICON_MUTE+' Muted':ICON_SND+' Sound';}
   if(k==='escape'){toMenu();beep(500,.06);}
-  if(k==='p'&&(mode==='race'||mode==='countdown')){paused=!paused;pauseBtn.textContent=paused?'▶ Resume':'⏸ Pause';}
+  if(k==='p'&&(mode==='race'||mode==='countdown')){paused=!paused;pauseBtn.innerHTML=paused?ICON_PLAY+' Resume':ICON_PAUSE+' Pause';}
   if(k==='g'){toggleGhost();showToast(ghostOn?'👻 Rival ghost on':'👻 Rival ghost off');}
   if(k==='f'){toggleFs();}
   if(k==='r'&&mode==='race'&&!paused)resetToTrack();
@@ -610,8 +617,8 @@ clearBtn.onclick=()=>{wipeDay(selectedDay);best=null;refreshBestUI();showToast('
 prevDay.onclick=()=>{shiftDay(-1);beep(600,.06);};
 nextDay.onclick=()=>{shiftDay(1);beep(600,.06);};
 todayBtn.onclick=()=>{selectDay(todayStr());beep(700,.07);};
-document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;pauseBtn.textContent=paused?'▶ Resume':'⏸ Pause';}beep(600,.06);};
-document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;muteBtn.textContent=muted?'🔇 Muted':'🔊 Sound';if(!muted)beep(700,.07);};
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();if(mode==='race'||mode==='countdown'){paused=!paused;pauseBtn.innerHTML=paused?ICON_PLAY+' Resume':ICON_PAUSE+' Pause';}beep(600,.06);};
+document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;muteBtn.innerHTML=muted?ICON_MUTE+' Muted':ICON_SND+' Sound';if(!muted)beep(700,.07);};
 menuBtn.onclick=e=>{e.stopPropagation();toMenu();beep(500,.06);};
 ghostBtn.onclick=e=>{e.stopPropagation();toggleGhost();beep(700,.06);};
 fsBtn.onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};

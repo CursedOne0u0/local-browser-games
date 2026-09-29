@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Echo Hunt — LAN 2-8P</title>
 <style>
-:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#02030a}
+:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#02030a;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#0a1230 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;position:relative}
 #topbar{position:absolute;top:6px;left:8px;right:8px;display:flex;align-items:center;justify-content:space-between;z-index:4;pointer-events:none}
 #topbar button{pointer-events:auto}
-#fsBtn{width:auto;margin:0;padding:8px 14px;font-size:16px;flex:none}
-.logo{font-weight:900;letter-spacing:.1em;font-size:clamp(14px,2.6vw,20px);text-shadow:0 0 12px var(--c1)}
-.logo span{color:#9adcff;text-shadow:0 0 12px #9adcff}
-#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px;text-shadow:0 0 8px var(--c1);white-space:nowrap}
-#score{font-weight:900;font-size:clamp(16px,3vw,26px)}
-#names{position:absolute;top:44px;left:0;right:0;text-align:center;font-size:12px;opacity:.85;z-index:4;pointer-events:none}
+#fsBtn{width:auto;margin:0;padding:8px 14px;flex:none;display:flex;align-items:center;justify-content:center}
+.logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
+.logo span{color:#9adcff}
+#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
+#score{font-family:var(--mono);font-weight:900;font-variant-numeric:tabular-nums;font-size:clamp(16px,3vw,26px)}
+#names{position:absolute;top:44px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.06em;opacity:.85;z-index:4;pointer-events:none}
 #rolebar{position:absolute;top:62px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;letter-spacing:.04em;z-index:4;pointer-events:none}
 #stamwrap{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);width:min(420px,80vw);height:12px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff2a;overflow:hidden;z-index:4;pointer-events:none}
 #stamfill{height:100%;width:100%;background:linear-gradient(90deg,#00f6ff,#7dffcb);transition:width .1s linear}
@@ -26,7 +26,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #terror{position:absolute;inset:0;pointer-events:none;z-index:3;opacity:0;background:radial-gradient(ellipse at center,transparent 46%,rgba(255,20,20,.5) 100%)}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
 .card{width:min(440px,94%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:96%;overflow:auto}
-.card h1{margin:.2em 0;font-size:22px}
+.card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:13px;opacity:.8;line-height:1.6}
 #slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
 .slot{padding:7px;border-radius:10px;background:#ffffff0d;border:1px dashed #ffffff33;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -36,11 +36,12 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #botRow{display:none;align-items:center;justify-content:center;gap:6px;margin:10px 0;font-size:13px;font-weight:800}
 #botRow button{width:auto;margin:0;padding:8px 16px;font-size:15px;flex:none}
 input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#050816;color:#fff;font-size:16px;outline:none;margin:8px 0}
-button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,#9adcff,#7dffcb);box-shadow:0 0 18px #9adcff88;width:100%;margin-top:8px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#04121a;background:#9adcff;box-shadow:none;width:100%;margin-top:8px}
+button svg{vertical-align:-3px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
 button:disabled{opacity:.4}
 #hint{position:absolute;bottom:6px;left:0;right:0;font-size:11px;opacity:.65;text-align:center;line-height:1.6;z-index:4;pointer-events:none}
-kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
+kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
 /* wire minigame */
 #pz{position:absolute;inset:0;display:none;flex-direction:column;background:rgba(2,3,10,.96);z-index:5;padding:12px;gap:8px}
@@ -57,7 +58,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.2</div><div id="score">0 : 0</div><button id="fsBtn" title="Fullscreen">⛶</button></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.2</div><div id="score">0 : 0</div><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
@@ -81,7 +82,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
     </div></div>
   </div>
-    <div id="hint">tap ⛶ for fullscreen (landscape best) • <kbd>WASD</kbd>/<kbd>arrows</kbd> swim • touch: drag anywhere • divers: hold a node 2s to rewire • heartbeat = hunter close — RUN</div>
+    <div id="hint">tap the fullscreen button (landscape best) • <kbd>WASD</kbd>/<kbd>arrows</kbd> swim • touch: drag anywhere • divers: hold a node 2s to rewire • heartbeat = hunter close — RUN</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');

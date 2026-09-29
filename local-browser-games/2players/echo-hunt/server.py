@@ -9,7 +9,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3003"))
-VERSION = "1.3"  # bump on every update; shown on the site
+VERSION = "1.4"  # bump on every update; shown on the site
 MAX_PLAYERS = 8
 WIN_ROUNDS = 3
 PUBLIC = Path(__file__).parent / "public"
