@@ -27,6 +27,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
 .card{width:min(440px,94%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:96%;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
+.card h1::after{content:"";display:block;height:4px;margin:10px auto 0;width:150px;border-radius:2px;background:repeating-linear-gradient(90deg,#9adcff 0 10px,transparent 10px 20px)}
 .card p{font-size:13px;opacity:.8;line-height:1.6}
 #slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
 .slot{padding:7px;border-radius:10px;background:#ffffff0d;border:1px dashed #ffffff33;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -334,9 +335,9 @@ function draw(now,dt){
   const R=myRole==='diver'?R_DIVER:R_WARDEN;
   const playing=state&&(state.phase==='playing'||state.phase==='countdown'||state.phase==='round');
   if(playing){
-    // subject layer (fogged): pillars + opponents-live + nodes-full(divers)
+    // subject layer (fogged): flat slabs with phosphor edge ticks
     (state.pillars||[]).forEach(p=>{
-      ctx.save();ctx.shadowColor='#9adcff';ctx.shadowBlur=8;ctx.fillStyle='#0d1626';
+      ctx.save();ctx.fillStyle='#0d1626';
       ctx.fillRect(p.x,p.y,p.w,p.h);ctx.strokeStyle='#9adcff66';ctx.lineWidth=2;ctx.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);ctx.restore();
     });
     // live dots, opponents only (self drawn after fog so never hidden)
@@ -348,18 +349,23 @@ function draw(now,dt){
       if(myRole==='diver'&&rl!=='hunter')return; // fellow divers drawn dim-global below
       if(rl==='diver'&&!r.alive)return;
       const col=rl==='hunter'?'#ff6b6b':'#00f6ff';
-      ctx.save();ctx.shadowColor=col;ctx.shadowBlur=14;ctx.fillStyle=col;
+      ctx.save();ctx.fillStyle=col;
       ctx.beginPath();ctx.arc(r.x,r.y,15,0,7);ctx.fill();
-      ctx.shadowBlur=0;ctx.fillStyle='#0a1420';
+      ctx.fillStyle='#0a1420';
       ctx.beginPath();ctx.arc(r.x,r.y,7,0,7);ctx.fill();ctx.restore();
-      if(rl==='hunter'){ctx.save();ctx.font='bold 15px sans-serif';ctx.textAlign='center';ctx.fillText('🛰️',r.x,r.y-24);ctx.restore();}
+      // warden sigil: ring + crossed blades over hunters (no emoji)
+      if(rl==='hunter'){ctx.save();ctx.strokeStyle='#ff6b6b';ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(r.x,r.y-24,9,0,7);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(r.x-6,r.y-30);ctx.lineTo(r.x+6,r.y-18);ctx.moveTo(r.x+6,r.y-30);ctx.lineTo(r.x-6,r.y-18);ctx.stroke();ctx.restore();}
     });
     // nodes full (divers; fogged outside radius)
     if(myRole==='diver'){
       (state.nodes||[]).forEach(nd=>{
         ctx.save();ctx.translate(nd.x,nd.y);
-        ctx.shadowColor='#ffe14d';ctx.shadowBlur=16;ctx.strokeStyle='#ffe14d';ctx.lineWidth=3;
+        ctx.strokeStyle='#ffe14d';ctx.lineWidth=3;
         ctx.beginPath();ctx.arc(0,0,20,0,7);ctx.stroke();
+        ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(0,0,14,0,7);ctx.stroke();
         ctx.fillStyle='#ffe14d';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText(nd.done+'/3',0,1);ctx.restore();
       });
@@ -379,9 +385,9 @@ function draw(now,dt){
       const r=state.runners[you-1];
       const col=myRole==='hunter'?'#ff6b6b':'#00f6ff';
       ctx.save();ctx.globalAlpha=(myRole==='diver'&&!r.alive)?.45:1;
-      ctx.shadowColor=col;ctx.shadowBlur=16;ctx.fillStyle=col;
+      ctx.fillStyle=col;
       ctx.beginPath();ctx.arc(r.x,r.y,15,0,7);ctx.fill();
-      ctx.shadowBlur=0;ctx.fillStyle='#0a1420';
+      ctx.fillStyle='#0a1420';
       ctx.beginPath();ctx.arc(r.x,r.y,7,0,7);ctx.fill();
       ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(r.x,r.y,23,0,7);ctx.stroke();ctx.restore();
@@ -423,7 +429,6 @@ function draw(now,dt){
       const age=rg.age,rad=age*260;
       if(rad>420)return;
       ctx.save();ctx.globalAlpha=Math.max(0,.7-age*.45);ctx.strokeStyle='#9adcff';ctx.lineWidth=2.5;
-      ctx.shadowColor='#9adcff';ctx.shadowBlur=10;
       ctx.beginPath();ctx.arc(rg.x,rg.y,rad,0,7);ctx.stroke();ctx.restore();
     });
     // blips (hunters)
@@ -433,7 +438,6 @@ function draw(now,dt){
         const a=Math.max(0,Math.min(1,b.left/2.5));
         ctx.save();ctx.globalAlpha=a*(b.str>1?1:.55+b.str*.3);
         ctx.fillStyle=b.str>1?'#ff9f1c':'#ff5555';
-        ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=14;
         ctx.beginPath();ctx.arc(b.x,b.y,b.str>1?9:6,0,7);ctx.fill();ctx.restore();
       });
     }
@@ -442,8 +446,8 @@ function draw(now,dt){
   }
   parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;const d=Math.pow(0.3,dt);p.vx*=d;p.vy*=d;p.life-=dt*1.1;ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
   ctx.restore(); // end camera
-  if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 44px system-ui';ctx.shadowColor='#9adcff';ctx.shadowBlur=26;ctx.fillStyle='#fff';ctx.fillText(flash,vw/2,vh/2);ctx.restore();}
-  else if(state&&state.phase==='countdown'){ctx.save();ctx.textAlign='center';ctx.font='700 20px system-ui';ctx.fillStyle='#ffffffaa';ctx.fillText('roles dealt — check your banner!',vw/2,90);ctx.restore();}
+  if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 44px ui-monospace,Menlo,monospace';ctx.fillStyle='#fff';ctx.fillText(flash,vw/2,vh/2);ctx.restore();}
+  else if(state&&state.phase==='countdown'){ctx.save();ctx.textAlign='center';ctx.font='700 20px ui-monospace,Menlo,monospace';ctx.fillStyle='#ffffffaa';ctx.fillText('roles dealt — check your banner!',vw/2,90);ctx.restore();}
 }
 const NODE_R_HINT=30;
 poll();requestAnimationFrame(frame);
