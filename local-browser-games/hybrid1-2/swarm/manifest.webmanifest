@@ -3,8 +3,8 @@
   "short_name": "Swarm",
   "start_url": "index.html",
   "display": "fullscreen",
-  "background_color": "#05060f",
-  "theme_color": "#05060f",
+  "background_color": "#0f0705",
+  "theme_color": "#0f0705",
   "icons": [
     {
       "src": "icon.svg",
