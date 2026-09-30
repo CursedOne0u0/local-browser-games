@@ -138,7 +138,7 @@ function paintSettings(st){
   document.querySelectorAll('#obRow button').forEach(b=>b.classList.toggle('sel',(b.dataset.ob==='1')===st.obstacle));
   document.getElementById('duelSub').textContent='— first to '+st.win;
 }
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k))e.preventDefault();if(k==='e'&&document.activeElement!==nameI)doOverdrive();if(/^[1-6]$/.test(k)&&document.activeElement!==nameI)sendTaunt(TAUNT_KEYS[+k-1]);if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);if(k==='p'&&document.activeElement!==nameI)votePause();});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k))e.preventDefault();if(k==='e'&&document.activeElement!==nameI)doOverdrive();if(/^[1-6]$/.test(k)&&document.activeElement!==nameI)sendTaunt(TAUNT_KEYS[+k-1]);if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);if(k==='p'&&document.activeElement!==nameI)votePause();if(k==='escape')votePause();});
 async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(1000,.15,'sawtooth',.14);}
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
 document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
