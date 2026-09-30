@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#02030a">
 <title>Echo Hunt — LAN 2-8P</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#02030a;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
@@ -63,7 +64,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.2</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.10</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
@@ -141,6 +142,25 @@ document.getElementById('botPlus').onclick=async()=>{await api('/api/bot',{clien
 document.getElementById('botMinus').onclick=async()=>{await api('/api/bot',{clientId:cid,n:Math.max(0,(botRow._n||0)-1)});beep(500,.06);};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);if(k==='p'&&document.activeElement!==nameI)votePause();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+// 🎮 gamepad: left stick/dpad → move, A/RT → action, Start → pause (@30Hz so menus work too)
+const GPACT=[];
+let _gpA=false,_gpS=false;
+function gpTick(){
+  let gp=null;try{const gs=navigator.getGamepads?navigator.getGamepads():[];for(const g of gs){if(g&&g.connected){gp=g;break;}}}catch(e){}
+  for(const k of ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','enter'])if(keys[k+'__gp']){keys[k]=false;keys[k+'__gp']=false;}
+  if(!gp)return;
+  const ax=gp.axes[0]||0,ay=gp.axes[1]||0,b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const up=b(12)||ay<-0.28,dn=b(13)||ay>0.28,lf=b(14)||ax<-0.28,rt=b(15)||ax>0.28;
+  const set=k=>{keys[k]=true;keys[k+'__gp']=true;};
+  if(up){set('w');set('arrowup');}if(dn){set('s');set('arrowdown');}if(lf){set('a');set('arrowleft');}if(rt){set('d');set('arrowright');}
+  const a=b(0)||b(7),st=b(9);
+  if(a){set(' ');if(!_gpA)for(const k of GPACT)window.dispatchEvent(new KeyboardEvent('keydown',{key:k}));}
+  else if(_gpA)for(const k of GPACT)window.dispatchEvent(new KeyboardEvent('keyup',{key:k}));
+  _gpA=a;
+  if(st&&!_gpS)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));
+  _gpS=st;
+}
+setInterval(gpTick,33);
 function input(){
   let x=0,y=0;
   if(keys['a']||keys['arrowleft'])x-=1;

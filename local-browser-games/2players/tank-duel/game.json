@@ -1,1 +1,13 @@
-{"blurb": "Maze tanks on a fresh symmetric map every round. Shells ricochet six times, weapon pickups, railguns, homing shells and mines. First to 5 rounds.", "dir": "2players/tank-duel", "emoji": "🤖", "entry": "README.md", "keys": "Run <code>python3 server.py</code> in <code>2players/tank-duel/</code>, then open the printed URL on both devices.", "kind": "lan", "order": 20, "port": 3001, "screenshot": "screenshot.png", "title": "Tank Duel", "version": "1.17"}
+{
+  "blurb": "Maze tanks on a fresh symmetric map every round. Shells ricochet six times, weapon pickups, railguns, homing shells and mines. First to 5 rounds.",
+  "dir": "2players/tank-duel",
+  "emoji": "🤖",
+  "entry": "README.md",
+  "keys": "Run <code>python3 server.py</code> in <code>2players/tank-duel/</code>, then open the printed URL on both devices. · 🎮 pad supported",
+  "kind": "lan",
+  "order": 20,
+  "port": 3001,
+  "screenshot": "screenshot.png",
+  "title": "Tank Duel",
+  "version": "1.18"
+}

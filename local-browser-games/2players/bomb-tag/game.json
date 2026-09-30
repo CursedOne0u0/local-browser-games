@@ -1,1 +1,13 @@
-{"blurb": "Hot potato in an arena. One ticks, both run — tag to pass it. The holder is slower, dash has a 3s cooldown, fuse is 8–14s. First to 5 blasts.", "dir": "2players/bomb-tag", "emoji": "💣", "entry": "README.md", "keys": "Run <code>python3 server.py</code> in <code>2players/bomb-tag/</code>, then open the printed URL on both devices.", "kind": "lan", "order": 30, "port": 3002, "screenshot": "screenshot.png", "title": "Bomb Tag", "version": "1.17"}
+{
+  "blurb": "Hot potato in an arena. One ticks, both run — tag to pass it. The holder is slower, dash has a 3s cooldown, fuse is 8–14s. First to 5 blasts.",
+  "dir": "2players/bomb-tag",
+  "emoji": "💣",
+  "entry": "README.md",
+  "keys": "Run <code>python3 server.py</code> in <code>2players/bomb-tag/</code>, then open the printed URL on both devices. · 🎮 pad supported",
+  "kind": "lan",
+  "order": 30,
+  "port": 3002,
+  "screenshot": "screenshot.png",
+  "title": "Bomb Tag",
+  "version": "1.18"
+}

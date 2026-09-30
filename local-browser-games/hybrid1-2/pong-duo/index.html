@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Pong Duo — 1P vs AI or 2P Local</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
@@ -40,7 +46,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.7</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
+  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.8</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
   <div id="rally">RALLY 0</div>
   <div id="mode">menu</div>
   <div id="stage">
@@ -132,6 +138,27 @@ function launch(){if(!ball.stuck)return;const a=(Math.random()*.6-.3);const s=40
 function burst(x,y,c,n=24){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*500,vy:(Math.random()-.5)*500,life:1,color:c});}
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown'].includes(k))e.preventDefault();if(k===' '){if(!running||over)return;if(countdown>0)return;if(ball.stuck)launch();else togglePauseMenu();}if(k==='escape'||k==='p')togglePauseMenu();if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+// 🎮 gamepads: pad0 → P1 (W/S), pad1 → P2 (↑/↓ in 2P); A = launch/pause, Start = pause menu
+let _gpA=false,_gpS=false;
+function _gpGet(i){try{const gs=navigator.getGamepads?navigator.getGamepads():[];let n=0;for(const g of gs){if(g&&g.connected){if(n===i)return g;n++;}}}catch(e){}return null;}
+function gpTick(){
+  for(const k of ['w','s','arrowup','arrowdown',' '])if(keys[k+'__gp']){keys[k]=false;keys[k+'__gp']=false;}
+  const set=k=>{keys[k]=true;keys[k+'__gp']=true;};
+  let a=false,st=false;
+  const g0=_gpGet(0);
+  if(g0){const ay=g0.axes[1]||0,b=j=>!!(g0.buttons[j]&&g0.buttons[j].pressed);
+    if(b(12)||ay<-0.28)set('w');if(b(13)||ay>0.28)set('s');a=a||b(0)||b(7);st=st||b(9);}
+  const g1=_gpGet(1);
+  if(g1){const ay=g1.axes[1]||0,b=j=>!!(g1.buttons[j]&&g1.buttons[j].pressed);
+    if(b(12)||ay<-0.28)set('arrowup');if(b(13)||ay>0.28)set('arrowdown');a=a||b(0)||b(7);st=st||b(9);}
+  if(a){set(' ');if(!_gpA)window.dispatchEvent(new KeyboardEvent('keydown',{key:' '}));}
+  else if(_gpA)window.dispatchEvent(new KeyboardEvent('keyup',{key:' '}));
+  _gpA=a;
+  if(st&&!_gpS){window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));}
+  _gpS=st;
+}
+setInterval(gpTick,33);
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height,left:(cx-r.left)<r.width/2};}
 function ptrSide(e){const cx=(e.touches?e.touches[0].clientX:e.clientX);const cy=(e.touches?e.touches[0].clientY:e.clientY);return ptrFromClient(cx,cy);}
 let drag=null;

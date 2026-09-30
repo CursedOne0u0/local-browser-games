@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Neon Drift — Solo Time Trial</title>
 <style>
 :root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
@@ -62,7 +68,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.10</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.11</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
@@ -697,6 +703,26 @@ window.addEventListener('keydown',e=>{
   if(k==='enter'&&mode==='menu')startRace();
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+// 🎮 gamepad: left stick/dpad → move, A/RT → action, Start → pause (@30Hz so menus work too)
+const GPACT=[' ','Enter'];
+let _gpA=false,_gpS=false;
+function gpTick(){
+  let gp=null;try{const gs=navigator.getGamepads?navigator.getGamepads():[];for(const g of gs){if(g&&g.connected){gp=g;break;}}}catch(e){}
+  for(const k of ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','enter'])if(keys[k+'__gp']){keys[k]=false;keys[k+'__gp']=false;}
+  if(!gp)return;
+  const ax=gp.axes[0]||0,ay=gp.axes[1]||0,b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const up=b(12)||ay<-0.28,dn=b(13)||ay>0.28,lf=b(14)||ax<-0.28,rt=b(15)||ax>0.28;
+  const set=k=>{keys[k]=true;keys[k+'__gp']=true;};
+  if(up){set('w');set('arrowup');}if(dn){set('s');set('arrowdown');}if(lf){set('a');set('arrowleft');}if(rt){set('d');set('arrowright');}
+  const a=b(0)||b(7),st=b(9);
+  if(a){set(' ');if(!_gpA)for(const k of GPACT)window.dispatchEvent(new KeyboardEvent('keydown',{key:k}));}
+  else if(_gpA)for(const k of GPACT)window.dispatchEvent(new KeyboardEvent('keyup',{key:k}));
+  _gpA=a;
+  if(st&&!_gpS)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));
+  _gpS=st;
+}
+setInterval(gpTick,33);
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 function bindHold(el,on,off){
   const s=e=>{e.preventDefault();el.classList.add('on');on();};
   const x=e=>{e.preventDefault();el.classList.remove('on');off();};
