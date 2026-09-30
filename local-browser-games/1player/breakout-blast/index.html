@@ -41,7 +41,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BREAKOUT <span>BLAST</span></div>
-    <div id="verBadge">v1.12</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.13</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>SCORE <b id="score">0</b></div><div>COMBO <b id="comboB">x1</b></div><div id="heatWrap" title="Combo heat"><div id="heatFill"></div></div><div>LIVES <b id="lives">3</b></div><div>LEVEL <b id="level">1</b></div><div>BEST <b id="best">0</b></div></div>
   </div>
   <div id="stage">
@@ -60,7 +60,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     </div></div>
   </div>
 <  <div id="hint">Space = launch • laser auto-fires 5x every 1.5s • sticky: ball sticks, Space releases • P pause • M mute • F fullscreen</div>
-  <div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div>
+  <div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button><button id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <button id="resumeBtn">Resume</button>
@@ -573,6 +573,7 @@ document.getElementById('pfsBtn').onclick=e=>{e.stopPropagation();toggleFs();bee
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();togglePauseMenu();beep(600,.06);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;if(!muted)beep(700,.07);};
 document.getElementById('fsBtn').onclick=e=>{e.stopPropagation();toggleFs();beep(700,.06);};
+document.getElementById('menuBtn').onclick=e=>{e.stopPropagation();showMenu();beep(500,.06);};
 if(isTouch){document.getElementById('hint').textContent='Hold LEFT / RIGHT half to move • tap = launch • laser auto-fires 5x • rotate sideways for fullscreen';}
 document.getElementById('howBtn')?.remove?.();
 requestAnimationFrame(loop);draw(performance.now());
