@@ -54,10 +54,11 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <input id="name" maxlength="32" placeholder="Your name…" value="Player">
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
+      <button id="localBtn" class="ghost" style="display:none">👥 P2 join — same keyboard</button>
       <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
-  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> run • <kbd>Space</kbd> dash (3s cooldown) • orange pads sling you along their arrows • touch: drag to run, button to dash</div>
+  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> run • <kbd>Space</kbd> dash (3s cooldown) • local 2P: P1 <kbd>WASD</kbd>+<kbd>Space</kbd>, P2 arrows+<kbd>Enter</kbd> • touch: drag to run, button to dash</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <p id="pveilBy"></p>
@@ -73,7 +74,9 @@ const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=
 try{nameI.value=localStorage.getItem('bombtag_name')||'Player';}catch(e){}
 nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',nameI.value);}catch(e){}});
 const cid=(()=>{try{let id=sessionStorage.getItem('bombtag_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('bombtag_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
-window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
+window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));if(localCid)navigator.sendBeacon('/api/leave',JSON.stringify({clientId:localCid}));}catch(e){}}});
+// local 2P: one browser drives both seats — P1 on WASD+Space, P2 on arrows+Enter
+let localCid=null,lastSent2='',lastMoveSend2=0;
 let you=0,joined=false,state=null,synced=false,lastPhase='',lastCd=0,lastPassId=0,lastBoomId=0,lastBoostId=0,lastFuseSec=99,lastFrame=performance.now(),overShown=false,flash='',flashT=0;
 let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false,dashId=null,prevDash=[0,0],prevCd=[0,0];
 const DUNES=[
@@ -128,25 +131,46 @@ function setMuted(m){muted=m;try{window.localStorage&&window.localStorage.setIte
 function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
-joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
+joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);document.getElementById('localBtn').style.display=(d.you===0||localCid)?'none':'';if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
+document.getElementById('localBtn').onclick=async()=>{
+  if(localCid||!joined||!you)return;
+  const lc=cid+'#local2';
+  const d=await api('/api/join',{clientId:lc,name:(nameI.value||'Player').slice(0,24)+' (P2)'});
+  if(d.you===0){showToast('Room full — no seat for P2 👀');return;}
+  localCid=lc;
+  await api('/api/ready',{clientId:lc});
+  document.getElementById('localBtn').style.display='none';
+  showToast('👥 Local 2P! P1: WASD+Space • P2: arrows+Enter');beep(700,.07);
+};
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
 async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(600,.06);}
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
 document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);if(k==='p'&&document.activeElement!==nameI)votePause();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-function input(){
+function inputFor(p){
   let x=0,y=0,fire=false;
-  if(keys['a']||keys['arrowleft'])x-=1;
-  if(keys['d']||keys['arrowright'])x+=1;
-  if(keys['w']||keys['arrowup'])y-=1;
-  if(keys['s']||keys['arrowdown'])y+=1;
-  if(keys[' ']||keys['enter']||keys['e'])fire=true;
-  if(stick){x+=stick.x;y+=stick.y;}
-  if(dashTouch)fire=true;
+  if(p===1){
+    if(keys['a'])x-=1;
+    if(keys['d'])x+=1;
+    if(keys['w'])y-=1;
+    if(keys['s'])y+=1;
+    if(keys[' ']||keys['e'])fire=true;
+  }else{
+    if(keys['arrowleft'])x-=1;
+    if(keys['arrowright'])x+=1;
+    if(keys['arrowup'])y-=1;
+    if(keys['arrowdown'])y+=1;
+    if(keys['enter'])fire=true;
+  }
+  if(p===1){
+    if(stick){x+=stick.x;y+=stick.y;}
+    if(dashTouch)fire=true;
+  }
   const n=Math.hypot(x,y);if(n>1){x/=n;y/=n;}
   return {x,y,fire};
 }
+function input(){return inputFor(1);}
 cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W;if(x>W*0.6){if(dashId===null){dashTouch=true;dashId=t.identifier;}}else if(!stick)stick={ox:x,oy:(t.clientY-r.top)/r.height*H,x:0,y:0,id:t.identifier};}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;stick.x=Math.max(-1,Math.min(1,(x-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(y-stick.oy)/70));}}e.preventDefault();},{passive:false});
 function endTouchBomb(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===dashId){dashTouch=false;dashId=null;}}}
@@ -197,6 +221,14 @@ function frame(now){
     if(key!==lastSent||now-lastMoveSend>100){
       lastSent=key;lastMoveSend=now;
       fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,...inp})}).catch(()=>{});
+    }
+    if(localCid){
+      const inp2=(state&&state.phase==='playing')?inputFor(2):{x:0,y:0,fire:false};
+      const key2=inp2.x.toFixed(2)+','+inp2.y.toFixed(2)+','+inp2.fire;
+      if(key2!==lastSent2||now-lastMoveSend2>100){
+        lastSent2=key2;lastMoveSend2=now;
+        fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:localCid,...inp2})}).catch(()=>{});
+      }
     }
   }
   draw(now,dt);
