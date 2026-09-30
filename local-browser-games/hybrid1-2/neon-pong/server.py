@@ -2,13 +2,36 @@
 """Neon Pong Showdown — LAN 2-player server. Zero dependencies, stdlib only.
 Run:  python3 server.py   (then open the printed LAN URL on both laptops)
 """
-import json, time, math, random, threading, socket, os
+import json, time, math, random, threading, socket, os, sys
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 import urllib.parse
+try:
+    from qrcodegen import QrCode as _QrCode  # vendored Nayuki encoder (MIT), stdlib-only
+except Exception:
+    _QrCode = None
+def print_qr(url):
+    """ASCII QR of the LAN URL for phone scanning. ANSI card on a tty, plain fallback."""
+    if _QrCode is None:
+        return
+    try:
+        qr = _QrCode.encode_text(url, _QrCode.Ecc.MEDIUM)
+    except Exception:
+        return
+    n, b = qr.get_size(), 2
+    tty = sys.stdout.isatty()
+    for y in range(-b, n + b):
+        row = ""
+        for x in range(-b, n + b):
+            dark = qr.get_module(x, y)
+            if tty:
+                row += "\x1b[40m  \x1b[0m" if dark else "\x1b[47m  \x1b[0m"
+            else:
+                row += "##" if dark else "  "
+        print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.32"  # bump on every update; shown on the site
+VERSION = "1.33"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
@@ -610,7 +633,11 @@ if __name__=="__main__":
     srv=ThreadingHTTPServer(("0.0.0.0",PORT),Handler)
     srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle delay on small packets
     print(f"\n  NEON PONG SHOWDOWN running!\n  On this laptop:  http://localhost:{PORT}")
-    for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
+    _ips = lan_ips()
+    for ip in _ips: print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
+    if _ips:
+        print("  Scan to join (same WiFi):")
+        print_qr(f"http://{_ips[0]}:{PORT}")
     print(f"\n  1. Host runs:  python3 server.py\n  2. Friend opens the LAN URL above (same WiFi)\n  3. Both enter names -> Join -> Ready -> first to {game['settings']['win']}, win by 2 (changeable in lobby)!\n")
     try: srv.serve_forever()
     except KeyboardInterrupt: print("\nbye!")

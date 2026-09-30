@@ -2,13 +2,36 @@
 """Tank Duel — LAN 2-player maze tanks. Zero dependencies, stdlib only.
 Run:  python3 server.py   (both players open the printed LAN URL, same WiFi)
 """
-import json, time, math, random, threading, socket, os
+import json, time, math, random, threading, socket, os, sys
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 import urllib.parse
+try:
+    from qrcodegen import QrCode as _QrCode  # vendored Nayuki encoder (MIT), stdlib-only
+except Exception:
+    _QrCode = None
+def print_qr(url):
+    """ASCII QR of the LAN URL for phone scanning. ANSI card on a tty, plain fallback."""
+    if _QrCode is None:
+        return
+    try:
+        qr = _QrCode.encode_text(url, _QrCode.Ecc.MEDIUM)
+    except Exception:
+        return
+    n, b = qr.get_size(), 2
+    tty = sys.stdout.isatty()
+    for y in range(-b, n + b):
+        row = ""
+        for x in range(-b, n + b):
+            dark = qr.get_module(x, y)
+            if tty:
+                row += "\x1b[40m  \x1b[0m" if dark else "\x1b[47m  \x1b[0m"
+            else:
+                row += "##" if dark else "  "
+        print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.19"  # bump on every update; shown on the site
+VERSION = "1.20"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 
@@ -548,7 +571,11 @@ if __name__=="__main__":
     srv=ThreadingHTTPServer(("0.0.0.0",PORT),Handler)
     srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle delay on small packets
     print(f"\n  TANK DUEL running!\n  On this laptop:  http://localhost:{PORT}")
-    for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
+    _ips = lan_ips()
+    for ip in _ips: print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
+    if _ips:
+        print("  Scan to join (same WiFi):")
+        print_qr(f"http://{_ips[0]}:{PORT}")
     print(f"\n  Controls: W/S drive, A/D rotate, SPACE fire (arrows work too)\n  First to {WIN_ROUNDS} rounds wins!\n")
     try: srv.serve_forever()
     except KeyboardInterrupt: print("\nbye!")
