@@ -1,0 +1,15 @@
+{
+  "name": "Swarm Survival",
+  "short_name": "Swarm",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "background_color": "#05060f",
+  "theme_color": "#05060f",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

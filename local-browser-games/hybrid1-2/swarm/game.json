@@ -1,0 +1,13 @@
+{
+  "blurb": "Top-down co-op arena survival: move + autofire only. Solo, solo + AI companion, or 2P local. Survive 50s waves, draft upgrades, bomb the swarm, revive your partner.",
+  "dir": "hybrid1-2/swarm",
+  "emoji": "🛸",
+  "entry": "index.html",
+  "keys": "<b>Solo:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>E</kbd> bomb · <b>2P:</b> P1 <kbd>WASD</kbd> vs P2 <kbd>↑←↓→</kbd> + <kbd>/</kbd> bomb · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> / <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> · <kbd>Space</kbd> start · <kbd>M</kbd> mute · 🎮 dual pads",
+  "kind": "playable",
+  "order": 40,
+  "players": "Solo or 2P",
+  "screenshot": "screenshot.png",
+  "title": "Swarm Survival",
+  "version": "1.0"
+}
