@@ -44,7 +44,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><div class="logo">SWARM <span>SURVIVAL</span></div><div id="verBadge">v1.0</div><div id="score">0</div><div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></div></div>
+  <div id="top"><div class="logo">SWARM <span>SURVIVAL</span></div><div id="verBadge">v1.1</div><div id="score">0</div><div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></div></div>
   <div id="mode">menu</div>
   <div id="stage">
     <canvas id="cv" width="2560" height="1440"></canvas>
@@ -68,7 +68,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div style="margin-top:6px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
-  <div id="hint"><kbd>WASD</kbd> P1 · <kbd>←↑↓→</kbd> P2 · <kbd>E</kbd>/<kbd>/</kbd> bomb · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> P1 / <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> P2 · <kbd>Space</kbd> start · <kbd>P</kbd>/<kbd>Esc</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
+  <div id="hint"><kbd>WASD</kbd> P1 · <kbd>←↑↓→</kbd> P2 · <kbd>E</kbd>/<kbd>/</kbd> bomb · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> P1 / <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> P2 / tap cards · <kbd>Space</kbd> start · <kbd>P</kbd>/<kbd>Esc</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <div class="row"><button id="resumeBtn">Resume</button></div>
@@ -92,7 +92,7 @@ let bombs=1,score=0,kills=0,shakeAmp=0,bombFlash=0,bannerTxt='',bannerT=0;
 let draft=null,aiPickT=0;
 let keys={},bombKeyP1=false,bombKeyP2=false;
 let touchT1=null,touchT2=null;
-const touchMap=new Map();
+const touchMap=new Map();const tapDown=new Map();
 let AC=null,muted=false,lastShotSnd=0;
 try{muted=window.localStorage.getItem('bgames_muted')==='1';}catch(e){}
 let best=0;try{best=parseInt(window.localStorage.getItem('swarm_best')||'0',10)||0;}catch(e){}
@@ -208,7 +208,7 @@ function beginBreather(){
   beep(880,.15);
   const need2=mode==='1p';
   const s1=ships[0],s2=ships[1];
-  draft={c1:drawCards(),c2:(s2?drawCards():null),lock1:-1,lock2:-1,picks1:[],need1:need2?2:1,done2:!s2||!!s2.ai};
+  draft={c1:drawCards(),c2:(s2?drawCards():null),lock1:-1,lock2:-1,picks1:[],need1:need2?2:1,done2:!s2};
   if(s2&&s2.ai){/* auto-picked in update */}
 }
 function lockPick(player,idx){
@@ -356,11 +356,13 @@ setInterval(gpTick,33);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 // touch: left half → P1 target, right half → P2 (solo: both steer P1)
 function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H,left:(cx-r.left)<r.width/2};}
-cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const p=ptrFromClient(t.clientX,t.clientY);let side;if(mode==='2p')side=p.left?'p1':'p2';else side='p1';touchMap.set(t.identifier,side);if(side==='p1')touchT1={x:p.x,y:p.y};else touchT2={x:p.x,y:p.y};}e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){tapDown.set(t.identifier,{x:t.clientX,y:t.clientY,t:performance.now()});const p=ptrFromClient(t.clientX,t.clientY);let side;if(mode==='2p')side=p.left?'p1':'p2';else side='p1';touchMap.set(t.identifier,side);if(side==='p1')touchT1={x:p.x,y:p.y};else touchT2={x:p.x,y:p.y};}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(!touchMap.has(t.identifier))continue;const p=ptrFromClient(t.clientX,t.clientY);const s=touchMap.get(t.identifier);if(s==='p1')touchT1={x:p.x,y:p.y};else touchT2={x:p.x,y:p.y};}e.preventDefault();},{passive:false});
-function endTouch(e){for(const t of e.changedTouches){const s=touchMap.get(t.identifier);touchMap.delete(t.identifier);if(s==='p1'&&![...touchMap.values()].includes('p1'))touchT1=null;if(s==='p2'&&![...touchMap.values()].includes('p2'))touchT2=null;}}
+function endTouch(e){for(const t of e.changedTouches){const d0=tapDown.get(t.identifier);tapDown.delete(t.identifier);
+if(d0&&performance.now()-d0.t<400&&Math.hypot(t.clientX-d0.x,t.clientY-d0.y)<24){const r=cv.getBoundingClientRect();draftTap((t.clientX-r.left)/r.width*W,(t.clientY-r.top)/r.height*H);}
+const s=touchMap.get(t.identifier);touchMap.delete(t.identifier);if(s==='p1'&&![...touchMap.values()].includes('p1'))touchT1=null;if(s==='p2'&&![...touchMap.values()].includes('p2'))touchT2=null;}}
 cv.addEventListener('touchend',endTouch);cv.addEventListener('touchcancel',endTouch);
-cv.addEventListener('mousedown',e=>{const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};});
+cv.addEventListener('mousedown',e=>{const p=ptrFromClient(e.clientX,e.clientY);if(draftTap(p.x,p.y))return;if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};});
 window.addEventListener('mouseup',()=>{touchT1=null;touchT2=null;});
 cv.addEventListener('mousemove',e=>{if(e.buttons){const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&![...touchMap.values()].includes('p2')&&p.left===false)touchT2={x:p.x,y:p.y};else if(touchT1)touchT1={x:p.x,y:p.y};}});
 // ---------- update ----------
@@ -407,7 +409,7 @@ function update(dt,t){
     breatherT+=dt;
     // AI companion auto-picks
     const s2=ships[1];
-    if(draft&&s2&&s2.ai){aiPickT+=dt;if(aiPickT>1.2){const i=(Math.random()*3)|0;draft.lock2=i;draft.done2=true;applyDraft(s2,draft.c2[i]);}}
+    if(draft&&s2&&s2.ai&&!draft.done2){aiPickT+=dt;if(aiPickT>1.2){const i=(Math.random()*3)|0;draft.lock2=i;draft.done2=true;applyDraft(s2,draft.c2[i]);beep(660,.07);}}
     const p1done=draft?draft.picks1.length>=draft.need1:false;
     const p2done=draft?(!draft.c2||draft.done2):true;
     if(!draft||(p1done&&p2done)||breatherT>=BREATHER_LEN){if(draft)finishDraft();startWave(wave+1);}
@@ -648,6 +650,16 @@ function draw(t){
   ctx.restore();
 }
 const DRAFT_KEY1=['1','2','3'],DRAFT_KEY2=['7','8','9'];
+function draftTap(gx,gy){ // tap/click a draft card: P1 row locks P1 pick, P2 row locks P2 (AI row ignores)
+  if(!draft||phase!=='breather')return false;
+  const rows=[{player:1,y:560}];
+  if(draft.c2)rows.push({player:2,y:1020});
+  for(const r of rows)for(let i=0;i<3;i++){
+    const x=W/2+(i-1)*480;
+    if(gx>=x-200&&gx<=x+200&&gy>=r.y-130&&gy<=r.y+130){lockPick(r.player,i);return true;}
+  }
+  return false;
+}
 function drawDraft(){
   ctx.fillStyle='rgba(5,6,15,.78)';ctx.fillRect(0,180,W,H-360);
   ctx.textAlign='center';ctx.fillStyle='#ffd75e';ctx.font='900 64px ui-monospace,monospace';
