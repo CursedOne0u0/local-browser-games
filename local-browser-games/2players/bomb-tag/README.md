@@ -2,7 +2,7 @@
 
 ![Gameplay](screenshot.png)
 
-Hot potato in an arena. One ticks, both run — tag to pass. The holder is slower. Dash has a 3s cooldown. Random 8–14s fuse. First to 5 blasts wins.
+Hot potato in an arena. One ticks, all run — tag to pass. The holder is slower. Dash has a 3s cooldown. Random 8–14s fuse. 2P: rival scores, first to 5. 3–4P: everyone starts at 5, first to 0 loses.
 
 ## Run
 

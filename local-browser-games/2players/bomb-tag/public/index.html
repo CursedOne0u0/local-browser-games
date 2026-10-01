@@ -70,7 +70,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <div id="toast"></div>
     <div id="overlay"><div class="card" id="joinCard">
       <h1>💣 BOMB TAG <span style="font-size:14px;opacity:.75">— first to 5</span></h1>
-      <p>Host runs <b>python3 server.py</b> in <b>bomb-tag/</b>. Everyone opens the same LAN URL.<br>Holder is slower — tag to pass it! <kbd>Space</kbd> dashes. 2P: rival scores, first to 5. 3-4P: holder −1, 5 blasts, top score wins.</p>
+      <p>Host runs <b>python3 server.py</b> in <b>bomb-tag/</b>. Everyone opens the same LAN URL.<br>Holder is slower — tag to pass it! <kbd>Space</kbd> dashes. 2P: rival scores, first to 5. 3-4P: everyone starts at 5, first to 0 loses.</p>
       <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div><div class="slot" id="s3">P3: —</div><div class="slot" id="s4">P4: —</div></div>
       <input id="name" maxlength="32" placeholder="Your name…" value="Player"><div id="arcRow" style="font-size:12px;margin-top:6px;opacity:.9"><span id="arcWho"></span><span id="arcEdit" style="display:none"> <input id="arcName" maxlength="12" placeholder="arcade name…" style="width:130px"> <button id="arcSave" class="ghost">Save</button> <span id="arcMsg"></span></span></div>
       <button id="joinBtn">Join game</button>
@@ -311,7 +311,7 @@ cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t
 function endTouchBomb(e){for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;if(t.identifier===dashId){dashTouch=false;dashId=null;}}}
 cv.addEventListener('touchend',endTouchBomb);
 cv.addEventListener('touchcancel',endTouchBomb);
-const POLL_MS=8,STATE_TIMEOUT_MS=5000; // ~80Hz chained polls; dead reckoning below covers the gaps
+const POLL_MS=6,STATE_TIMEOUT_MS=5000; // ~90Hz chained polls; dead reckoning below covers the gaps
 function poll(){
   const ctl=new AbortController();
   const kill=setTimeout(()=>ctl.abort(),STATE_TIMEOUT_MS);
@@ -340,7 +340,7 @@ function poll(){
     if(s.phase==='over'){
       ov.style.display='flex';
       if(!joined)return; // newcomer mid-aftermath: keep the pristine join lobby
-      if(!overShown){overShown=true;document.getElementById('winText').textContent=s.winner?`🏆 ${nm[s.winner-1]} WINS!`:`🤝 DRAW — ${occIdx.map(i=>nm[i]+' '+s.runners[i].score).join(' · ')}`;document.getElementById('finalScore').textContent=`Final ${occIdx.map(i=>s.runners[i].score).join(' : ')}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
+      if(!overShown){overShown=true;const outNames=occIdx.filter(i=>s.runners[i].out).map(i=>nm[i]);document.getElementById('winText').textContent=s.winner?`🏆 ${nm[s.winner-1]} WINS!${outNames.length?' — last one standing':''}`:`🤝 DRAW — ${occIdx.map(i=>nm[i]+' '+s.runners[i].score).join(' · ')}`;document.getElementById('finalScore').textContent=(outNames.length?`💥 Out: ${outNames.join(', ')} · `:'')+`Final ${occIdx.map(i=>s.runners[i].score).join(' : ')}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
         if(s.winner&&mySeats.includes(s.winner)){try{lbPost(s.runners[s.winner-1].score);}catch(e){}}
         try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>String(v)));}}catch(e){}}
     }
@@ -422,6 +422,7 @@ function draw(now,dt){
     prevPos[r.seat]={x:r.x,y:r.y};
     ctx.save();
     if(r.imm>0){ctx.globalAlpha=.55+0.3*Math.sin(now/90);}
+    if(r.out)ctx.globalAlpha*=0.35;
     if(isH){ctx.shadowColor='#ff6a2a';ctx.shadowBlur=16;}
     ctx.fillStyle=isH?'#ff8c5a':col;
     ctx.beginPath();ctx.arc(r.x,r.y,15,0,7);ctx.fill();
@@ -448,6 +449,7 @@ function draw(now,dt){
       ctx.save();ctx.strokeStyle='#ff7a1a';ctx.lineWidth=2;ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(r.x,r.y,25,now/200,now/200+6);ctx.stroke();ctx.restore();
     }
     prevDash[r.seat]=r.dash>0?1:0;prevCd[r.seat]=r.dash_cd;
+    if(r.out){ctx.save();ctx.globalAlpha=.9;ctx.fillStyle='#ff6666';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.fillText('OUT',r.x,r.y-28);ctx.restore();}
     if(isH){
       // fuse ring drains with the fuse; spark-bomb overhead (no emoji)
       const fr=state&&state.phase==='playing'?Math.max(0,Math.min(1,state.fuse/14)):1;
