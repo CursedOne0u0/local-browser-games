@@ -184,12 +184,12 @@ function lbWireName(){
 // SWARM SURVIVAL v1.0 — single file, no deps. All motion is dt-based (per-second units).
 const W=2560,H=1440;
 const WAVE_LEN=50,BREATHER_LEN=6;
-const BASE_SPEED=520,FIRE_RATE=2,BULLET_SPD=1500,FIRE_RANGE=1100;
-const MAGNET_R=120,REVIVE_R=110,REVIVE_NEED=1.5,BLEED_OUT=20;
+const BASE_SPEED=500,FIRE_RATE=1.5,BULLET_SPD=1500,FIRE_RANGE=900;
+const MAGNET_R=120,REVIVE_R=110,REVIVE_NEED=2.0,BLEED_OUT=16;
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const ov=document.getElementById('overlay'),scoreEl=document.getElementById('score'),modeEl=document.getElementById('mode');
 let mode='1pai',diff='medium',running=false,paused=false,over=false;
-let wave=1,phase='combat',waveT=0,breatherT=0,spawnQueue=[],spawnT=0;
+let wave=1,phase='combat',waveT=0,breatherT=0,spawnQueue=[],spawnT=0,surgeT=6;
 let ships=[],enemies=[],pendings=[],bullets=[],pickups=[],parts=[],floaters=[];
 let bombs=1,score=0,kills=0,shakeAmp=0,bombFlash=0,bannerTxt='',bannerT=0;
 let draft=null,aiPickT=0;
@@ -236,7 +236,7 @@ function resumeGame(){if(!running||over)return;paused=false;syncPauseIcon();hide
 function togglePauseMenu(){if(!running||over)return;if(document.getElementById('pveil').style.display==='flex')resumeGame();else openPause();}
 function syncPauseIcon(){document.getElementById('pauseBtn').innerHTML=paused?ICON_PLAY:ICON_PAUSE;}
 // ---------- run state ----------
-function mkShip(id,color,x,y,ai){return{id,color,x,y,ang:0,px:x,py:y,alive:true,shield:false,speedMul:1,fireRate:FIRE_RATE,streams:1,dmg:1,pierce:0,bounce:0,lifesteal:0,magnetMul:1,fireT:Math.random()*0.3,muzzle:0,bleed:0,channel:0,dead:false,ai:!!ai,iframes:0};}
+function mkShip(id,color,x,y,ai){return{id,color,x,y,ang:0,px:x,py:y,alive:true,shield:false,speedMul:1,fireRate:FIRE_RATE,streams:1,dmg:1,pierce:0,bounce:0,lifesteal:0,lsCd:0,magnetMul:1,fireT:Math.random()*0.3,muzzle:0,bleed:0,channel:0,dead:false,ai:!!ai,iframes:0};}
 function start(){
   ships=[];enemies=[];pendings=[];bullets=[];pickups=[];parts=[];floaters=[];
   bombs=1;score=0;kills=0;shakeAmp=0;bombFlash=0;draft=null;over=false;
@@ -248,13 +248,13 @@ function start(){
   modeEl.textContent=mode==='1p'?'🛸 solo':(mode==='1pai'?('🤖 solo + AI ('+diff+')'):'👥 local 2P');
   startWave(1);beep(700,.1);
 }
-function speedMul(){return 1+wave*0.06;}
-function hpBonus(){return Math.floor(wave/4);}
+function speedMul(){return (1+wave*0.14)*(wave<=2?0.85:1);}
+function hpBonus(){return Math.floor(wave/2);}
 function buildQueue(){
-  let budget=6+wave*4;const q=[];
+  let budget=(8+wave*9)*Math.max(1,ships.length);const q=[];
   const pool=[['chaser',10,1]];
   if(wave>=2)pool.push(['splitter',4,3]);
-  if(wave>=3)pool.push(['dasher',4,2]);
+  if(wave>=3)pool.push(['dasher',8,2]);
   let guard=400;
   while(budget>0&&guard-->0){
     let tot=0;for(const p of pool)tot+=p[1];
@@ -268,7 +268,7 @@ function buildQueue(){
   return q;
 }
 function startWave(n){
-  wave=n;phase='combat';waveT=0;spawnT=0;spawnQueue=buildQueue();draft=null;
+  wave=n;phase='combat';waveT=0;spawnT=0;surgeT=6;spawnQueue=buildQueue();draft=null;
   bannerTxt='WAVE '+n;bannerT=2.5;beep(520,.12);
 }
 function edgeSpawn(){
@@ -278,13 +278,34 @@ function edgeSpawn(){
   if(e===2)return{x:m,y:m+Math.random()*(H-2*m)};
   return{x:W-m,y:m+Math.random()*(H-2*m)};
 }
-function spawnInterval(){return Math.max(0.35,2.2-wave*0.15);}
-function queueSpawn(type){const p=edgeSpawn();pendings.push({x:p.x,y:p.y,type,t:0.8});}
+function spawnInterval(){return Math.max(0.18,2.1-wave*0.2)/(1+0.3*(Math.max(1,ships.length)-1));}
+function queueSpawn(type,pos){const p=pos||edgeSpawn();pendings.push({x:p.x,y:p.y,type,t:0.8});}
+// surge: interior pack spawns that collapse kiting lanes (wave 3+)
+function surgeSpawn(){
+  const n=3+Math.floor(wave/2);
+  for(let k=0;k<n;k++){
+    for(let tries=0;tries<12;tries++){
+      const x=200+Math.random()*(W-400),y=200+Math.random()*(H-400);
+      let ok=true;
+      for(const s of ships){if(s.alive&&Math.hypot(s.x-x,s.y-y)<500){ok=false;break;}}
+      if(!ok)continue;
+      let type='chaser';
+      const r=Math.random();
+      if(wave>=4&&r<0.25)type='dasher';
+      else if(r<0.5)type='splitter';
+      pendings.push({x,y,type,t:0.8});
+      break;
+    }
+  }
+}
 function realizePending(p){
-  const mul=speedMul(),hb=hpBonus();
-  if(p.type==='chaser')enemies.push({type:'chaser',x:p.x,y:p.y,hp:1,maxhp:1,speed:130*mul,r:20,score:10,mul});
-  else if(p.type==='splitter')enemies.push({type:'splitter',x:p.x,y:p.y,hp:3+hb,maxhp:3+hb,speed:90*mul,r:30,score:30,mul});
-  else enemies.push({type:'dasher',x:p.x,y:p.y,hp:2+hb,maxhp:2+hb,speed:100*mul,r:20,score:25,mul,st:'wander',stT:3,wanderA:Math.random()*6.283,dvx:0,dvy:0});
+  const mul=speedMul(),hb=hpBonus(),shipMul=1+0.5*(Math.max(1,ships.length)-1);
+  const chp=Math.max(1,Math.round((1+Math.floor(wave/6))*shipMul));
+  const shp=Math.max(1,Math.round((4+hb)*shipMul));
+  const dhp=Math.max(1,Math.round((3+hb)*shipMul));
+  if(p.type==='chaser')enemies.push({type:'chaser',x:p.x,y:p.y,hp:chp,maxhp:chp,speed:220*mul,r:20,score:10,mul});
+  else if(p.type==='splitter')enemies.push({type:'splitter',x:p.x,y:p.y,hp:shp,maxhp:shp,speed:100*mul,r:30,score:30,mul});
+  else enemies.push({type:'dasher',x:p.x,y:p.y,hp:dhp,maxhp:dhp,speed:110*mul,r:20,score:25,mul,st:'wander',stT:3,wanderA:Math.random()*6.283,dvx:0,dvy:0});
 }
 const DRAFT_POOL=[
   {id:'damage',name:'+1 DAMAGE',desc:'bullets hit harder'},
@@ -372,11 +393,11 @@ function killEnemy(e,silent){
   burst(e.x,e.y,e.type==='splitter'?'#ffb02e':(e.type==='dasher'?'#ff5d5d':'#ffb02e'),12);
   beep(e.type==='splitter'?300:500,.06,'square',.06);
   if(e.type==='splitter'){
-    for(let k=0;k<2;k++)enemies.push({type:'chaser',x:e.x+(Math.random()-0.5)*40,y:e.y+(Math.random()-0.5)*40,hp:1,maxhp:1,speed:130*e.mul,r:20,score:10,mul:e.mul});
+    for(let k=0;k<2;k++)enemies.push({type:'chaser',x:e.x+(Math.random()-0.5)*40,y:e.y+(Math.random()-0.5)*40,hp:1,maxhp:1,speed:220*e.mul,r:20,score:10,mul:e.mul});
   }
   // lifesteal: chance to gain shield on kill
   for(const s of ships){
-    if(s.alive&&s.lifesteal>0&&!s.shield&&Math.random()<0.15*s.lifesteal){s.shield=true;floater(s.x,s.y-60,'SHIELD','#ffe9a8');}
+    if(s.alive&&s.lifesteal>0&&!s.shield&&s.lsCd<=0&&Math.random()<0.10*s.lifesteal){s.shield=true;s.lsCd=8;floater(s.x,s.y-60,'SHIELD','#ffe9a8');}
   }
   maybeDrop(e.x,e.y);
 }
@@ -385,7 +406,7 @@ function maybeDrop(x,y){
   const r=Math.random();
   let kind;
   if(r<0.06)kind='bomb'; // rare
-  else{const pool=['spread','rapid','speed','magnet','shield','spread','rapid','speed','magnet','shield','spread','rapid'];kind=pool[(Math.random()*pool.length)|0];}
+  else{const pool=['spread','rapid','speed','magnet','shield','spread','rapid','speed','magnet','spread','rapid','speed'];kind=pool[(Math.random()*pool.length)|0];}
   const a=Math.random()*6.283;
   pickups.push({kind,x,y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,t:Math.random()*6});
 }
@@ -409,7 +430,7 @@ function tryBomb(){
 }
 function downShip(s){
   if(!s.alive||s.iframes>0)return;
-  if(s.shield){s.shield=false;s.iframes=1.2;burst(s.x,s.y,'#ffe9a8',16);beep(420,.15);floater(s.x,s.y-60,'SHIELD DOWN','#ffe9a8');return;}
+  if(s.shield){s.shield=false;s.iframes=1.0;burst(s.x,s.y,'#ffe9a8',16);beep(420,.15);floater(s.x,s.y-60,'SHIELD DOWN','#ffe9a8');return;}
   s.alive=false;s.bleed=BLEED_OUT;s.channel=0;
   shakeAmp=Math.max(shakeAmp,18);burst(s.x,s.y,s.color,24);
   beep(200,.4,'sawtooth',.12);
@@ -511,6 +532,7 @@ function update(dt,t){
     if(spawnQueue.length){spawnT-=dt;if(spawnT<=0){spawnT=spawnInterval();queueSpawn(spawnQueue.pop());}}
     else if(!enemies.length&&!pendings.length)beginBreather();
     else if(waveT>=WAVE_LEN&&!enemies.length&&!pendings.length)beginBreather();
+    if(wave>=3){surgeT-=dt;if(surgeT<=0){surgeT=Math.max(4,9-wave*0.5);surgeSpawn();}}
   }else{
     breatherT+=dt;
     // AI companion auto-picks
@@ -526,6 +548,7 @@ function update(dt,t){
   for(const s of ships){
     if(s.muzzle>0)s.muzzle-=dt;
     if(s.iframes>0)s.iframes-=dt;
+    if(s.lsCd>0)s.lsCd-=dt;
     if(!s.alive){
       if(!s.dead){
         s.bleed-=dt;
@@ -553,13 +576,13 @@ function update(dt,t){
       if(e.st==='wander'){
         e.wanderA+=(Math.random()-0.5)*3*dt;
         e.x+=Math.cos(e.wanderA)*e.speed*dt;e.y+=Math.sin(e.wanderA)*e.speed*dt;
-        if(e.stT<=0&&tgt){e.st='tele';e.stT=0.5;}
+        if(e.stT<=0&&tgt){e.st='tele';e.stT=0.42;}
       }else if(e.st==='tele'){
         if(tgt){const dx=tgt.x-e.x,dy=tgt.y-e.y,d=Math.hypot(dx,dy)||1;e.dvx=dx/d;e.dvy=dy/d;}
         if(e.stT<=0){e.st='dash';e.stT=0.4;beep(300,.08,'sawtooth',.05);}
       }else{
-        e.x+=e.dvx*700*e.mul*dt;e.y+=e.dvy*700*e.mul*dt;
-        if(e.stT<=0){e.st='wander';e.stT=3;}
+        e.x+=e.dvx*900*e.mul*dt;e.y+=e.dvy*900*e.mul*dt;
+        if(e.stT<=0){e.st='wander';e.stT=1.8;}
       }
     }
     e.x=Math.max(20,Math.min(W-20,e.x));e.y=Math.max(80,Math.min(H-20,e.y));
@@ -618,7 +641,7 @@ function update(dt,t){
     if(!s.alive)continue;
     for(let j=enemies.length-1;j>=0;j--){
       const e=enemies[j];
-      const dx=s.x-e.x,dy=s.y-e.y,rr=24+e.r;
+      const dx=s.x-e.x,dy=s.y-e.y,rr=28+e.r;
       if(dx*dx+dy*dy<rr*rr){
         if(s.shield||true){enemies.splice(j,1);burst(e.x,e.y,'#ff5d5d',10);}
         downShip(s);break;
