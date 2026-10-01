@@ -43,6 +43,30 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 #verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #taunts{width:min(920px,96vw);display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 #taunts button{flex:0 1 auto;width:auto;margin:0;padding:10px 14px;font-size:13px;min-height:44px}
+/* portrait phones (390x844 etc): top-start + internal scroll, wrapped header, full-width stage, wrappable hint, 44px targets */
+@media (orientation:portrait){
+  body{touch-action:pan-y}
+  #wrap{justify-content:flex-start;overflow-y:auto;touch-action:pan-y}
+  #topbar{flex-wrap:wrap;row-gap:4px;width:98vw;gap:8px}
+  .logo{font-size:14px;max-width:98vw;overflow-wrap:anywhere}
+  #verBadge{font-size:10px;padding:2px 8px}
+  #score{font-size:20px}
+  #names{max-width:98vw;overflow-wrap:anywhere;font-size:11px}
+  #stage{width:98vw;border-radius:10px}
+  #hint{font-size:11px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+  #wrap>div{max-width:98vw}
+  #odBtn{min-height:44px}
+  #taunts{width:98vw}
+  #taunts button{min-height:44px}
+  .srow{flex-wrap:wrap}
+  .card{width:94vw;max-height:92dvh;overflow:auto}
+  .card button,#overlay button{min-height:44px}
+  #pveil .card{max-height:92dvh;overflow:auto}
+}
+@media (max-width:520px){
+  .logo{font-size:13px;letter-spacing:.08em}
+  .card h1{font-size:19px}
+}
 </style>
 </head>
 <body>

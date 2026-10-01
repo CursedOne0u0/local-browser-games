@@ -62,13 +62,36 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 #dayLabel span{color:var(--c1);font-size:11px}
 #topList{text-align:left;font-size:13px;font-weight:700;margin:8px auto 0;display:inline-block;padding-left:22px;line-height:1.8}
 #topList li:first-child{color:#ffe14d}
+/* portrait phones (390x844 etc): top-start + internal scroll, wrapped header, full-width stage, wrappable hint, 44px targets */
+@media (orientation:portrait){
+  body{touch-action:pan-y}
+  #wrap{justify-content:flex-start;overflow-y:auto;touch-action:pan-y}
+  #top{flex-wrap:wrap;row-gap:4px;width:98vw}
+  .logo{font-size:15px;max-width:98vw;overflow-wrap:anywhere}
+  #verBadge{font-size:10px;padding:2px 8px}
+  #hud{font-size:11px;gap:8px;justify-content:flex-start}
+  #stage{width:98vw;border-radius:10px}
+  #underbar{width:98vw;flex-wrap:wrap}
+  .uibtn{min-height:44px}
+  #hint{font-size:11px;line-height:1.5;white-space:normal;overflow-wrap:anywhere;max-width:98vw}
+  .dayrow{flex-wrap:wrap}
+  .card{width:94vw;max-height:92dvh;overflow:auto}
+  .card button,#overlay button{min-height:44px}
+  #pveil .card{max-height:92dvh;overflow:auto}
+}
+@media (max-width:520px){
+  .logo{font-size:14px;letter-spacing:.08em}
+  #hud{font-size:10px;gap:6px}
+  #hud #timeB{min-width:0}
+  .card h1{font-size:20px}
+}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.12</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.13</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">

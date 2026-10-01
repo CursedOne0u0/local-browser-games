@@ -60,11 +60,31 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 .term.linked{box-shadow:0 0 0 3px #fff,0 0 18px currentColor}
 #pzSvg{position:absolute;inset:0;pointer-events:none}
 #pzMsg{text-align:center;font-size:12px;opacity:.75;min-height:18px}
+/* portrait phones (390x844 etc): fullscreen stage kept; overlay cards 94vw + scrollable, wrapped topbar, wrappable hint, 44px targets */
+@media (orientation:portrait){
+  body{touch-action:pan-y}
+  #wrap{justify-content:flex-start;overflow-y:auto}
+  #topbar{flex-wrap:wrap;row-gap:4px}
+  .logo{font-size:14px;max-width:60vw;overflow-wrap:anywhere}
+  #verBadge{font-size:10px;padding:2px 8px}
+  #score{font-size:17px}
+  #names{top:76px;font-size:11px;padding:0 8px;overflow-wrap:anywhere}
+  #rolebar{top:96px;font-size:11px;padding:0 8px}
+  #hint{font-size:11px;line-height:1.5;white-space:normal;padding:0 10px;overflow-wrap:anywhere}
+  .card{width:94vw;max-height:92dvh;overflow:auto}
+  .card button,#overlay button{min-height:44px}
+  #pveil .card{max-height:92dvh;overflow:auto}
+}
+@media (max-width:520px){
+  .logo{font-size:13px;letter-spacing:.08em}
+  #topbar button{padding:8px 10px}
+  .card h1{font-size:19px}
+}
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.13</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.14</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
