@@ -123,14 +123,19 @@ async function lbPost(value){
   if(!LB_ON)return;const name=lbName();if(!name)return;
   try{
     value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
-    await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
-  }catch(e){}
+    const r=await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
+    if(!r.ok)lbFail('post '+r.status);
+  }catch(e){lbFail('post offline');}
+}
+function lbFail(what){
+  try{const el=document.getElementById('lbLine');if(el&&LB_ON)el.textContent='global board error ('+what+') — scores not saving';}catch(e){}
 }
 async function lbTop(n){
   if(!LB_ON)return[];
   try{
     n=n||5;
     const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n+'&_='+Date.now(),{headers:lbHeads()});
+    if(!r.ok){lbFail('read '+r.status);return[];}
     const j=await r.json();return Array.isArray(j)?j:[];
   }catch(e){return[];}
 }
