@@ -145,9 +145,9 @@ async function lbTop(n){
   if(!LB_ON)return[];
   try{
     n=n||5;
-    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n+'&_='+Date.now(),{headers:lbHeads()});
+    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n,{headers:Object.assign(lbHeads(),{'Cache-Control':'no-cache'})});
     if(!r.ok){lbFail('read '+r.status);return[];}
-    const j=await r.json();return Array.isArray(j)?j:[];
+    const j=await r.json();if(Array.isArray(j)){try{localStorage.removeItem('lb_last_err');}catch(e){}return j;}return[];
   }catch(e){return[];}
 }
 function lbRender(el,rows,fmt){
