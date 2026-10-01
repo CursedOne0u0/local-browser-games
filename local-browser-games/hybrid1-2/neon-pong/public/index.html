@@ -147,7 +147,8 @@ async function lbPost(value){
   try{
     value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
     const r=await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
-    if(!r.ok)lbFail('post '+r.status);
+    if(!r.ok){lbFail('post '+r.status);return;}
+    try{const el=document.getElementById('lbLine');if(el&&el._fmt){const rows=await lbTop(5);lbRender(el,rows,el._fmt);}}catch(e){}
   }catch(e){lbFail('post offline');}
 }
 function lbFail(what){
@@ -164,6 +165,7 @@ async function lbTop(n){
 }
 function lbRender(el,rows,fmt){
   if(!el)return;
+  try{el._fmt=fmt;}catch(e){}
   if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
   if(!rows.length){el.textContent='global board: no scores yet — be the first!';return;}
   el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
