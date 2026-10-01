@@ -1,4 +1,4 @@
-const C='drift-v114'; // bump with every game version so updates reach installed players
+const C='drift-v115'; // bump with every game version so updates reach installed players
 const A=['index.html','manifest.webmanifest','icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
