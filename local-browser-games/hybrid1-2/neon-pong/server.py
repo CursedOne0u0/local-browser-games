@@ -31,7 +31,7 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3000"))
-VERSION = "1.37"  # bump on every update; shown on the site
+VERSION = "1.38"  # bump on every update; shown on the site
 TAUNTS = {"gg": "GG! 🏓", "nice": "Nice shot! 🔥", "ouch": "Ouch! 😅",
           "whoops": "Whoops! 🙈", "lol": "LOL 😂", "rematch": "Rematch? 👀"}
 TAUNT_CD = 2.5
