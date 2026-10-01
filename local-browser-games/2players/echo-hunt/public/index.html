@@ -84,7 +84,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.14</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.15</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
@@ -103,7 +103,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <p>Host runs <b>python3 server.py</b> in <b>echo-hunt/</b>. 2–8 phones, same Wi-Fi.<br>Wardens hunt near-blind on sonar. Divers crack wire nodes.<br>Stroll = silent • sprint = loud. Freeze when you hear the ping!</p>
       <div id="slots"></div>
       <div id="botRow">🤖 Bots: <b id="botCount">0</b><button id="botMinus" class="ghost">−</button><button id="botPlus" class="ghost">+</button></div>
-      <input id="name" maxlength="32" placeholder="Your name…" value="Player">
+      <input id="name" maxlength="32" placeholder="Your name…" value="Player"><div id="arcRow" style="font-size:12px;margin-top:6px;opacity:.9"><span id="arcWho"></span><span id="arcEdit" style="display:none"> <input id="arcName" maxlength="12" placeholder="arcade name…" style="width:130px"> <button id="arcSave" class="ghost">Save</button> <span id="arcMsg"></span></span></div>
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
       <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
@@ -111,6 +111,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <div class="card" id="endCard" style="display:none">
       <h1 id="winText">WIN!</h1>
       <p id="finalScore"></p>
+      <div id="lbLine" style="font-size:11px;opacity:.7;margin-top:6px;line-height:1.6"></div>
       <button id="againBtn">Back to lobby</button>
     </div></div>
   </div>
@@ -122,7 +123,76 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     </div></div>
 </div>
 <script>
-const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+// 🌍 global board: arcade-site scores only (benjooyt.github.io), one shared name
+const SUPA_URL='https://sdmzslvdbontnjculyt.supabase.co',SUPA_KEY='sb_publishable_ZOdbhzKCWcB4Eog7ALBBA_o_cJoy_R';
+const LB_GAME='echohunt',LB_ASC=false;
+const LB_Q=new URLSearchParams(location.search);
+const LB_ON=/(^|\.)benjooyt\.github\.io$/.test(location.hostname)||LB_Q.has('lbtest');
+const LB_API=LB_Q.get('lbapi')||SUPA_URL; // test hook: ?lbtest&lbapi=http://127.0.0.1:8765
+function lbName(){try{return localStorage.getItem('arcade_name')||'';}catch(e){return '';}}
+function lbHeads(){return {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};}
+async function lbTaken(name){
+  try{
+    const r=await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(name)+'&select=id&limit=1',{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)&&j.length>0;
+  }catch(e){return false;}
+}
+async function lbSetName(name){
+  name=String(name||'').trim().slice(0,12);
+  if(!name)return{ok:false,reason:'empty'};
+  const old=lbName();
+  if(old!==name){
+    let taken=false;try{taken=await lbTaken(name);}catch(e){taken=false;}
+    if(taken)return{ok:false,reason:'taken'};
+    if(old){try{await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(old),{method:'DELETE',headers:lbHeads()});}catch(e){}}
+  }
+  try{localStorage.setItem('arcade_name',name);}catch(e){}
+  return{ok:true};
+}
+async function lbPost(value){
+  if(!LB_ON)return;const name=lbName();if(!name)return;
+  try{
+    value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
+    await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
+  }catch(e){}
+}
+async function lbTop(n){
+  if(!LB_ON)return[];
+  try{
+    n=n||5;
+    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n+'&_='+Date.now(),{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)?j:[];
+  }catch(e){return[];}
+}
+function lbRender(el,rows,fmt){
+  if(!el)return;
+  if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
+  if(!rows.length){el.textContent='global board: no scores yet — be the first!';return;}
+  el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+}
+function lbGate(){
+  if(LB_ON&&!lbName()){
+    const inp=document.getElementById('arcName'),msg=document.getElementById('arcMsg');
+    if(msg)msg.textContent='enter an arcade name first';
+    if(inp){try{inp.focus();inp.scrollIntoView({block:'nearest'});}catch(e){}}
+    return false;
+  }
+  return true;
+}
+function lbWireName(){
+  const who=document.getElementById('arcWho'),edit=document.getElementById('arcEdit'),
+        inp=document.getElementById('arcName'),save=document.getElementById('arcSave'),
+        msg=document.getElementById('arcMsg');
+  if(!who||!edit||!inp||!save)return;
+  const paint=()=>{
+    const n=lbName();
+    if(n){who.innerHTML='playing as <b></b> (<a href="#" id="arcChange">change</a>)';who.querySelector('b').textContent=n;edit.style.display='none';
+      const ch=document.getElementById('arcChange');if(ch)ch.onclick=e=>{e.preventDefault();edit.style.display='';inp.value=n;if(msg)msg.textContent='';};
+    }else{who.textContent=LB_ON?'enter an arcade name to join the global board:':'global board lives on the arcade site';edit.style.display=LB_ON?'':'none';}
+  };
+  save.onclick=async()=>{if(msg)msg.textContent='checking…';const r=await lbSetName(inp.value);if(r.ok){paint();try{const seat=document.getElementById('name');if(seat&&(!seat.value||seat.value==='Player'))seat.value=lbName();}catch(e){}try{lbRefresh();}catch(e){}}else if(msg)msg.textContent=r.reason==='taken'?'name taken — choose another':'enter 1–12 characters';};
+  paint();
+}const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const W=2200,H=1400; // must match server.py
 function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
 window.addEventListener('resize',resize);resize();
@@ -139,7 +209,7 @@ const terrorEl=document.getElementById('terror');
 let hbT=0;
 const TERROR_R=380;
 try{nameI.value=localStorage.getItem('echohunt_name')||'Player';}catch(e){}
-nameI.addEventListener('input',()=>{try{localStorage.setItem('echohunt_name',nameI.value);}catch(e){}});
+nameI.addEventListener('input',()=>{try{localStorage.setItem('echohunt_name',nameI.value);}catch(e){}});try{const _an=lbName();if(_an&&(!nameI.value||nameI.value==='Player'))nameI.value=_an;}catch(e){}lbWireName();
 const cid=(()=>{try{let id=sessionStorage.getItem('echohunt_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('echohunt_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
 window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
 let you=0,myRole='',joined=false,state=null,synced=false,lastPhase='',lastCd=0;
@@ -158,7 +228,7 @@ function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window
 function sweep(f0,f1,d=.3,v=.1){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f0,AC.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),AC.currentTime+d);g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
-joinBtn.onclick=async()=>{goFS();const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':'Joined! Ready up ⚡');beep(660,.08);};
+joinBtn.onclick=async()=>{if(!lbGate())return;goFS();const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':'Joined! Ready up ⚡');beep(660,.08);};
 async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(660,.08);}
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
 document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
@@ -385,6 +455,9 @@ function poll(){
         document.getElementById('winText').textContent=`${w} WIN!`;
         document.getElementById('finalScore').textContent=`Final ${s.h_wins} : ${s.d_wins}`;
         joinCard.style.display='none';endCard.style.display='block';
+        // team win: winner identity ambiguous → seat P1's client posts the winning side's round count
+        if(you===1&&s.winner_side){try{lbPost(s.winner_side===1?s.h_wins:s.d_wins);}catch(e){}}
+        try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>String(v)));}}catch(e){}
         beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);}
     }
     if(s.phase==='waiting'&&lastPhase==='over')resetLobby();

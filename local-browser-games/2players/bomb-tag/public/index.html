@@ -72,7 +72,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <h1>💣 BOMB TAG <span style="font-size:14px;opacity:.75">— first to 5</span></h1>
       <p>Host runs <b>python3 server.py</b> in <b>bomb-tag/</b>. Both open the same LAN URL.<br>Holder is slower — tag to pass it! <kbd>Space</kbd> dashes.</p>
       <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div></div>
-      <input id="name" maxlength="32" placeholder="Your name…" value="Player">
+      <input id="name" maxlength="32" placeholder="Your name…" value="Player"><div id="arcRow" style="font-size:12px;margin-top:6px;opacity:.9"><span id="arcWho"></span><span id="arcEdit" style="display:none"> <input id="arcName" maxlength="12" placeholder="arcade name…" style="width:130px"> <button id="arcSave" class="ghost">Save</button> <span id="arcMsg"></span></span></div>
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
       <button id="localBtn" class="ghost" style="display:none">👥 P2 join — same keyboard</button>
@@ -81,6 +81,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div class="card" id="endCard" style="display:none">
         <h1 id="winText">🏆 WINS!</h1>
         <p id="finalScore"></p>
+        <div id="lbLine" style="font-size:11px;opacity:.7;margin-top:6px;line-height:1.6"></div>
         <button id="againBtn">Back to lobby</button>
       </div></div>
   </div>
@@ -92,13 +93,82 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
   </div></div>
 </div>
 <script>
-const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+// 🌍 global board: arcade-site scores only (benjooyt.github.io), one shared name
+const SUPA_URL='https://sdmzslvdbontnjculyt.supabase.co',SUPA_KEY='sb_publishable_ZOdbhzKCWcB4Eog7ALBBA_o_cJoy_R';
+const LB_GAME='bombtag',LB_ASC=false;
+const LB_Q=new URLSearchParams(location.search);
+const LB_ON=/(^|\.)benjooyt\.github\.io$/.test(location.hostname)||LB_Q.has('lbtest');
+const LB_API=LB_Q.get('lbapi')||SUPA_URL; // test hook: ?lbtest&lbapi=http://127.0.0.1:8765
+function lbName(){try{return localStorage.getItem('arcade_name')||'';}catch(e){return '';}}
+function lbHeads(){return {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};}
+async function lbTaken(name){
+  try{
+    const r=await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(name)+'&select=id&limit=1',{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)&&j.length>0;
+  }catch(e){return false;}
+}
+async function lbSetName(name){
+  name=String(name||'').trim().slice(0,12);
+  if(!name)return{ok:false,reason:'empty'};
+  const old=lbName();
+  if(old!==name){
+    let taken=false;try{taken=await lbTaken(name);}catch(e){taken=false;}
+    if(taken)return{ok:false,reason:'taken'};
+    if(old){try{await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(old),{method:'DELETE',headers:lbHeads()});}catch(e){}}
+  }
+  try{localStorage.setItem('arcade_name',name);}catch(e){}
+  return{ok:true};
+}
+async function lbPost(value){
+  if(!LB_ON)return;const name=lbName();if(!name)return;
+  try{
+    value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
+    await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
+  }catch(e){}
+}
+async function lbTop(n){
+  if(!LB_ON)return[];
+  try{
+    n=n||5;
+    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n+'&_='+Date.now(),{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)?j:[];
+  }catch(e){return[];}
+}
+function lbRender(el,rows,fmt){
+  if(!el)return;
+  if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
+  if(!rows.length){el.textContent='global board: no scores yet — be the first!';return;}
+  el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+}
+function lbGate(){
+  if(LB_ON&&!lbName()){
+    const inp=document.getElementById('arcName'),msg=document.getElementById('arcMsg');
+    if(msg)msg.textContent='enter an arcade name first';
+    if(inp){try{inp.focus();inp.scrollIntoView({block:'nearest'});}catch(e){}}
+    return false;
+  }
+  return true;
+}
+function lbWireName(){
+  const who=document.getElementById('arcWho'),edit=document.getElementById('arcEdit'),
+        inp=document.getElementById('arcName'),save=document.getElementById('arcSave'),
+        msg=document.getElementById('arcMsg');
+  if(!who||!edit||!inp||!save)return;
+  const paint=()=>{
+    const n=lbName();
+    if(n){who.innerHTML='playing as <b></b> (<a href="#" id="arcChange">change</a>)';who.querySelector('b').textContent=n;edit.style.display='none';
+      const ch=document.getElementById('arcChange');if(ch)ch.onclick=e=>{e.preventDefault();edit.style.display='';inp.value=n;if(msg)msg.textContent='';};
+    }else{who.textContent=LB_ON?'enter an arcade name to join the global board:':'global board lives on the arcade site';edit.style.display=LB_ON?'':'none';}
+  };
+  save.onclick=async()=>{if(msg)msg.textContent='checking…';const r=await lbSetName(inp.value);if(r.ok){paint();try{const seat=document.getElementById('name');if(seat&&(!seat.value||seat.value==='Player'))seat.value=lbName();}catch(e){}try{lbRefresh();}catch(e){}}else if(msg)msg.textContent=r.reason==='taken'?'name taken — choose another':'enter 1–12 characters';};
+  paint();
+}const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const W=800,H=560;
 const ov=document.getElementById('overlay'),joinCard=document.getElementById('joinCard'),endCard=document.getElementById('endCard');
 const nameI=document.getElementById('name'),joinBtn=document.getElementById('joinBtn'),readyBtn=document.getElementById('readyBtn'),againBtn=document.getElementById('againBtn');
 const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),verEl=document.getElementById('verBadge'),fusefill=document.getElementById('fusefill');
 try{nameI.value=localStorage.getItem('bombtag_name')||'Player';}catch(e){}
-nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',nameI.value);}catch(e){}});
+nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',nameI.value);}catch(e){}});try{const _an=lbName();if(_an&&(!nameI.value||nameI.value==='Player'))nameI.value=_an;}catch(e){}lbWireName();
 const cid=(()=>{try{let id=sessionStorage.getItem('bombtag_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('bombtag_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
 window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));if(localCid)navigator.sendBeacon('/api/leave',JSON.stringify({clientId:localCid}));}catch(e){}}});
 // local 2P: one browser drives both seats — P1 on WASD+Space, P2 on arrows+Enter
@@ -157,7 +227,7 @@ function setMuted(m){muted=m;try{window.localStorage&&window.localStorage.setIte
 function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
-joinBtn.onclick=async()=>{const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);document.getElementById('localBtn').style.display=(d.you===0||localCid)?'none':'';if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
+joinBtn.onclick=async()=>{if(!lbGate())return;const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);document.getElementById('localBtn').style.display=(d.you===0||localCid)?'none':'';if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
 document.getElementById('localBtn').onclick=async()=>{
   if(localCid||!joined||!you)return;
   const lc=cid+'#local2';
@@ -250,7 +320,9 @@ function poll(){
     if(s.phase==='over'){
       ov.style.display='flex';
       if(!joined)return; // newcomer mid-aftermath: keep the pristine join lobby
-      if(!overShown){overShown=true;document.getElementById('winText').textContent=`🏆 ${(s.winner?nm[s.winner-1]:'Nobody')} WINS!`;document.getElementById('finalScore').textContent=`Final ${s.runners[0].score} : ${s.runners[1].score}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);}
+      if(!overShown){overShown=true;document.getElementById('winText').textContent=`🏆 ${(s.winner?nm[s.winner-1]:'Nobody')} WINS!`;document.getElementById('finalScore').textContent=`Final ${s.runners[0].score} : ${s.runners[1].score}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
+        if(you&&s.winner&&you===s.winner){try{lbPost(s.runners[s.winner-1].score);}catch(e){}}
+        try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>String(v)));}}catch(e){}}
     }
     if(s.phase==='waiting'&&lastPhase==='over')resetLobby();
     // fuse ticking: pitch rises as doom nears

@@ -65,7 +65,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><div class="logo">SWARM <span>SURVIVAL</span></div><div id="verBadge">v1.4</div><div id="score">0</div><div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></div></div>
+  <div id="top"><div class="logo">SWARM <span>SURVIVAL</span></div><div id="verBadge">v1.41</div><div id="score">0</div><div id="mbtns"><button id="pauseBtn" title="Pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="muteBtn" title="Mute"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></div></div>
   <div id="mode">menu</div>
   <div id="stage">
     <canvas id="cv" width="2560" height="1440"></canvas>
@@ -86,6 +86,8 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div id="stub"><span>ADMIT ONE</span></div>
       <div class="row"><button id="startBtn">Start</button></div>
       <div id="bestLine" style="margin-top:10px;font-size:12px;opacity:.7"></div>
+      <div id="arcRow" style="margin:8px 0 0;font-size:13px;text-align:left"><span id="arcWho"></span><span id="arcEdit"><input id="arcName" maxlength="12" placeholder="arcade name…" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff33;background:#160a05;color:#fff;font-size:14px;outline:none;margin-top:6px;user-select:text;-webkit-user-select:text"><button id="arcSave" class="ghost" style="width:100%;margin-top:6px">Save name</button><div id="arcMsg" style="font-size:11px;opacity:.75;min-height:16px;margin-top:4px"></div></span></div>
+      <div id="lbLine" style="margin-top:6px;font-size:11px;opacity:.7;line-height:1.6"></div>
       <div style="margin-top:6px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
@@ -99,6 +101,76 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
   </div></div>
 </div>
 <script>
+// 🌍 global board: arcade-site scores only (benjooyt.github.io), one shared name
+const SUPA_URL='https://sdmzslvdbontnjculyt.supabase.co',SUPA_KEY='sb_publishable_ZOdbhzKCWcB4Eog7ALBBA_o_cJoy_R';
+const LB_GAME='swarm',LB_ASC=false;
+const LB_Q=new URLSearchParams(location.search);
+const LB_ON=/(^|\.)benjooyt\.github\.io$/.test(location.hostname)||LB_Q.has('lbtest');
+const LB_API=LB_Q.get('lbapi')||SUPA_URL; // test hook: ?lbtest&lbapi=http://127.0.0.1:8765
+function lbName(){try{return localStorage.getItem('arcade_name')||'';}catch(e){return '';}}
+function lbHeads(){return {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};}
+async function lbTaken(name){
+  try{
+    const r=await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(name)+'&select=id&limit=1',{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)&&j.length>0;
+  }catch(e){return false;}
+}
+async function lbSetName(name){
+  name=String(name||'').trim().slice(0,12);
+  if(!name)return{ok:false,reason:'empty'};
+  const old=lbName();
+  if(old!==name){
+    let taken=false;try{taken=await lbTaken(name);}catch(e){taken=false;}
+    if(taken)return{ok:false,reason:'taken'};
+    if(old){try{await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(old),{method:'DELETE',headers:lbHeads()});}catch(e){}}
+  }
+  try{localStorage.setItem('arcade_name',name);}catch(e){}
+  return{ok:true};
+}
+async function lbPost(value){
+  if(!LB_ON)return;const name=lbName();if(!name)return;
+  try{
+    value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
+    await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
+  }catch(e){}
+}
+async function lbTop(n){
+  if(!LB_ON)return[];
+  try{
+    n=n||5;
+    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n+'&_='+Date.now(),{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)?j:[];
+  }catch(e){return[];}
+}
+function lbRender(el,rows,fmt){
+  if(!el)return;
+  if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
+  if(!rows.length){el.textContent='global board: no scores yet — be the first!';return;}
+  el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+}
+function lbGate(){
+  if(LB_ON&&!lbName()){
+    const inp=document.getElementById('arcName'),msg=document.getElementById('arcMsg');
+    if(msg)msg.textContent='enter an arcade name first';
+    if(inp){try{inp.focus();inp.scrollIntoView({block:'nearest'});}catch(e){}}
+    return false;
+  }
+  return true;
+}
+function lbWireName(){
+  const who=document.getElementById('arcWho'),edit=document.getElementById('arcEdit'),
+        inp=document.getElementById('arcName'),save=document.getElementById('arcSave'),
+        msg=document.getElementById('arcMsg');
+  if(!who||!edit||!inp||!save)return;
+  const paint=()=>{
+    const n=lbName();
+    if(n){who.innerHTML='playing as <b></b> (<a href="#" id="arcChange">change</a>)';who.querySelector('b').textContent=n;edit.style.display='none';
+      const ch=document.getElementById('arcChange');if(ch)ch.onclick=e=>{e.preventDefault();edit.style.display='';inp.value=n;if(msg)msg.textContent='';};
+    }else{who.textContent=LB_ON?'enter an arcade name to join the global board:':'global board lives on the arcade site';edit.style.display=LB_ON?'':'none';}
+  };
+  save.onclick=async()=>{if(msg)msg.textContent='checking…';const r=await lbSetName(inp.value);if(r.ok){paint();try{const seat=document.getElementById('name');if(seat&&(!seat.value||seat.value==='Player'))seat.value=lbName();}catch(e){}try{lbRefresh();}catch(e){}}else if(msg)msg.textContent=r.reason==='taken'?'name taken — choose another':'enter 1–12 characters';};
+  paint();
+}function lbRefresh(){try{const el=document.getElementById('lbLine');if(el){el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(el,rows,v=>'wave '+v));}}catch(e){}}
 // SWARM SURVIVAL v1.0 — single file, no deps. All motion is dt-based (per-second units).
 const W=2560,H=1440;
 const WAVE_LEN=50,BREATHER_LEN=6;
@@ -123,7 +195,7 @@ let best=0;try{best=parseInt(window.localStorage.getItem('swarm_best')||'0',10)|
 function saveSharedMute(m){try{window.localStorage.setItem('bgames_muted',m?'1':'0');}catch(e){}}
 function saveBest(){try{window.localStorage.setItem('swarm_best',String(best));}catch(e){}}
 function refreshMuteBtn(){document.getElementById('muteBtn').innerHTML=muted?ICON_MUTE:ICON_SND;}
-function refreshBest(){document.getElementById('bestLine').textContent=best>0?('best: wave '+best):'no runs yet — good luck, pilot';}
+function refreshBest(){document.getElementById('bestLine').textContent=best>0?('best: wave '+best):'no runs yet — good luck, pilot';lbRefresh();}
 const ICON_PAUSE='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
 const ICON_PLAY='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>';
 const ICON_SND='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8a5 5 0 010 8M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
@@ -139,7 +211,7 @@ function pickMode(m,label){mode=m;modeEl.textContent=label;beep(520,.07);}
 document.getElementById('b1p').onclick=()=>pickMode('1p','🛸 solo — WASD + autofire');
 document.getElementById('b1pai').onclick=()=>pickMode('1pai','🤖 solo + AI companion ('+diff+')');
 document.getElementById('b2p').onclick=()=>pickMode('2p','👥 local 2P — WASD vs arrows');
-document.getElementById('startBtn').onclick=start;
+document.getElementById('startBtn').onclick=()=>{if(lbGate())start();};
 const MENU_H1='🛸 SWARM SURVIVAL';
 function showMenu(){
   running=false;over=false;paused=false;hideVeil();
@@ -575,6 +647,8 @@ function gameOver(){
   ov.querySelector('p').innerHTML='Waves survived: <b>'+(wave-1)+'</b> (reached wave '+wave+') • kills: <b>'+kills+'</b> • score: <b>'+score+'</b><br>Best wave: '+best+' • pick a mode and hit Start.';
   document.getElementById('startBtn').textContent='Play again';
   beep(160,.5,'sawtooth',.12);
+  try{lbPost(wave);}catch(e){}
+  lbRefresh();
 }
 // ---------- draw ----------
 function drawShip(s,t){
@@ -770,6 +844,7 @@ document.getElementById('quitBtn').onclick=e=>{e.stopPropagation();showMenu();be
 document.getElementById('pmuteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();document.getElementById('pmuteBtn').textContent='Mute: '+(muted?'on':'off');if(!muted)beep(700,.07);};
 document.getElementById('muteBtn').onclick=e=>{e.stopPropagation();muted=!muted;saveSharedMute(muted);refreshMuteBtn();if(!muted)beep(700,.07);};
 refreshMuteBtn();refreshBest();
+lbWireName();
 let last=performance.now();
 function loop(t){requestAnimationFrame(loop);const dt=Math.min(.033,(t-last)/1000);last=t;if(!running||paused)return;update(dt,t);draw(t);}
 requestAnimationFrame(loop);draw(performance.now());

@@ -91,7 +91,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.13</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.14</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
@@ -116,6 +116,8 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div class="bestline" id="menuBest">…</div>
       <div class="bestline" id="rivalLine"></div>
       <ol id="topList"></ol>
+      <div id="arcRow" style="margin:8px 0 0;font-size:13px;text-align:left"><span id="arcWho"></span><span id="arcEdit"><input id="arcName" maxlength="12" placeholder="arcade name…" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff33;background:#0d0a20;color:#fff;font-size:14px;outline:none;margin-top:6px;user-select:text;-webkit-user-select:text"><button id="arcSave" class="ghost" style="width:100%;margin-top:6px">Save name</button><div id="arcMsg" style="font-size:11px;opacity:.75;min-height:16px;margin-top:4px"></div></span></div>
+      <div class="bestline" id="lbLine" style="font-size:11px;opacity:.7"></div>
       <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
       <p>Controls: drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset to track •
       <kbd>T</kbd> restart lap • <kbd>G</kbd> rival ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu.<br>
@@ -146,7 +148,76 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
   <div id="hint">Drive <kbd>WASD</kbd>/arrows • <kbd>Space</kbd> handbrake • <kbd>R</kbd> reset • <kbd>T</kbd> restart lap • <kbd>G</kbd> ghost • <kbd>F</kbd> fullscreen • <kbd>P</kbd> pause • <kbd>Esc</kbd> menu</div>
 </div>
 <script>
-const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+// 🌍 global board: arcade-site scores only (benjooyt.github.io), one shared name
+const SUPA_URL='https://sdmzslvdbontnjculyt.supabase.co',SUPA_KEY='sb_publishable_ZOdbhzKCWcB4Eog7ALBBA_o_cJoy_R';
+const LB_GAME='drift',LB_ASC=true;
+const LB_Q=new URLSearchParams(location.search);
+const LB_ON=/(^|\.)benjooyt\.github\.io$/.test(location.hostname)||LB_Q.has('lbtest');
+const LB_API=LB_Q.get('lbapi')||SUPA_URL; // test hook: ?lbtest&lbapi=http://127.0.0.1:8765
+function lbName(){try{return localStorage.getItem('arcade_name')||'';}catch(e){return '';}}
+function lbHeads(){return {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};}
+async function lbTaken(name){
+  try{
+    const r=await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(name)+'&select=id&limit=1',{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)&&j.length>0;
+  }catch(e){return false;}
+}
+async function lbSetName(name){
+  name=String(name||'').trim().slice(0,12);
+  if(!name)return{ok:false,reason:'empty'};
+  const old=lbName();
+  if(old!==name){
+    let taken=false;try{taken=await lbTaken(name);}catch(e){taken=false;}
+    if(taken)return{ok:false,reason:'taken'};
+    if(old){try{await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(old),{method:'DELETE',headers:lbHeads()});}catch(e){}}
+  }
+  try{localStorage.setItem('arcade_name',name);}catch(e){}
+  return{ok:true};
+}
+async function lbPost(value){
+  if(!LB_ON)return;const name=lbName();if(!name)return;
+  try{
+    value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
+    await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
+  }catch(e){}
+}
+async function lbTop(n){
+  if(!LB_ON)return[];
+  try{
+    n=n||5;
+    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n+'&_='+Date.now(),{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)?j:[];
+  }catch(e){return[];}
+}
+function lbRender(el,rows,fmt){
+  if(!el)return;
+  if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
+  if(!rows.length){el.textContent='global board: no scores yet — be the first!';return;}
+  el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+}
+function lbGate(){
+  if(LB_ON&&!lbName()){
+    const inp=document.getElementById('arcName'),msg=document.getElementById('arcMsg');
+    if(msg)msg.textContent='enter an arcade name first';
+    if(inp){try{inp.focus();inp.scrollIntoView({block:'nearest'});}catch(e){}}
+    return false;
+  }
+  return true;
+}
+function lbWireName(){
+  const who=document.getElementById('arcWho'),edit=document.getElementById('arcEdit'),
+        inp=document.getElementById('arcName'),save=document.getElementById('arcSave'),
+        msg=document.getElementById('arcMsg');
+  if(!who||!edit||!inp||!save)return;
+  const paint=()=>{
+    const n=lbName();
+    if(n){who.innerHTML='playing as <b></b> (<a href="#" id="arcChange">change</a>)';who.querySelector('b').textContent=n;edit.style.display='none';
+      const ch=document.getElementById('arcChange');if(ch)ch.onclick=e=>{e.preventDefault();edit.style.display='';inp.value=n;if(msg)msg.textContent='';};
+    }else{who.textContent=LB_ON?'enter an arcade name to join the global board:':'global board lives on the arcade site';edit.style.display=LB_ON?'':'none';}
+  };
+  save.onclick=async()=>{if(msg)msg.textContent='checking…';const r=await lbSetName(inp.value);if(r.ok){paint();try{const seat=document.getElementById('name');if(seat&&(!seat.value||seat.value==='Player'))seat.value=lbName();}catch(e){}try{lbRefresh();}catch(e){}}else if(msg)msg.textContent=r.reason==='taken'?'name taken — choose another':'enter 1–12 characters';};
+  paint();
+}const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const W=960,H=600;
 const ov=document.getElementById('overlay'),menuCard=document.getElementById('menuCard'),menuBest=document.getElementById('menuBest');
 const raceBtn=document.getElementById('raceBtn'),watchBtn=document.getElementById('watchBtn'),exportBtn=document.getElementById('exportBtn'),importBtn=document.getElementById('importBtn'),clearBtn=document.getElementById('clearBtn'),fileIn=document.getElementById('fileIn'),rivalBtn=document.getElementById('rivalBtn'),rivalLine=document.getElementById('rivalLine');
@@ -398,6 +469,7 @@ function finishLap(){
   if(dayBest==null||ms<dayBest.timeMs){
     best={game:'neon-drift',track:TRACK_ID,day:selectedDay,tickHz:60,timeMs:ms,samples:recSamples,date:new Date().toISOString()};
     saveBest(selectedDay,best);refreshBestUI();
+    try{lbPost(ms);}catch(e){}
     flash='🏆 BEST '+fmt(ms);flashT=Date.now()+2200;
     beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
   }else{
@@ -534,6 +606,7 @@ function refreshBestUI(){
     topList.appendChild(li);
   });
   lastEl.textContent='–';
+  try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>fmt(v)));}}catch(e){}
 }
 // ---- day selector ----
 function selectDay(day){
@@ -764,7 +837,7 @@ if(isTouch){
 }
 // ---- menu wiring ----
 window.addEventListener('contextmenu',e=>e.preventDefault());
-raceBtn.onclick=()=>{startRace();beep(700,.1);};
+raceBtn.onclick=()=>{if(!lbGate())return;startRace();beep(700,.1);};
 watchBtn.onclick=()=>{startReplay();};
 exportBtn.onclick=()=>{exportBest();};
 importBtn.onclick=()=>{fileMode='import';fileIn.click();};
@@ -786,6 +859,7 @@ fsPrompt.onclick=e=>{e.stopPropagation();fsPrompt.style.display='none';enterFs()
 // ---- boot ----
 buildTrack();
 placeOnGrid();
+lbWireName();
 refreshBestUI();
 refreshRivalLine();
 refreshGhostBtn();
