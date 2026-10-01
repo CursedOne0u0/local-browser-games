@@ -155,10 +155,12 @@ async function lbPost(value){
     value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
     const r=await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
     if(!r.ok){lbFail('post '+r.status);return;}
+    try{localStorage.removeItem('lb_last_err');}catch(e){}
     try{const el=document.getElementById('lbLine');if(el&&el._fmt){const rows=await lbTop(5);lbRender(el,rows,el._fmt);}}catch(e){}
   }catch(e){lbFail('post offline');}
 }
 function lbFail(what){
+  try{localStorage.setItem('lb_last_err',what);}catch(e){}
   try{const el=document.getElementById('lbLine');if(el&&LB_ON)el.textContent='global board error ('+what+') — scores not saving';}catch(e){}
 }
 async function lbTop(n){
@@ -174,8 +176,9 @@ function lbRender(el,rows,fmt){
   if(!el)return;
   try{el._fmt=fmt;}catch(e){}
   if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
-  if(!rows.length){el.textContent='global board: no scores yet — be the first!';return;}
-  el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+  if(!rows.length){el.textContent='global board: no scores yet — be the first!';}
+  else el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+  try{const le=localStorage.getItem('lb_last_err');if(le&&LB_ON)el.textContent+=' [last error: '+le+']';}catch(e){}
 }
 function lbGate(){
   if(LB_ON&&!lbName()){
