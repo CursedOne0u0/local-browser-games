@@ -3,33 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#02030a">
+<meta name="theme-color" content="#04120a">
 <title>Echo Hunt — LAN 2-8P</title>
 <style>
-:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#02030a;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+:root{--c1:#39ff88;--c2:#39ff88;--bg:#04120a;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#0a1230 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#0a2a18 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;position:relative}
 #topbar{position:absolute;top:6px;left:8px;right:8px;display:flex;align-items:center;justify-content:space-between;z-index:4;pointer-events:none}
 #topbar button{pointer-events:auto}
 #fsBtn{width:auto;margin:0;padding:8px 14px;flex:none;display:flex;align-items:center;justify-content:center}
 #pauseBtn{width:auto;margin:0;padding:8px 14px;flex:none;display:flex;align-items:center;justify-content:center}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
-.logo span{color:#9adcff}
-#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
+.logo span{color:#39ff88}
+#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #39ff8866;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #score{font-family:var(--mono);font-weight:900;font-variant-numeric:tabular-nums;font-size:clamp(16px,3vw,26px)}
 #names{position:absolute;top:44px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.06em;opacity:.85;z-index:4;pointer-events:none}
 #rolebar{position:absolute;top:62px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;letter-spacing:.04em;z-index:4;pointer-events:none}
 #stamwrap{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);width:min(420px,80vw);height:12px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff2a;overflow:hidden;z-index:4;pointer-events:none}
-#stamfill{height:100%;width:100%;background:linear-gradient(90deg,#00f6ff,#7dffcb);transition:width .1s linear}
-#stage{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden;border:0;background:#02030a}
+#stamfill{height:100%;width:100%;background:linear-gradient(90deg,#39ff88,#7dffcb);transition:width .1s linear}
+#stage{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden;border:0;background:#04120a}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #vig{position:absolute;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at center,transparent 52%,rgba(0,0,0,.55) 100%)}
 #terror{position:absolute;inset:0;pointer-events:none;z-index:3;opacity:0;background:radial-gradient(ellipse at center,transparent 46%,rgba(255,20,20,.5) 100%)}
-#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
-.card{width:min(440px,94%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:96%;overflow:auto}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(4,18,10,.85);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(440px,94%);background:#07160d;border:1px solid #39ff8844;border-radius:16px;padding:20px;text-align:center;max-height:96%;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
-.card h1::after{content:"";display:block;height:4px;margin:10px auto 0;width:150px;border-radius:2px;background:repeating-linear-gradient(90deg,#9adcff 0 10px,transparent 10px 20px)}
+.card h1::after{content:"";display:block;height:4px;margin:10px auto 0;width:150px;border-radius:2px;background:repeating-linear-gradient(90deg,#39ff88 0 10px,transparent 10px 20px)}
 .card p{font-size:13px;opacity:.8;line-height:1.6}
 #slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
 .slot{padding:7px;border-radius:10px;background:#ffffff0d;border:1px dashed #ffffff33;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -38,19 +38,19 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .slot.d{border-color:#00f6ff;color:#9adcff}
 #botRow{display:none;align-items:center;justify-content:center;gap:6px;margin:10px 0;font-size:13px;font-weight:800}
 #botRow button{width:auto;margin:0;padding:8px 16px;font-size:15px;flex:none}
-input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#050816;color:#fff;font-size:16px;outline:none;margin:8px 0}
-button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#04121a;background:#9adcff;box-shadow:none;width:100%;margin-top:8px}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#061a0e;color:#fff;font-size:16px;outline:none;margin:8px 0}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#04121a;background:#39ff88;box-shadow:none;width:100%;margin-top:8px}
 button svg{vertical-align:-3px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
 button:disabled{opacity:.4}
 #hint{position:absolute;bottom:6px;left:0;right:0;font-size:11px;opacity:.65;text-align:center;line-height:1.6;z-index:4;pointer-events:none}
 kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
-#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(2,3,10,.85);backdrop-filter:blur(6px);padding:14px}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(4,18,10,.85);backdrop-filter:blur(6px);padding:14px}
 #pveil .card{width:min(340px,92%)}
 #pveil.show{display:flex}
 /* wire minigame */
-#pz{position:absolute;inset:0;display:none;flex-direction:column;background:rgba(2,3,10,.96);z-index:5;padding:12px;gap:8px}
+#pz{position:absolute;inset:0;display:none;flex-direction:column;background:rgba(4,18,10,.96);z-index:5;padding:12px;gap:8px}
 #pzHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 #pzTitle{font-weight:900;font-size:15px;letter-spacing:.05em}
 #pzRun{width:auto;margin:0;padding:10px 18px;font-size:15px;flex:none}
@@ -64,7 +64,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.12</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
+  <div id="topbar"><div class="logo">ECHO <span>HUNT</span></div><div id="verBadge">v1.13</div><div id="score">0 : 0</div><div style="display:flex;gap:8px"><button id="pauseBtn" title="Pause for everyone (P)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="fsBtn" title="Fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4"/></svg></button></div></div>
   <div id="names">connecting…</div>
   <div id="rolebar">lobby</div>
   <div id="stamwrap"><div id="stamfill"></div></div>
@@ -405,7 +405,7 @@ function draw(now,dt){
   let camX=m0.x-vw/2,camY=m0.y-vh/2;
   if(vw>=W)camX=(W-vw)/2;else camX=Math.max(0,Math.min(W-vw,camX));
   if(vh>=H)camY=(H-vh)/2;else camY=Math.max(0,Math.min(H-vh,camY));
-  ctx.fillStyle='#02030a';ctx.fillRect(camX,camY,vw,vh);
+  ctx.fillStyle='#04120a';ctx.fillRect(camX,camY,vw,vh);
   ctx.strokeStyle='#ffffff08';
   for(let x=Math.max(0,Math.floor(camX/40)*40);x<Math.min(W,camX+vw+40);x+=40){ctx.beginPath();ctx.moveTo(x,Math.max(0,camY));ctx.lineTo(x,Math.min(H,camY+vh));ctx.stroke();}
   for(let y=Math.max(0,Math.floor(camY/40)*40);y<Math.min(H,camY+vh+40);y+=40){ctx.beginPath();ctx.moveTo(Math.max(0,camX),y);ctx.lineTo(Math.min(W,camX+vw),y);ctx.stroke();}
@@ -415,8 +415,8 @@ function draw(now,dt){
   if(playing){
     // subject layer (fogged): flat slabs with phosphor edge ticks
     (state.pillars||[]).forEach(p=>{
-      ctx.save();ctx.fillStyle='#0d1626';
-      ctx.fillRect(p.x,p.y,p.w,p.h);ctx.strokeStyle='#9adcff66';ctx.lineWidth=2;ctx.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);ctx.restore();
+      ctx.save();ctx.fillStyle='#0c1a12';
+      ctx.fillRect(p.x,p.y,p.w,p.h);ctx.strokeStyle='#39ff8866';ctx.lineWidth=2;ctx.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);ctx.restore();
     });
     // live dots, opponents only (self drawn after fog so never hidden)
     drs().forEach((r,i)=>{
@@ -451,7 +451,7 @@ function draw(now,dt){
     // fog overlay with viewer hole
     const m=myPos();
     fctx.save();fctx.globalCompositeOperation='source-over';fctx.clearRect(0,0,W,H);
-    fctx.fillStyle='rgba(2,3,10,0.96)';fctx.fillRect(0,0,W,H);
+    fctx.fillStyle='rgba(4,18,10,0.96)';fctx.fillRect(0,0,W,H);
     fctx.globalCompositeOperation='destination-out';
     const g=fctx.createRadialGradient(m.x,m.y,R*0.55,m.x,m.y,R);
     g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(1,'rgba(0,0,0,0)');
@@ -506,7 +506,7 @@ function draw(now,dt){
     (state.rings||[]).forEach(rg=>{
       const age=rg.age,rad=age*260;
       if(rad>420)return;
-      ctx.save();ctx.globalAlpha=Math.max(0,.7-age*.45);ctx.strokeStyle='#9adcff';ctx.lineWidth=2.5;
+      ctx.save();ctx.globalAlpha=Math.max(0,.7-age*.45);ctx.strokeStyle='#39ff88';ctx.lineWidth=2.5;
       ctx.beginPath();ctx.arc(rg.x,rg.y,rad,0,7);ctx.stroke();ctx.restore();
     });
     // blips (hunters)

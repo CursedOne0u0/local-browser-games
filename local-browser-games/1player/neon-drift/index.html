@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#05060f">
+<meta name="theme-color" content="#0b0d12">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <meta name="mobile-web-app-capable" content="yes">
@@ -11,21 +11,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Neon Drift — Solo Time Trial</title>
 <style>
-:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+:root{--c1:#ff3131;--c2:#ff3131;--bg:#0b0d12;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden;touch-action:none;-webkit-touch-callout:none}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#261016 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden;touch-action:none;-webkit-touch-callout:none}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
 #top{width:min(960px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
 .logo span{color:var(--c2)}
-#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
+#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #ff313166;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #hud{display:flex;gap:12px;font-family:var(--mono);font-weight:800;font-size:13px;letter-spacing:.04em;flex-wrap:wrap;justify-content:flex-end;font-variant-numeric:tabular-nums}
 #hud b{color:var(--c1)}
 #hud #timeB{color:#ffe14d;min-width:92px;display:inline-block}
-#stage{position:relative;width:min(960px,96vw,calc((100dvh - 150px)*1.6));aspect-ratio:960/600;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
+#stage{position:relative;width:min(960px,96vw,calc((100dvh - 150px)*1.6));aspect-ratio:960/600;border-radius:16px;overflow:hidden;border:1px solid #ff313133;background:#0b0d12}
 canvas{width:100%;height:100%;display:block;touch-action:none}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.8);backdrop-filter:blur(6px)}
-.card{width:min(460px,92%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:22px;text-align:center;max-height:94%;overflow:auto}
+.card{width:min(460px,92%);background:#141318;border:1px solid #ff313144;border-radius:16px;padding:22px;text-align:center;max-height:94%;overflow:auto}
 .card h1{margin:.2em 0;font-size:24px;font-family:var(--mono);letter-spacing:.04em}
 .card p{font-size:12.5px;opacity:.85;line-height:1.7}
 .card .bestline{font-size:13px;margin:6px 0 0;color:#ffe14d;font-weight:800}
@@ -49,7 +49,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:6}
 #pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
 #pveil .card{width:min(340px,92%)}
-#fsPrompt{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;width:auto;padding:10px 18px;margin:0;background:#00f6ff;color:#04121a;font-weight:900;font-size:14px;border-radius:99px;box-shadow:0 0 18px #00f6ff88;white-space:nowrap}
+#fsPrompt{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:7;display:none;width:auto;padding:10px 18px;margin:0;background:#ff3131;color:#1a0404;font-weight:900;font-size:14px;border-radius:99px;box-shadow:0 0 18px #ff313188;white-space:nowrap}
 @media (orientation:landscape) and (display-mode:fullscreen){#hint{display:none}}
 /* landscape fullscreen (touch): driving buttons leave the track, dock to the side margins */
 @media (orientation:landscape){
@@ -68,7 +68,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">NEON <span>DRIFT</span></div>
-    <div id="verBadge">v1.11</div><!-- bump on every update, like the server VERSIONs -->
+    <div id="verBadge">v1.12</div><!-- bump on every update, like the server VERSIONs -->
     <div id="hud"><div>TIME <b id="timeB">0:00.000</b></div><div>LAP <b id="lapB">–</b></div><div>Δ <b id="deltaB">–</b></div><div>LAST <b id="lastB">–</b></div><div>BEST <b id="bestB">–</b></div></div>
   </div>
   <div id="stage">
@@ -402,7 +402,7 @@ function stepSim(){
   // quarter splits: sector time + live delta vs best ghost at same track fraction
   const q=Math.floor(rel/N*4);
   if(q>lastQuarter&&q<4){
-    lastQuarter=q;beep(660+q*90,.07);burst(car.x,car.y,'#00f6ff',8,180);
+    lastQuarter=q;beep(660+q*90,.07);burst(car.x,car.y,'#ff3131',8,180);
     const secMs=Math.round((curTicks-qStart)*TICK*1000);qStart=curTicks;
     let dTxt='';
     if(best&&best.track===TRACK_ID&&best.samples&&best.samples.length){
@@ -582,7 +582,7 @@ function drawCar(x,y,a,col){
     ctx.strokeRect(-22,-11,12,22);
     ctx.beginPath();ctx.arc(-2,0,4,0,7);ctx.stroke();
   }else{
-    ctx.fillStyle='#00f6ff';carBodyPath();ctx.fill();
+    ctx.fillStyle='#ff3131';carBodyPath();ctx.fill();
     ctx.fillRect(-22,-11,12,22);
     ctx.fillStyle='#0a1420';ctx.beginPath();ctx.arc(-2,0,4,0,7);ctx.fill();
     ctx.fillStyle='#fff6da';ctx.fillRect(8,-5,3,3);ctx.fillRect(8,2,3,3);
@@ -590,7 +590,7 @@ function drawCar(x,y,a,col){
   ctx.restore();ctx.globalAlpha=1;
 }
 function draw(t){
-  ctx.fillStyle='#070a18';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b0d12';ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#ffffff0a';ctx.lineWidth=1;
   for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
@@ -628,7 +628,7 @@ function draw(t){
     ctx.restore();
   })();
   // direction chevrons
-  ctx.save();ctx.fillStyle='#00f6ff55';
+  ctx.save();ctx.fillStyle='#ff313155';
   for(let i=0;i<N;i+=40){
     const x=CX[i],y=CY[i],a=Math.atan2(TY[i],TX[i]);
     ctx.save();ctx.translate(x,y);ctx.rotate(a);
@@ -673,7 +673,7 @@ function draw(t){
   const showCd=mode==='countdown';
   if(showCd||Date.now()<flashT){
     ctx.save();ctx.textAlign='center';ctx.font='900 64px system-ui';
-    ctx.shadowColor='#00f6ff';ctx.shadowBlur=30;ctx.fillStyle='#fff';
+    ctx.shadowColor='#ff3131';ctx.shadowBlur=30;ctx.fillStyle='#fff';
     ctx.fillText(showCd?flash:(flash||''),W/2,H/2-40);
     ctx.restore();
   }

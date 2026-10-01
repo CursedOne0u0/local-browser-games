@@ -31,7 +31,7 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3001"))
-VERSION = "1.20"  # bump on every update; shown on the site
+VERSION = "1.21"  # bump on every update; shown on the site
 WIN_ROUNDS = 5
 PUBLIC = Path(__file__).parent / "public"
 

@@ -3,8 +3,8 @@
   "short_name": "Drift",
   "start_url": "index.html",
   "display": "fullscreen",
-  "background_color": "#05060f",
-  "theme_color": "#05060f",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
   "icons": [
     {
       "src": "icon.svg",

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#05060f">
+<meta name="theme-color" content="#030a06">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <meta name="mobile-web-app-capable" content="yes">
@@ -11,23 +11,23 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Pong Duo — 1P vs AI or 2P Local</title>
 <style>
-:root{--c1:#00f6ff;--c2:#ff2fd6;--bg:#05060f;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+:root{--c1:#33ff66;--c2:#33ff66;--bg:#030a06;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#141a3a 0%,var(--bg) 60%) fixed,var(--bg);color:#eaf6ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#0a2415 0%,var(--bg) 60%) fixed,var(--bg);color:#c9ffd9;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
 #wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
 #top{width:min(860px,96vw);display:flex;justify-content:space-between;align-items:center}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
 .logo span{color:var(--c2)}
-#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #00f6ff66;border-radius:6px;padding:3px 10px;white-space:nowrap}
+#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c1);border:1px solid #33ff6666;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #score{font-family:var(--mono);font-weight:900;font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vw,28px)}
 #mode{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
 #rally{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--c1);opacity:.9}
-#stage{position:relative;width:min(860px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #ffffff22;background:#070a18}
+#stage{position:relative;width:min(860px,96vw);aspect-ratio:800/500;border-radius:16px;overflow:hidden;border:1px solid #33ff6633;background:#030a06}
 canvas{width:100%;height:100%;display:block;touch-action:none}
-#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
-.card{width:min(440px,93%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:94%;overflow:auto}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(3,10,6,.85);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(440px,93%);background:#04140a;border:1px solid #33ff6633;border-radius:16px;padding:20px;text-align:center;max-height:94%;overflow:auto}
 #mbtns{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
-#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.82);backdrop-filter:blur(6px);padding:14px}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(3,10,6,.85);backdrop-filter:blur(6px);padding:14px}
 #pveil .card{width:min(340px,92%)}
 #mbtns button{width:42px;height:42px;min-width:42px;padding:0;margin:0;border-radius:10px;background:#000000aa;color:#fff;box-shadow:none;border:1px solid #ffffff44;flex:none;display:flex;align-items:center;justify-content:center}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono);letter-spacing:.04em}
@@ -46,7 +46,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.9</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
+  <div id="top"><div class="logo">PONG <span>DUO</span></div><div id="verBadge">v1.91</div><!-- bump on every update, like the server VERSIONs --><div id="score">0 : 0</div></div>
   <div id="rally">RALLY 0</div>
   <div id="mode">menu</div>
   <div id="stage">
@@ -207,11 +207,11 @@ function update(dt,t){
   const p1x=30,p2x=W-30-14,p1py=p1.y*H,p2py=p2.y*H;
   if(ball.vx<0&&ball.x-8<p1x+14&&ball.x-8>p1x-12&&Math.abs(ball.y-p1py)<p1.h/2+8){
     ball.x=p1x+22;const rel=(ball.y-p1py)/(p1.h/2);const s=Math.min(860,Math.hypot(ball.vx,ball.vy)*1.05+8);
-    ball.vx=Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(520,.06);burst(ball.x,ball.y,'#00f6ff',10);bumpRally();
+    ball.vx=Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(520,.06);burst(ball.x,ball.y,'#33ff66',10);bumpRally();
   }
   if(ball.vx>0&&ball.x+8>p2x&&ball.x+8<p2x+26&&Math.abs(ball.y-p2py)<p2.h/2+8){
     ball.x=p2x-8;const rel=(ball.y-p2py)/(p2.h/2);const s=Math.min(860,Math.hypot(ball.vx,ball.vy)*1.05+8);
-    ball.vx=-Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(620,.06);burst(ball.x,ball.y,'#ff2fd6',10);bumpRally();
+    ball.vx=-Math.cos(rel*.9)*s;ball.vy=Math.sin(rel*.9)*s;beep(620,.06);burst(ball.x,ball.y,'#33ff66',10);bumpRally();
   }
   if(ball.x<-24){scored(2);}else if(ball.x>W+24){scored(1);}
   parts=parts.filter(p=>p.life>0);const dmp=Math.pow(.98,dt*60);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=dmp;p.vy*=dmp;p.life-=dt*1.6;});
@@ -220,7 +220,7 @@ function scored(w){
   if(w===1)p1.score++;else p2.score++;
   rally=0;rallyEl.textContent='RALLY 0';
   scoreEl.textContent=p1.score+' : '+p2.score;
-  beep(w===1?880:220,.25);burst(w===1?60:W-60,H/2,w===1?'#00f6ff':'#ff2fd6',40);
+  beep(w===1?880:220,.25);burst(w===1?60:W-60,H/2,'#33ff66',40);
   flash=p1.score+' — '+p2.score;flashT=Date.now()+900;
   if(((p1.score>=WIN||p2.score>=WIN)&&Math.abs(p1.score-p2.score)>=2)||p1.score>=WINCAP||p2.score>=WINCAP){gameOver(w);return;}
   ball.dir=w===1?-1:1;ball.stuck=true;
@@ -236,22 +236,22 @@ function gameOver(w){
   document.getElementById('startBtn').textContent='Play again';
 }
 function draw(t){
-  ctx.fillStyle='#070a18';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#030a06';ctx.fillRect(0,0,W,H);
   // watermark broadcast numerals behind play
   ctx.save();ctx.globalAlpha=.07;ctx.fillStyle='#fff';ctx.font='900 200px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(p1.score,W*0.25,H/2);ctx.fillText(p2.score,W*0.75,H/2);ctx.restore();
   ctx.strokeStyle='#ffffff0d';for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   // net mesh instead of a plain dashed line
-  ctx.save();ctx.strokeStyle='#a8adb8';ctx.lineWidth=2;ctx.setLineDash([12,12]);ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-10);ctx.stroke();ctx.setLineDash([]);
-  ctx.strokeStyle='#5a5e68';ctx.lineWidth=1;
+  ctx.save();ctx.strokeStyle='#2f7a44';ctx.lineWidth=2;ctx.setLineDash([12,12]);ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-10);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle='#1a4a28';ctx.lineWidth=1;
   for(let y=10;y<H;y+=26){ctx.beginPath();ctx.moveTo(W/2-7,y);ctx.lineTo(W/2-7,y+13);ctx.stroke();ctx.beginPath();ctx.moveTo(W/2+7,y);ctx.lineTo(W/2+7,y+13);ctx.stroke();}
   ctx.restore();
   trail.push({x:ball.x,y:ball.y});if(trail.length>16)trail.shift();
-  trail.forEach((p,i)=>{ctx.globalAlpha=i/trail.length*.45;ctx.fillStyle='#00f6ff';ctx.beginPath();ctx.arc(p.x,p.y,3+6*i/trail.length,0,7);ctx.fill();});ctx.globalAlpha=1;
-  paddle(30,p1.y*H,'#00f6ff');paddle(W-30-14,p2.y*H,'#ff2fd6');
-  // flat heavy ball with motion ticks (no glow)
-  ctx.save();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ball.x,ball.y,9,0,7);ctx.fill();
-  ctx.strokeStyle='#c9ccd4';ctx.lineWidth=2;
+  trail.forEach((p,i)=>{ctx.globalAlpha=i/trail.length*.45;ctx.fillStyle='#33ff66';ctx.beginPath();ctx.arc(p.x,p.y,3+6*i/trail.length,0,7);ctx.fill();});ctx.globalAlpha=1;
+  paddle(30,p1.y*H,'#33ff66');paddle(W-30-14,p2.y*H,'#33ff66');
+  // flat phosphor ball with motion ticks (no glow)
+  ctx.save();ctx.fillStyle='#33ff66';ctx.beginPath();ctx.arc(ball.x,ball.y,9,0,7);ctx.fill();
+  ctx.strokeStyle='#04331a';ctx.lineWidth=2;
   const bsp=Math.hypot(ball.vx,ball.vy);
   if(bsp>50){const dx=-ball.vx/bsp,dy=-ball.vy/bsp;for(let k=1;k<=3;k++){ctx.beginPath();ctx.moveTo(ball.x+dx*(10+k*9),ball.y+dy*(10+k*9));ctx.lineTo(ball.x+dx*(16+k*9),ball.y+dy*(16+k*9));ctx.stroke();}}
   ctx.restore();
