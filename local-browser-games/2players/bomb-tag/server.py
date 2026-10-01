@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Bomb Tag — LAN 2-player hot potato. Zero dependencies, stdlib only.
-Run:  python3 server.py   (both players open the printed LAN URL, same WiFi)
-One ticks, both run. Tag to pass. Holder explodes. First to 5.
+"""Bomb Tag — LAN 2-4 player hot potato (1-2 seats per device, up to 2 devices).
+Run:  python3 server.py   (players open the printed LAN URL, same WiFi)
+One ticks, all run. Tag to pass. Holder explodes. 2P: rival scores, first to 5. 3-4P: holder -1, 5 blasts, highest wins.
 """
 import json, time, math, random, threading, socket, os, sys
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -32,8 +32,10 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3002"))
-VERSION = "1.25"  # bump on every update; shown on the site
-WIN_ROUNDS = 5
+VERSION = "1.26"  # bump on every update; shown on the site
+WIN_ROUNDS = 5  # 2P: points to win. 3-4P: total blasts per match (highest score wins).
+MAX_SEATS = 4
+W, H = 800, 560  # base arena (2P); 3-4P scales to drift size below
 PUBLIC = Path(__file__).parent / "public"
 
 W, H = 800, 560
@@ -45,15 +47,25 @@ DASH_TIME = 0.28
 DASH_CD = 3.0
 TAG_DIST = 36
 TAG_IMMUNITY = 1.0
-# pillars (x,y,w,h) to juke around
-PILLARS = [
+# pillars (x,y,w,h) to juke around — authored for 800x560, scaled to arena
+PILLARS_BASE = [
     {"x": 200, "y": 140, "w": 60, "h": 60},
     {"x": 540, "y": 140, "w": 60, "h": 60},
     {"x": 200, "y": 360, "w": 60, "h": 60},
     {"x": 540, "y": 360, "w": 60, "h": 60},
     {"x": 370, "y": 250, "w": 60, "h": 60},
 ]
-SPAWNS = [{"x": 100, "y": 280}, {"x": 700, "y": 280}]
+SPAWNS_BASE = [{"x": 100, "y": 280}, {"x": 700, "y": 280},
+               {"x": 100, "y": 100}, {"x": 700, "y": 460}]
+def arena_for(n):
+    # 3rd player grows the room to drift size (960x600); 2P stays classic
+    return (960, 600) if n >= 3 else (800, 560)
+def layout_for(aw, ah):
+    sx, sy = aw/800, ah/560
+    pillars = [{"x": round(p["x"]*sx), "y": round(p["y"]*sy),
+                "w": max(40, round(p["w"]*sx)), "h": max(40, round(p["h"]*sy))} for p in PILLARS_BASE]
+    spawns = [{"x": round(min(max(60, s["x"]*sx), aw-60)), "y": round(min(max(60, s["y"]*sy), ah-60))} for s in SPAWNS_BASE]
+    return pillars, spawns
 # boost pads spawn at random spots aiming random ways; one-shot slingshots
 PAD_R = 30
 BOOST_TIME = 0.55
@@ -67,22 +79,26 @@ game = {
     "countdown_end": 0,
     "round_end": 0,
     "round": 1,
-    "players": [None, None],  # {id,name,last_seen,ready,x,y,input,fire,prev_fire}
-    "pos": [{"x": 0, "y": 0, "score": 0}, {"x": 0, "y": 0, "score": 0}],
-    "dash_until": [0, 0],
-    "dash_cd": [0, 0],
-    "imm_until": [0, 0],
+    "players": [None, None, None, None],  # {id,name,last_seen,ready,x,y,input,fire,prev_fire}
+    "pos": [{"x": 0, "y": 0, "score": 0} for _ in range(4)],
+    "dash_until": [0, 0, 0, 0],
+    "dash_cd": [0, 0, 0, 0],
+    "imm_until": [0, 0, 0, 0],
     "holder": 0,
     "fuse": 10.0,
     "pads": [],  # live pads {x,y,dx,dy,expires}
     "pad_timer": 2.5,
-    "boost_until": [0, 0],
+    "boost_until": [0, 0, 0, 0],
     "last_boost": None,  # {x,y,by,id}
     "winner": 0,
     "event_id": 0,
     "last_pass": None,  # {holder,id}
     "last_boom": None,  # {x,y,scorer,id}
     "paused": False, "paused_by": "", "paused_since": 0,
+    "aw": 800, "ah": 560,  # live arena dims (grow at 3P)
+    "pillars": [], "spawns": [],  # layout_for() output for aw/ah
+    "nstart": 2,  # occupied seats when the current match began
+    "blasts": 0,  # explosions this match (3-4P match length)
 }
 
 def now(): return time.time()
@@ -96,17 +112,19 @@ def shift_paused(d):
         pd["expires"] += d
 
 def reset_positions():
-    for i, s in enumerate(SPAWNS):
+    for i, s in enumerate(game["spawns"] or SPAWNS_BASE):
         game["pos"][i]["x"] = s["x"]; game["pos"][i]["y"] = s["y"]
-    game["imm_until"] = [0, 0]
-    game["dash_until"] = [0, 0]; game["dash_cd"] = [0, 0]
-    game["pads"] = []; game["pad_timer"] = 2.5; game["boost_until"] = [0, 0]
+    n = len(game["pos"])
+    game["imm_until"] = [0]*n
+    game["dash_until"] = [0]*n; game["dash_cd"] = [0]*n
+    game["pads"] = []; game["pad_timer"] = 2.5; game["boost_until"] = [0]*n
 
 def spawn_pad():
     if len(game["pads"]) >= MAX_PADS: return
+    aw, ah, pillars = game["aw"], game["ah"], game["pillars"]
     for _ in range(30):
-        x = 70+random.random()*(W-140); y = 70+random.random()*(H-140)
-        if any(pl["x"]-25 < x < pl["x"]+pl["w"]+25 and pl["y"]-25 < y < pl["y"]+pl["h"]+25 for pl in PILLARS):
+        x = 70+random.random()*(aw-140); y = 70+random.random()*(ah-140)
+        if any(pl["x"]-25 < x < pl["x"]+pl["w"]+25 and pl["y"]-25 < y < pl["y"]+pl["h"]+25 for pl in pillars):
             continue
         if all(math.hypot(x-t["x"], y-t["y"]) > 120 for t in game["pos"]):
             a = random.random()*2*math.pi
@@ -116,12 +134,24 @@ def spawn_pad():
 
 def reset_scores():
     for p in game["pos"]: p["score"] = 0
-    game["winner"] = 0; game["round"] = 1
+    game["winner"] = 0; game["round"] = 1; game["blasts"] = 0
+
+def occupied():
+    return [i for i, p in enumerate(game["players"]) if p]
+
+def apply_arena(n):
+    game["aw"], game["ah"] = arena_for(n)
+    game["pillars"], game["spawns"] = layout_for(game["aw"], game["ah"])
 
 def new_round():
     reset_positions()
+    occ = occupied() or [0, 1]
     # alternate the holder every round (random first) — never the same twice running
-    game["holder"] = random.choice([1, 2]) if game["holder"] not in (1, 2) else 3-game["holder"]
+    if game["holder"] not in [i+1 for i in occ]:
+        game["holder"] = random.choice(occ)+1
+    else:
+        others = [i+1 for i in occ if i+1 != game["holder"]] or [game["holder"]]
+        game["holder"] = random.choice(others)
     game["fuse"] = 8+random.random()*6
     # NOTE: no last_pass event here — assignment is shown via holder/names, not the pass toast.
     # Clear any previous round's pass so a client polling late never toasts it as new at round start.
@@ -140,10 +170,10 @@ def free_stale():
             game["players"][i] = None
 
 def collide(x, y):
-    # arena bounds
-    x = max(RUN_R, min(W-RUN_R, x)); y = max(RUN_R, min(H-RUN_R, y))
-    # pillars: push out
-    for pl in PILLARS:
+    # arena bounds (live dims) + pillars (live layout)
+    aw, ah, pillars = game["aw"], game["ah"], game["pillars"]
+    x = max(RUN_R, min(aw-RUN_R, x)); y = max(RUN_R, min(ah-RUN_R, y))
+    for pl in pillars:
         cx = max(pl["x"], min(pl["x"]+pl["w"], x))
         cy = max(pl["y"], min(pl["y"]+pl["h"], y))
         dx, dy = x-cx, y-cy
@@ -163,18 +193,31 @@ def collide(x, y):
 
 def explode():
     h = game["holder"]-1
-    scorer = 2-h  # 1->2, 2->1
-    game["pos"][scorer-1]["score"] += 1
+    occ = occupied()
     game["event_id"] += 1
     game["last_boom"] = {"x": round(game["pos"][h]["x"],1), "y": round(game["pos"][h]["y"],1),
-                         "scorer": scorer, "id": game["event_id"]}
-    # Round is over: drop the last pass so a client polling late (e.g. background
-    # tab during the 2.5s intermission) doesn't toast a stale pass as new.
+                         "scorer": 0, "id": game["event_id"]}
     game["last_pass"] = None
-    if game["pos"][scorer-1]["score"] >= WIN_ROUNDS:
-        game["phase"] = "over"; game["winner"] = scorer
+    if len(occ) <= 2:
+        # classic duel: the rival scores, first to WIN_ROUNDS
+        scorer = 2-h  # 1->2, 2->1
+        game["pos"][scorer-1]["score"] += 1
+        game["last_boom"]["scorer"] = scorer
+        if game["pos"][scorer-1]["score"] >= WIN_ROUNDS:
+            game["phase"] = "over"; game["winner"] = scorer
+        else:
+            game["phase"] = "round"; game["round_end"] = now()+2.5
     else:
-        game["phase"] = "round"; game["round_end"] = now()+2.5
+        # 3-4P: the holder loses a point; 5 blasts per match, highest score wins
+        game["pos"][h]["score"] -= 1
+        game["last_boom"]["holder"] = h+1
+        game["blasts"] += 1
+        if game["blasts"] >= WIN_ROUNDS:
+            best = max(game["pos"][i]["score"] for i in occ)
+            top = [i+1 for i in occ if game["pos"][i]["score"] == best]
+            game["phase"] = "over"; game["winner"] = top[0] if len(top) == 1 else 0
+        else:
+            game["phase"] = "round"; game["round_end"] = now()+2.5
 
 def step(dt):
     if game["phase"] == "countdown" and now() >= game["countdown_end"]:
@@ -182,12 +225,18 @@ def step(dt):
         return
     if game["phase"] == "round" and now() >= game["round_end"]:
         game["round"] += 1
+        apply_arena(len(occupied()))  # late joiners grow the room at the round break
         new_round()
         game["phase"] = "playing"
         return
     if game["phase"] != "playing": return
     t = now()
-    for i in (0, 1):
+    occ = occupied()
+    # holder seat freed mid-round (ragequit): hand the bomb to a random occupied seat.
+    # Nobody connected: let the sim run on (fuse burns, match resolves itself).
+    if occ and game["holder"]-1 not in occ:
+        game["holder"] = random.choice(occ)+1
+    for i in range(MAX_SEATS):
         p = game["players"][i]
         ix = iy = 0
         if p:
@@ -211,7 +260,8 @@ def step(dt):
             if now() >= pd["expires"]:
                 pd["dead"] = True
                 continue
-            for i in (0, 1):
+            for i in range(MAX_SEATS):
+                if not game["players"][i]: continue
                 if math.hypot(game["pos"][i]["x"]-pd["x"], game["pos"][i]["y"]-pd["y"]) < PAD_R:
                     pd["dead"] = True
                     game["boost_until"][i] = t+BOOST_TIME
@@ -221,12 +271,16 @@ def step(dt):
                     game["last_boost"] = {"x": pd["x"], "y": pd["y"], "by": i+1, "id": game["event_id"]}
                     break
         game["pads"] = [pd for pd in game["pads"] if not pd.get("dead")]
-    # tag pass
+    # tag pass: holder tags the nearest other occupied runner in reach
     h = game["holder"]-1
-    o = 1-h
-    d = math.hypot(game["pos"][h]["x"]-game["pos"][o]["x"],
-                   game["pos"][h]["y"]-game["pos"][o]["y"])
-    if d < TAG_DIST and t >= game["imm_until"][h]:
+    best, bd = -1, TAG_DIST
+    for i in occ:
+        if i == h: continue
+        d = math.hypot(game["pos"][h]["x"]-game["pos"][i]["x"],
+                       game["pos"][h]["y"]-game["pos"][i]["y"])
+        if d < bd: best, bd = i, d
+    if best >= 0 and t >= game["imm_until"][h]:
+        o = best
         game["holder"] = o+1
         game["imm_until"][o] = t+TAG_IMMUNITY
         # shove apart so it can't instantly bounce back
@@ -252,9 +306,11 @@ def game_loop():
             if game["paused"]:
                 pass  # frozen for all: no sim, no transitions, no deadlines
             else:
-                p0, p1 = game["players"]
-                if game["phase"] == "waiting" and p0 and p1 and p0["ready"] and p1["ready"]:
+                occ = occupied()
+                if game["phase"] == "waiting" and len(occ) >= 2 and all(game["players"][i]["ready"] for i in occ):
                     game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
+                    game["nstart"] = len(occ)
+                    apply_arena(len(occ))
                     reset_scores(); new_round()
                     game["last_pass"] = None; game["last_boom"] = None  # no stale toasts
                 step(dt)
@@ -269,22 +325,24 @@ def snapshot():
         "phase": game["phase"],
         "countdown": cd,
         "round": game["round"],
-        "pillars": PILLARS,
+        "aw": game["aw"], "ah": game["ah"],
+        "pillars": game["pillars"],
         "runners": [{"x": round(game["pos"][i]["x"],1), "y": round(game["pos"][i]["y"],1),
                      "score": game["pos"][i]["score"],
                      "dash": round(max(0, game["dash_until"][i]-t),2),
                      "dash_cd": round(max(0, game["dash_cd"][i]-t),2),
                      "boost": round(max(0, game["boost_until"][i]-t),2),
-                     "imm": round(max(0, game["imm_until"][i]-t),2)} for i in (0, 1)],
+                     "imm": round(max(0, game["imm_until"][i]-t),2)} for i in range(MAX_SEATS)],
         "pads": [{"x": round(pd["x"],1), "y": round(pd["y"],1),
                   "dx": round(pd["dx"],3), "dy": round(pd["dy"],3),
                   "ttl": round(max(0, pd["expires"]-t),2)} for pd in game["pads"]],
         "holder": game["holder"] if game["phase"] in ("playing", "round") else 0,
         "fuse": round(max(0, game["fuse"]),2),
         "winner": game["winner"],
-        "names": [(game["players"][0] or {}).get("name","") or "", (game["players"][1] or {}).get("name","") or ""],
-        "ready": [bool(game["players"][0] and game["players"][0]["ready"]), bool(game["players"][1] and game["players"][1]["ready"])],
-        "connected": [bool(game["players"][0]), bool(game["players"][1])],
+        "blasts": game["blasts"],
+        "names": [((game["players"][i] or {}).get("name","") or "") for i in range(MAX_SEATS)],
+        "ready": [bool(game["players"][i] and game["players"][i]["ready"]) for i in range(MAX_SEATS)],
+        "connected": [bool(game["players"][i]) for i in range(MAX_SEATS)],
         "last_pass": game["last_pass"],
         "last_boom": game["last_boom"],
         "last_boost": game["last_boost"],
@@ -334,11 +392,16 @@ class Handler(SimpleHTTPRequestHandler):
                     s=slot_of(pid)
                     if s<0:
                         free_stale()
-                        if not game["players"][0]: s=0
-                        elif not game["players"][1]: s=1
-                        else: return self._json({"you":0})
+                        s=next((i for i in range(MAX_SEATS) if not game["players"][i]),-1)
+                        if s<0: return self._json({"you":0})
                         game["players"][s]={"id":pid,"name":name,"last_seen":now(),"ready":False,
                                             "input":{"x":0,"y":0},"fire":False,"prev_fire":False}
+                        # mid-match join: drop in at a free spawn, score = current min (fair)
+                        if game["phase"] in ("countdown","playing","round"):
+                            occ=[i for i in occupied() if i!=s]
+                            floor=min([game["pos"][i]["score"] for i in occ] or [0])
+                            sp=(game["spawns"] or [{"x":100,"y":280}])[s%len(game["spawns"] or [1])]
+                            game["pos"][s]={"x":sp["x"],"y":sp["y"],"score":floor}
                     else:
                         game["players"][s]["name"]=name; game["players"][s]["last_seen"]=now()
                     return self._json({"you":s+1})
@@ -404,6 +467,6 @@ if __name__=="__main__":
     if _ips:
         print("  Scan to join (same WiFi):")
         print_qr(f"http://{_ips[0]}:{PORT}")
-    print(f"\n  WASD/arrows to run, SPACE to dash. Holder is slower — pass it!\n  First to {WIN_ROUNDS} blasts wins!\n")
+    print(f"\n  WASD/arrows to run, SPACE to dash. Holder is slower — pass it!\n  2P: rival scores, first to {WIN_ROUNDS}. 3-4P: holder -1, {WIN_ROUNDS} blasts, highest wins. Room grows at 3P!\n")
     try: srv.serve_forever()
     except KeyboardInterrupt: print("\nbye!")

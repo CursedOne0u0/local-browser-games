@@ -1,5 +1,5 @@
 {
-  "blurb": "Hot potato in an arena. One ticks, both run — tag to pass it. The holder is slower, dash has a 3s cooldown, fuse is 8–14s. First to 5 blasts.",
+  "blurb": "Hot potato for 2–4 across two screens (second player joins free on each). 2P: rival scores, first to 5. 3–4P: holder −1, 5 blasts, top score wins — and the room grows at 3P.",
   "dir": "2players/bomb-tag",
   "emoji": "💣",
   "entry": "README.md",
@@ -9,5 +9,5 @@
   "port": 3002,
   "screenshot": "screenshot.png",
   "title": "Bomb Tag",
-  "version": "1.25"
+  "version": "1.26"
 }

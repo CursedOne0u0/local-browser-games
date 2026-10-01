@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0d0705">
-<title>Bomb Tag — LAN 2P</title>
+<title>Bomb Tag — LAN 2-4P</title>
 <style>
 :root{--c1:#ff7a1a;--c2:#ff7a1a;--bg:#0d0705;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
@@ -70,8 +70,8 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <div id="toast"></div>
     <div id="overlay"><div class="card" id="joinCard">
       <h1>💣 BOMB TAG <span style="font-size:14px;opacity:.75">— first to 5</span></h1>
-      <p>Host runs <b>python3 server.py</b> in <b>bomb-tag/</b>. Both open the same LAN URL.<br>Holder is slower — tag to pass it! <kbd>Space</kbd> dashes.</p>
-      <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div></div>
+      <p>Host runs <b>python3 server.py</b> in <b>bomb-tag/</b>. Everyone opens the same LAN URL.<br>Holder is slower — tag to pass it! <kbd>Space</kbd> dashes. 2P: rival scores, first to 5. 3-4P: holder −1, 5 blasts, top score wins.</p>
+      <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div><div class="slot" id="s3">P3: —</div><div class="slot" id="s4">P4: —</div></div>
       <input id="name" maxlength="32" placeholder="Your name…" value="Player"><div id="arcRow" style="font-size:12px;margin-top:6px;opacity:.9"><span id="arcWho"></span><span id="arcEdit" style="display:none"> <input id="arcName" maxlength="12" placeholder="arcade name…" style="width:130px"> <button id="arcSave" class="ghost">Save</button> <span id="arcMsg"></span></span></div>
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
@@ -85,7 +85,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
         <button id="againBtn">Back to lobby</button>
       </div></div>
   </div>
-  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> run • <kbd>Space</kbd> dash (3s cooldown) • local 2P: P1 <kbd>WASD</kbd>+<kbd>Space</kbd>, P2 arrows+<kbd>Enter</kbd> • touch: drag to run, button to dash</div>
+  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> run • <kbd>Space</kbd> dash (3s cooldown) • local 2P: first seat <kbd>WASD</kbd>+<kbd>Space</kbd>, second arrows+<kbd>Enter</kbd> • touch: drag to run, button to dash</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <p id="pveilBy"></p>
@@ -180,17 +180,17 @@ const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=
 try{nameI.value=localStorage.getItem('bombtag_name')||'Player';}catch(e){}
 nameI.addEventListener('input',()=>{try{localStorage.setItem('bombtag_name',nameI.value);}catch(e){}});try{const _an=lbName();if(_an&&(!nameI.value||nameI.value==='Player'))nameI.value=_an;}catch(e){}lbWireName();
 const cid=(()=>{try{let id=sessionStorage.getItem('bombtag_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('bombtag_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
-window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));if(localCid)navigator.sendBeacon('/api/leave',JSON.stringify({clientId:localCid}));}catch(e){}}});
-// local 2P: one browser drives both seats — P1 on WASD+Space, P2 on arrows+Enter
-let localCid=null,lastSent2='',lastMoveSend2=0;
+window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));for(const lc of localCids)navigator.sendBeacon('/api/leave',JSON.stringify({clientId:lc}));}catch(e){}}});
+// local 2P: one browser drives two seats — first seat on WASD+Space, second on arrows+Enter
+let localCids=[],localSeats=[],lastSent2='',lastMoveSend2=0;
 let you=0,joined=false,state=null,synced=false,lastPhase='',lastCd=0,lastPassId=0,lastBoomId=0,lastBoostId=0,lastFuseSec=99,lastFrame=performance.now(),overShown=false,flash='',flashT=0;
-let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false,dashId=null,prevDash=[0,0],prevCd=[0,0];
+let keys={},parts=[],lastSent='',lastMoveSend=0,stick=null,dashTouch=false,dashId=null,prevDash=[0,0,0,0],prevCd=[0,0,0,0];
 const DUNES=[
   [[-20,150],[120,120],[300,150],[470,115],[650,150],[820,120]],
   [[-20,330],[150,300],[340,335],[520,300],[700,335],[820,305]],
   [[-20,480],[180,455],[360,485],[540,455],[720,485],[820,460]],
 ];
-let prevPos=[null,null]; // per-runner last snapshot -> scarf direction
+let prevPos=[null,null,null,null]; // per-runner last snapshot -> scarf direction
 // ---- dead reckoning: server sends positions only, so derive velocity between
 // snapshots and extrapolate forward (capped). Makes 60-90Hz displays smooth
 // even when the poll loop runs slower (hotspot), and smooths 80Hz->display.
@@ -215,13 +215,19 @@ function snapView(s){
   viewT=now;viewFuseT=s.fuse;
 }
 function viewAge(){return Math.min(DR_TTL,(performance.now()-viewT)/1000);}
+const SEAT_COLS=['#00f6ff','#ff2fd6','#ffd75e','#7dff6a'];
+const SEAT_NAMES=['CYAN','PINK','GOLD','LIME'];
+let AW=800,AH=560,SC=1,OX=0,OY=0; // live arena dims + canvas fit (server grows the room at 3P)
+function fitArena(){SC=Math.min(800/AW,560/AH);OX=(800-AW*SC)/2;OY=(560-AH*SC)/2;}
+function w2cx(x){return x*SC+OX;} // world -> canvas coords (touch does the inverse)
+function w2cy(y){return y*SC+OY;}
 function viewRunner(i,fb){
   const base=(viewRs&&viewRs[i])||null;
   if(!base||!state||state.phase!=='playing')return fb;
   const age=viewAge();
   return {...fb,
-    x:Math.max(15,Math.min(W-15,base.x+base.vx*age)),
-    y:Math.max(15,Math.min(H-15,base.y+base.vy*age)),
+    x:Math.max(15,Math.min(AW-15,base.x+base.vx*age)),
+    y:Math.max(15,Math.min(AH-15,base.y+base.vy*age)),
     dash:Math.max(0,base.dash-age),dash_cd:Math.max(0,base.dash_cd-age),
     boost:Math.max(0,base.boost-age),imm:Math.max(0,base.imm-age)};
 }
@@ -237,20 +243,20 @@ function setMuted(m){muted=m;try{window.localStorage&&window.localStorage.setIte
 function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
-joinBtn.onclick=async()=>{if(!lbGate())return;const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);document.getElementById('localBtn').style.display=(d.you===0||localCid)?'none':'';if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are CYAN':'You are PINK'));beep(660,.08);};
+joinBtn.onclick=async()=>{if(!lbGate())return;const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':('You are '+SEAT_NAMES[d.you-1]));beep(660,.08);};
 document.getElementById('localBtn').onclick=async()=>{
-  if(localCid||!joined||!you)return;
+  if(localCids.length||!joined||!you)return;
   const lc=cid+'#local2';
   const d=await api('/api/join',{clientId:lc,name:(nameI.value||'Player').slice(0,24)+' (P2)'});
   if(d.you===0){showToast('Room full — no seat for P2 👀');return;}
-  localCid=lc;
+  localCids=[lc];localSeats=[d.you];
   await api('/api/ready',{clientId:lc});
   document.getElementById('localBtn').style.display='none';
-  showToast('👥 Local 2P! P1: WASD+Space • P2: arrows+Enter');beep(700,.07);
+  showToast('👥 Local 2P! First: WASD+Space • Second: arrows+Enter');beep(700,.07);
 };
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
 function resetLobby(){endCard.style.display='none';joinCard.style.display='block';ov.style.display='flex';overShown=false;if(joined&&you!==0){readyBtn.disabled=false;readyBtn.textContent='Ready up ⚡';}else{readyBtn.disabled=true;if(joined)readyBtn.textContent='Spectating 👀';}}
-againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});if(localCid)await api('/api/ready',{clientId:localCid});resetLobby();beep(700,.07);};
+againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});for(const lc of localCids)await api('/api/ready',{clientId:lc});resetLobby();beep(700,.07);};
 async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(600,.06);}
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
 document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
@@ -313,12 +319,16 @@ function poll(){
     state=s;snapView(s);
     if(!synced){synced=true;lastPassId=s.last_pass?s.last_pass.id:0;lastBoomId=s.last_boom?s.last_boom.id:0;lastBoostId=s.last_boost?s.last_boost.id:0;lastCd=s.countdown||0;}
     if(s.v)verEl.textContent='v'+s.v;
-    scoreEl.textContent=s.runners[0].score+' : '+s.runners[1].score;
-    const nm=[s.names[0]||'Player 1',s.names[1]||'Player 2'];
+    if(s.aw&&s.ah&&(s.aw!==AW||s.ah!==AH)){AW=s.aw;AH=s.ah;fitArena();}
+    const occIdx=s.connected.map((c,i)=>c?i:-1).filter(i=>i>=0);
+    scoreEl.textContent=occIdx.map(i=>s.runners[i].score).join(' : ')||'0 : 0';
+    const nm=s.names.map((n,i)=>n||('Player '+(i+1)));
     const holdTxt=s.holder?` — 💣 ${nm[s.holder-1]}`:'';
-    namesEl.textContent=`${nm[0]}  ${s.runners[0].score} : ${s.runners[1].score}  ${nm[1]}${holdTxt}${you?` — you are P${you}`:joined?' — spectating':''}`;
-    s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
-    s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);
+    const mySeats=you?[you].concat(localSeats):[];
+    namesEl.textContent=occIdx.map(i=>`${nm[i]} ${s.runners[i].score}`).join('   ')+holdTxt+(mySeats.length?` — you are ${mySeats.map(y=>'P'+y).join('+')}`:joined?' — spectating':'');
+    const slotEls=[s1,s2,document.getElementById('s3'),document.getElementById('s4')];
+    for(let i=0;i<4;i++){slotEls[i].textContent='P'+(i+1)+': '+(s.names[i]||'—')+(s.ready[i]?' ✅':'');slotEls[i].classList.toggle('on',!!s.connected[i]);}
+    document.getElementById('localBtn').style.display=(!joined||!you||localCids.length||s.connected.every(Boolean))?'none':'';
     if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';endCard.style.display='none';overShown=false;}
     const pv=document.getElementById('pveil');
     if(s.paused){document.getElementById('pveilBy').textContent='Paused by '+(s.paused_by||'someone')+' — press P to resume';pv.classList.add('show');}
@@ -326,12 +336,12 @@ function poll(){
     if(s.phase==='countdown'&&s.countdown!==lastCd){lastCd=s.countdown;flash=String(s.countdown);flashT=Date.now()+700;beep(440+s.countdown*80,.12);}
     if(s.last_pass&&s.last_pass.id!==lastPassId){lastPassId=s.last_pass.id;const h=s.last_pass.holder;beep(h===you?300:900,.1,'square',.12);showToast('🤝 Bomb passed to '+nm[h-1]+(h===you?' — RUN!':''));}
     if(s.last_boost&&s.last_boost.id!==lastBoostId){lastBoostId=s.last_boost.id;burst(s.last_boost.x,s.last_boost.y,'#ff7a1a',18);beep(300,.14,'sawtooth',.1);setTimeout(()=>beep(620,.12,'sawtooth',.09),70);}
-    if(s.last_boom&&s.last_boom.id!==lastBoomId){lastBoomId=s.last_boom.id;const sc=s.last_boom.scorer;beep(120,.5,'sawtooth',.16);setTimeout(()=>beep(60,.6,'sawtooth',.14),80);burst(s.last_boom.x,s.last_boom.y,'#ff7a1a',60);burst(s.last_boom.x,s.last_boom.y,'#ff4444',30);flash='💥 '+nm[sc-1]+' +1';flashT=Date.now()+1600;}
+    if(s.last_boom&&s.last_boom.id!==lastBoomId){lastBoomId=s.last_boom.id;const sc=s.last_boom.scorer;beep(120,.5,'sawtooth',.16);setTimeout(()=>beep(60,.6,'sawtooth',.14),80);burst(s.last_boom.x,s.last_boom.y,'#ff7a1a',60);burst(s.last_boom.x,s.last_boom.y,'#ff4444',30);flash=sc>0?('💥 '+nm[sc-1]+' +1'):('💥 '+nm[(s.last_boom.holder||1)-1]+' −1');flashT=Date.now()+1600;}
     if(s.phase==='over'){
       ov.style.display='flex';
       if(!joined)return; // newcomer mid-aftermath: keep the pristine join lobby
-      if(!overShown){overShown=true;document.getElementById('winText').textContent=`🏆 ${(s.winner?nm[s.winner-1]:'Nobody')} WINS!`;document.getElementById('finalScore').textContent=`Final ${s.runners[0].score} : ${s.runners[1].score}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
-        if(you&&s.winner&&you===s.winner){try{lbPost(s.runners[s.winner-1].score);}catch(e){}}
+      if(!overShown){overShown=true;document.getElementById('winText').textContent=s.winner?`🏆 ${nm[s.winner-1]} WINS!`:`🤝 DRAW — ${occIdx.map(i=>nm[i]+' '+s.runners[i].score).join(' · ')}`;document.getElementById('finalScore').textContent=`Final ${occIdx.map(i=>s.runners[i].score).join(' : ')}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
+        if(s.winner&&mySeats.includes(s.winner)){try{lbPost(s.runners[s.winner-1].score);}catch(e){}}
         try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>String(v)));}}catch(e){}}
     }
     if(s.phase==='waiting'&&lastPhase==='over')resetLobby();
@@ -354,12 +364,12 @@ function frame(now){
       lastSent=key;lastMoveSend=now;
       fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,...inp})}).catch(()=>{});
     }
-    if(localCid){
+    if(localCids.length){
       const inp2=(state&&state.phase==='playing')?inputFor(2):{x:0,y:0,fire:false};
       const key2=inp2.x.toFixed(2)+','+inp2.y.toFixed(2)+','+inp2.fire;
       if(key2!==lastSent2||now-lastMoveSend2>100){
         lastSent2=key2;lastMoveSend2=now;
-        fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:localCid,...inp2})}).catch(()=>{});
+        fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:localCids[0],...inp2})}).catch(()=>{});
       }
     }
   }
@@ -369,11 +379,11 @@ function frame(now){
 function burst(x,y,color,n=20){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*520,vy:(Math.random()-0.5)*520,life:1,color});}
 function draw(now,dt){
   ctx.fillStyle='#0d0705';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.translate(OX,OY);ctx.scale(SC,SC);
+  const swx=AW/800,swy=AH/560; // dune floor stretches with the room
   // dune contours (static, authored floor texture)
   ctx.strokeStyle='#2e1c10';ctx.lineWidth=1.5;
-  for(const c of DUNES){ctx.beginPath();c.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
-  // vignette pulls focus to mid-arena
-  const vg=ctx.createRadialGradient(W/2,H/2,180,W/2,H/2,520);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+  for(const c of DUNES){ctx.beginPath();c.forEach((p,i)=>i?ctx.lineTo(p[0]*swx,p[1]*swy):ctx.moveTo(p[0]*swx,p[1]*swy));ctx.stroke();}
   // rock mesas (flat strata slabs; collision rects unchanged server-side)
   (state?state.pillars:[]).forEach(p=>{
     ctx.save();
@@ -396,17 +406,20 @@ function draw(now,dt){
     ctx.restore();
     if(!dying&&Math.random()<.3)parts.push({x:pd.x+(Math.random()-.5)*30,y:pd.y,vx:(Math.random()-.5)*30,vy:-60-Math.random()*60,life:.8,color:'#ff9f1c'});
   });
-  const rs=state?state.runners.map((r,i)=>viewRunner(i,r)):[{x:100,y:280},{x:700,y:280}];
+  const rs0=state?state.runners:[{x:100,y:280},{x:700,y:280},{x:100,y:100},{x:700,y:460}];
+  const rs=rs0.map((r,i)=>Object.assign(viewRunner(i,r),{seat:i,conn:state?!!state.connected[i]:true})).filter(r=>r.conn);
   const holder=state?state.holder:0;
-  rs.forEach((r,i)=>{
-    const col=i?'#ff2fd6':'#00f6ff';
+  const mine=you?[you].concat(localSeats):[];
+  rs.forEach((r)=>{
+    const i=r.seat;
+    const col=SEAT_COLS[i%SEAT_COLS.length];
     const isH=holder===i+1;
     // scarf direction from per-frame movement (falls back to up when still)
-    const pv=prevPos[i]||{x:r.x,y:r.y};
+    const pv=prevPos[r.seat]||{x:r.x,y:r.y};
     let dx=r.x-pv.x,dy=r.y-pv.y;
     const dl=Math.hypot(dx,dy);
     if(dl>0.5){dx/=dl;dy/=dl;}else{dx=0;dy=-1;}
-    prevPos[i]={x:r.x,y:r.y};
+    prevPos[r.seat]={x:r.x,y:r.y};
     ctx.save();
     if(r.imm>0){ctx.globalAlpha=.55+0.3*Math.sin(now/90);}
     if(isH){ctx.shadowColor='#ff6a2a';ctx.shadowBlur=16;}
@@ -424,17 +437,17 @@ function draw(now,dt){
     ctx.closePath();ctx.fill();
     ctx.restore();
     if(r.dash>0){
-      if(!prevDash[i]){beep(240,.14,'sawtooth',.09);setTimeout(()=>beep(520,.1,'sawtooth',.07),60);}
+      if(!prevDash[r.seat]){beep(240,.14,'sawtooth',.09);setTimeout(()=>beep(520,.1,'sawtooth',.07),60);}
       for(let k=0;k<3;k++)parts.push({x:r.x+(Math.random()-.5)*20,y:r.y+(Math.random()-.5)*20,vx:(Math.random()-.5)*170,vy:(Math.random()-.5)*170,life:.45,color:'#ffffff'});
       ctx.save();ctx.strokeStyle='#ffd166';ctx.lineWidth=3;ctx.beginPath();ctx.arc(r.x,r.y,20+2*Math.sin(now/60),0,7);ctx.stroke();ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(r.x,r.y,27,0,7);ctx.stroke();ctx.restore();
     }
     else if(r.dash_cd>0){const f=1-r.dash_cd/3;ctx.save();ctx.strokeStyle='#ffffff22';ctx.lineWidth=4;ctx.beginPath();ctx.arc(r.x,r.y,23,0,7);ctx.stroke();ctx.strokeStyle=f>0.66?'#7dff6a':'#ff7a1a';ctx.beginPath();ctx.arc(r.x,r.y,23,-1.57,-1.57+f*6.28);ctx.stroke();ctx.restore();}
-    else if(prevCd[i]>0&&state&&state.phase==='playing'){beep(990,.06,'square',.06);burst(r.x,r.y,'#7dffcb',8);}
+    else if(prevCd[r.seat]>0&&state&&state.phase==='playing'){beep(990,.06,'square',.06);burst(r.x,r.y,'#7dffcb',8);}
     if(r.boost>0){
       for(let k=0;k<2;k++)parts.push({x:r.x+(Math.random()-.5)*22,y:r.y+(Math.random()-.5)*22,vx:(Math.random()-.5)*150,vy:(Math.random()-.5)*150,life:.4,color:'#ff7a1a'});
       ctx.save();ctx.strokeStyle='#ff7a1a';ctx.lineWidth=2;ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(r.x,r.y,25,now/200,now/200+6);ctx.stroke();ctx.restore();
     }
-    prevDash[i]=r.dash>0?1:0;prevCd[i]=r.dash_cd;
+    prevDash[r.seat]=r.dash>0?1:0;prevCd[r.seat]=r.dash_cd;
     if(isH){
       // fuse ring drains with the fuse; spark-bomb overhead (no emoji)
       const fr=state&&state.phase==='playing'?Math.max(0,Math.min(1,state.fuse/14)):1;
@@ -451,9 +464,13 @@ function draw(now,dt){
       ctx.restore();
       if(state&&state.phase==='playing'){ctx.save();ctx.textAlign='center';ctx.font='900 20px system-ui';ctx.fillStyle='#ff7a1a';ctx.fillText(viewFuse().toFixed(1)+'s',r.x,r.y+36);ctx.restore();}
     }
-    if(you===i+1){ctx.save();ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(r.x,r.y,24,0,7);ctx.stroke();ctx.restore();}
+    const mine=you?[you].concat(localSeats):[];
+    if(mine.includes(r.seat+1)){ctx.save();ctx.strokeStyle='#ffffff88';ctx.lineWidth=2/SC;ctx.beginPath();ctx.arc(r.x,r.y,24,0,7);ctx.stroke();ctx.restore();}
   });
   parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;const d=Math.pow(0.3,dt);p.vx*=d;p.vy*=d;p.life-=dt*1.1;ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4);});ctx.globalAlpha=1;
+  ctx.restore();
+  // screen-space: vignette + touch button + flash text (unscaled)
+  const vg=ctx.createRadialGradient(W/2,H/2,180,W/2,H/2,520);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
   if(isTouch&&state&&state.phase==='playing'){
     ctx.save();ctx.globalAlpha=.35;ctx.fillStyle='#fff';
     ctx.beginPath();ctx.arc(W-60,H-60,32,0,7);ctx.fill();

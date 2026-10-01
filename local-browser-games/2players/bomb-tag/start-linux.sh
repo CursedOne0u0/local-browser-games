@@ -18,9 +18,11 @@ case "${1:-start}" in
   restart) stop_srv; sleep 1; exec "$0" start;;
   *) # start (clears any stale instance first, so rerun == restart)
     stop_srv >/dev/null 2>&1
+    # keep the host CPU awake while serving (Termux:API only; harmless elsewhere)
+    command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock
     python3 server.py &
     SRV=$!; echo $SRV > "$PIDF"
-    trap "kill $SRV 2>/dev/null; rm -f $PIDF" EXIT INT TERM
+    trap "kill $SRV 2>/dev/null; rm -f $PIDF; command -v termux-wake-unlock >/dev/null 2>&1 && termux-wake-unlock" EXIT INT TERM
     for i in $(seq 1 60); do
       (echo > /dev/tcp/127.0.0.1/$PORT) 2>/dev/null && break
       sleep 0.1
