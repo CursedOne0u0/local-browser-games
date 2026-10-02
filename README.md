@@ -16,7 +16,7 @@ Zero installs (besides Python for the LAN ones), zero internet needed.
 
 ### Neon Horde Solo
 
-<img src="local-browser-games/1player/neon-horde-solo/screenshot.png" width="500">
+<img src="local-browser-games/1player/neon-horde-solo/shot-v2.png" width="500">
 
 `1player/neon-horde-solo/` — solo survivors: pause-drafts, death ends the run, best time saved.
 
