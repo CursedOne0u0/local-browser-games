@@ -3,11 +3,11 @@
  "dir": "1player/neon-horde-solo",
  "emoji": "👾",
  "entry": "index.html",
- "keys": "<b>WASD</b>/arrows move (auto-weapons) · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> or click · <kbd>Space</kbd>/<kbd>P</kbd> pause · <kbd>M</kbd> mute · touch: drag to move",
+  "keys": "<b>WASD</b>/arrows move (auto-weapons) · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> or click · <kbd>Space</kbd>/<kbd>P</kbd> pause · <kbd>M</kbd> mute · touch: drag to move · 🎮 pad supported",
  "kind": "playable",
  "order": 30,
  "players": "Solo",
  "screenshot": "screenshot.png",
  "title": "Neon Horde Solo",
- "version": "1.7"
+  "version": "1.9"
 }

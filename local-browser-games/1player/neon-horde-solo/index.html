@@ -3,9 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0616">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>Neon Horde Solo — Static Survivors</title>
 <style>
-:root{--c1:#46f0ff;--c2:#a855f7;--bg:#0a0616}
+:root{--c1:#ffd166;--c2:#a855f7;--bg:#0a0616}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#1c1038 0%,var(--bg) 60%) fixed,var(--bg);color:#efe8ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
 #wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px}
@@ -14,7 +17,7 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#1c1038 0%,var
 .logo span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
 #stats{font-weight:800;font-size:13px;display:flex;gap:14px}
 #stats b{color:var(--c1)}
-#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #00f6ff66;border-radius:99px;padding:3px 10px}
+#verBadge{font-size:11px;font-weight:800;color:var(--c1);border:1px solid #ffd16666;border-radius:99px;padding:3px 10px}
 #bossbar{width:min(1100px,98vw);height:14px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff2a;overflow:hidden;display:none}
 #bossfill{height:100%;width:100%;background:linear-gradient(90deg,#ff2fd6,#ff5555)}
 #stage{position:relative;width:min(1100px,98vw);aspect-ratio:1600/1000;border-radius:14px;overflow:hidden;border:1px solid #a855f744;background:#0a0616;box-shadow:0 0 40px #a855f722}
@@ -23,12 +26,12 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .card{width:min(440px,93%);background:#0b1026;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center}
 .card h1{margin:.2em 0;font-size:22px}
 .card p{font-size:13px;opacity:.85;line-height:1.6}
-button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,var(--c1),#7dffcb);box-shadow:0 0 18px #00f6ff88;width:100%;margin-top:8px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;color:#04121a;background:linear-gradient(90deg,var(--c1),#ff9f1c);box-shadow:0 0 18px #ffd16688;width:100%;margin-top:8px}
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
 #draft{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.6);padding:10px}
 #draftCards{display:flex;gap:10px;width:min(640px,94%)}
 @media (max-width:640px){#draftCards{flex-direction:column;max-height:86%;overflow:auto}.dcard{padding:12px 10px}.dcard .ic{font-size:26px}}
-.dcard{flex:1;background:#0d1430;border:2px solid #00f6ff66;border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer}
+.dcard{flex:1;background:#0d1430;border:2px solid #ffd16666;border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer}
 .dcard:hover{border-color:#fff;background:#14204a}
 .dcard .ic{font-size:34px}
 .dcard h3{margin:8px 0 4px;font-size:15px}
@@ -41,7 +44,7 @@ button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #f
 #bossbar{width:min(1100px,98vw);height:14px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff2a;overflow:hidden;display:none;position:relative}
 #bossnum{position:absolute;left:0;right:0;top:0;font-size:10px;font-weight:800;text-align:center;color:#fff;text-shadow:0 0 4px #000;pointer-events:none;line-height:14px}
 #xpbar{flex:2;height:10px;border-radius:99px;background:#ffffff18;overflow:hidden}
-#xpfill{height:100%;background:#00f6ff}
+#xpfill{height:100%;background:#ffd166}
 #wrow{font-size:12px;white-space:nowrap}
 #toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none;z-index:5}
 #hint{font-size:11px;opacity:.6;text-align:center}
@@ -50,7 +53,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">NEON HORDE <span>SOLO</span></div><div id="stats"><div>Lv <b id="lvl">1</b></div><div>⏱ <b id="clock">0:00</b></div><div>☠ <b id="kills">0</b></div><div>BEST <b id="best">0:00</b></div><div id="biome">FRINGE</div></div><div id="verBadge">v1.8</div></div>
+  <div id="topbar"><div class="logo">NEON HORDE <span>SOLO</span></div><div id="stats"><div>Lv <b id="lvl">1</b></div><div>⏱ <b id="clock">0:00</b></div><div>☠ <b id="kills">0</b></div><div>BEST <b id="best">0:00</b></div><div id="biome">MEADOW</div></div><div id="verBadge">v1.9</div></div>
   <div id="bossbar"><div id="bossfill"></div><div id="bossnum"></div></div>
   <div id="stage">
     <canvas id="cv" width="1600" height="1000"></canvas>
@@ -66,7 +69,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
     </div></div>
   </div>
   <div id="hud"><div id="hpbar"><div id="hpfill" style="width:100%"></div><div id="hpnum"></div></div><div id="xpbar"><div id="xpfill" style="width:0%"></div></div><div id="wrow"></div></div>
-  <div id="hint"><kbd>Space</kbd> also pauses • <kbd>M</kbd> mute</div>
+  <div id="hint"><kbd>Space</kbd> also pauses • <kbd>M</kbd> mute • 🎮 pad moves</div>
 </div>
 <script>
 'use strict';
@@ -328,6 +331,22 @@ window.addEventListener('keydown',e=>{
   if(k==='m')muted=!muted;
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+// 🎮 gamepad: left stick/dpad moves (merged into WASD+arrows), Start = pause
+let _gpS=false;
+function gpTick(){
+  let gp=null;try{const gs=navigator.getGamepads?navigator.getGamepads():[];for(const g of gs){if(g&&g.connected){gp=g;break;}}}catch(e){}
+  for(const k of ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'])if(keys[k+'__gp']){keys[k]=false;keys[k+'__gp']=false;}
+  if(!gp)return;
+  const ax=gp.axes[0]||0,ay=gp.axes[1]||0,b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const up=b(12)||ay<-0.28,dn=b(13)||ay>0.28,lf=b(14)||ax<-0.28,rt=b(15)||ax>0.28;
+  const set=k=>{keys[k]=true;keys[k+'__gp']=true;};
+  if(up){set('w');set('arrowup');}if(dn){set('s');set('arrowdown');}if(lf){set('a');set('arrowleft');}if(rt){set('d');set('arrowright');}
+  const st=b(9);
+  if(st&&!_gpS)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));
+  _gpS=st;
+}
+setInterval(gpTick,33);
 cv.addEventListener('touchstart',e=>{const r=cv.getBoundingClientRect(),t=e.touches[0];stick={ox:t.clientX,oy:t.clientY,x:0,y:0,id:t.identifier,cx:(t.clientX-r.left)/r.width*W,cy:(t.clientY-r.top)/r.height*H};e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){stick.x=Math.max(-1,Math.min(1,(t.clientX-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(t.clientY-stick.oy)/70));}}e.preventDefault();},{passive:false});
 cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
@@ -761,7 +780,7 @@ requestAnimationFrame(loop);
   document.getElementById('xpfill').style.width=(P.xp/P.xpn*100)+'%';
   document.getElementById('wrow').textContent=Object.entries(P.wpn).map(([k,v])=>(ICONS[k]||'•')+v).join(' ')+' '+P.evo.map(a=>ICONS[a]||'•').join('')+' '+P.arti.map(a=>ICONS[a]||'•').join('');
   const bdt=Math.hypot(P.x,P.y),bt=bdt<900?0:bdt<1800?1:2;
-  const bel=document.getElementById('biome');bel.textContent=['FRINGE','GLOAM','ABYSS'][bt];bel.style.color=['#8f7bd8','#e04dff','#5b21b6'][bt];
+  const bel=document.getElementById('biome');bel.textContent=['MEADOW','EMBER','VOID'][bt];bel.style.color=['#7dff9a','#ff9f1c','#c026d3'][bt];
   const bb=document.getElementById('bossbar');
   if(boss){bb.style.display='block';document.getElementById('bossfill').style.width=(Math.max(0,boss.hp/boss.maxhp)*100)+'%';document.getElementById('bossnum').textContent=Math.ceil(Math.max(0,boss.hp))+' / '+Math.round(boss.maxhp);}
   else bb.style.display='none';
@@ -839,17 +858,17 @@ function draw(now,dt){
     const age=(now-f.t)/450;
     if(age>1)continue;
     if(!f.sounded){f.sounded=true;
-      if(f.kind==='nova'||f.kind==='thornova'){burst(f.pts[0][0],f.pts[0][1],f.kind==='thornova'?'#ff9f1c':'#7df9ff',26);beep(70,.3,'sawtooth',.15);}
+      if(f.kind==='nova'||f.kind==='thornova'){burst(f.pts[0][0],f.pts[0][1],f.kind==='thornova'?'#ff9f1c':'#ffe9a8',26);beep(70,.3,'sawtooth',.15);}
       if(f.kind==='chain')beep(1400,.06,'square',.07);
       if(f.kind==='pop')beep(500,.05,'square',.06);
     }
     ctx.save();ctx.globalAlpha=1-age;
     if(f.kind==='chain'){
-      ctx.strokeStyle='#bfe9ff';ctx.lineWidth=5;ctx.shadowColor='#7dc4ff';ctx.shadowBlur=14;
+      ctx.strokeStyle='#ffe9a8';ctx.lineWidth=5;ctx.shadowColor='#ffd166';ctx.shadowBlur=14;
       ctx.beginPath();f.pts.forEach((p,i)=>{const jx=i?Math.sin(now/37+p[0])*7:0,jy=i?Math.cos(now/43+p[1])*7:0;i?ctx.lineTo(X(p[0])+jx,Y(p[1])+jy):ctx.moveTo(X(p[0]),Y(p[1]));});ctx.stroke();
       ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
     }else{
-      const c=f.kind==='thornova'?'#ff9f1c':f.kind==='pop'?'#ffb35c':'#7df9ff';
+      const c=f.kind==='thornova'?'#ff9f1c':f.kind==='pop'?'#ffb35c':'#ffe9a8';
       const rMax=f.kind==='pop'?40:(f.pts[0][2]||160);
       ctx.strokeStyle=c;ctx.shadowColor=c;ctx.shadowBlur=16;ctx.lineWidth=5;
       ctx.beginPath();ctx.arc(X(f.pts[0][0]),Y(f.pts[0][1]),6+(rMax-6)*age,0,7);ctx.stroke();
@@ -859,7 +878,7 @@ function draw(now,dt){
     ctx.restore();
   }
   const px=X(P.x),py=Y(P.y),bl=P.wpn.w_blades||0;
-  sprHunter(px,py,faceAng,'#46f0ff',1);
+  sprHunter(px,py,faceAng,'#ffd166',1);
   if(bl){
     const n=bl+1,rr=95+10*bl,aa=now/1000*(2.6+0.3*bl);
     for(let k=0;k<n;k++){const a=aa+k*2*Math.PI/n;sprBlade(px+Math.cos(a)*rr,py+Math.sin(a)*rr,a+Math.PI/2);}
@@ -892,7 +911,7 @@ function draw(now,dt){
     const dx=Math.max(-R,Math.min(R,wx-cx)),dy=Math.max(-R,Math.min(R,wy-cy));
     ctx.fillStyle=c;ctx.beginPath();ctx.arc(mx+MW/2+dx/R*(MW/2),my+MH/2+dy/R*(MH/2),r,0,7);ctx.fill();
   };
-  dot(0,0,'#00f6ff',4);
+  dot(0,0,'#ffd166',4);
   for(const e of enemies){if(Math.hypot(e.x-cx,e.y-cy)<R)dot(e.x,e.y,e.kind==='boss'?'#ff2fd6':'#c084fc',e.kind==='boss'?5:2);}
   if(boss)dot(boss.x,boss.y,'#ff2fd6',5);
   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(mx+MW/2,my+MH/2,3,0,7);ctx.fill();

@@ -1,0 +1,15 @@
+{
+  "name": "Neon Horde Solo",
+  "short_name": "HordeSolo",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "background_color": "#0a0616",
+  "theme_color": "#0a0616",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
