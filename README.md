@@ -44,7 +44,7 @@ Zero installs (besides Python for the LAN ones), zero internet needed.
 
 <img src="local-browser-games/2players/neon-horde/screenshot.png" width="500">
 
-`2players/neon-horde/` — 2–4 hunter co-op survivors, endless horde, per-player drafts, boss every 4 min → `:3003`
+`2players/neon-horde/` — 2–4 hunter co-op survivors, endless horde, per-player drafts, boss every 4 min → `:3004`
 
 ## hybrid1-2 — solo or 2-player
 

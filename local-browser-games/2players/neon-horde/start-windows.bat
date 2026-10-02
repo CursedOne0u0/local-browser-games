@@ -11,5 +11,5 @@ if errorlevel 1 (
 )
 REM Neon Horde — starts the server and opens the game. Needs Python installed.
 cd /d "%~dp0"
-start "" /min cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:3003"
+start "" /min cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:3004"
 python server.py

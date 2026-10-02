@@ -3,12 +3,12 @@
  "dir": "2players/neon-horde",
  "emoji": "👾",
  "entry": "README.md",
- "keys": "Run <code>python3 server.py</code> in <code>2players/neon-horde/</code>, then open the printed URL on each device. · <b>WASD</b>/arrows move (auto-weapons) · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · 🎮 touch supported",
+  "keys": "Run <code>python3 server.py</code> in <code>2players/neon-horde/</code>, then open the printed URL on each device. · <b>WASD</b>/arrows move (auto-weapons) · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · <kbd>P</kbd> pause · 🎮 pad + touch supported",
  "kind": "lan",
  "order": 50,
  "players": "2–4P LAN",
- "port": 3003,
+ "port": 3004,
  "screenshot": "screenshot.png",
  "title": "Neon Horde",
- "version": "1.9"
+  "version": "2.0"
 }

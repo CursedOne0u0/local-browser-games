@@ -206,8 +206,14 @@ def explode():
                          "scorer": 0, "id": game["event_id"]}
     game["last_pass"] = None
     if game["nstart"] <= 2:
-        # classic duel: the rival scores, first to WIN_ROUNDS
-        scorer = 2-h  # 1->2, 2->1
+        # classic duel: nearest rival scores, first to WIN_ROUNDS
+        # (== the rival in pure 2P; robust if a 3rd seat joins mid-match)
+        hx, hy = game["pos"][h]["x"], game["pos"][h]["y"]
+        scorer, bd = 1, None
+        for i in occ:
+            if i == h: continue
+            d = math.hypot(hx-game["pos"][i]["x"], hy-game["pos"][i]["y"])
+            if bd is None or d < bd: scorer, bd = i+1, d
         game["pos"][scorer-1]["score"] += 1
         game["last_boom"]["scorer"] = scorer
         if game["pos"][scorer-1]["score"] >= WIN_ROUNDS:

@@ -750,7 +750,6 @@ function burst(x,y,color,n=14){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.rand
 let last=performance.now();
 function loop(now){
 requestAnimationFrame(loop);
-try{lbWireName();lbRefresh();}catch(e){}
   const dt=Math.min(0.05,(now-last)/1000)||0.016;last=now;
   if(phase==='playing'&&!paused)update(dt,now);
   draw(now,dt);
@@ -923,6 +922,7 @@ function draw(now,dt){
   if(paused){ctx.save();ctx.textAlign='center';ctx.font='900 54px system-ui';ctx.fillStyle='#ffffffcc';ctx.fillText('PAUSED',W/2,H/2);ctx.restore();}
 }
 requestAnimationFrame(loop);
+try{lbWireName();lbRefresh();}catch(e){}
 </script>
 </body>
 </html>

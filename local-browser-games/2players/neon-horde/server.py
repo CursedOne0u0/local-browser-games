@@ -5,12 +5,35 @@ INFINITE field: no walls, camera follows you, minimap + arrows find the pack.
 Biomes by distance from spawn: meadow -> ember -> void (tougher, richer gems).
 Endless horde, per-player level drafts, elites, a boss every 4 min, revives.
 """
-import json, time, math, random, threading, socket, os
+import json, time, math, random, threading, socket, os, sys
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 import urllib.parse
+try:
+    from qrcodegen import QrCode as _QrCode  # vendored Nayuki encoder (MIT), stdlib-only
+except Exception:
+    _QrCode = None
+def print_qr(url):
+    """ASCII QR of the LAN URL for phone scanning. ANSI card on a tty, plain fallback."""
+    if _QrCode is None:
+        return
+    try:
+        qr = _QrCode.encode_text(url, _QrCode.Ecc.MEDIUM)
+    except Exception:
+        return
+    n, b = qr.get_size(), 2
+    tty = sys.stdout.isatty()
+    for y in range(-b, n + b):
+        row = ""
+        for x in range(-b, n + b):
+            dark = qr.get_module(x, y)
+            if tty:
+                row += "\x1b[40m  \x1b[0m" if dark else "\x1b[47m  \x1b[0m"
+            else:
+                row += "##" if dark else "  "
+        print("  " + row)
 
-PORT = int(os.environ.get("PORT", "3003"))
+PORT = int(os.environ.get("PORT", "3004"))
 VERSION = "2.0"  # bump on every update; shown on the site
 MAX_SEATS = 4
 PUBLIC = Path(__file__).parent / "public"
@@ -53,7 +76,19 @@ game = {
     "last_goblin": None,
     "last_hurt": None,  # {seat,amt,fx,fy,id} incoming-damage indicator feed
     "last_over": None,
+    "paused": False, "paused_by": "", "paused_since": 0,
 }
+
+def shift_paused(d):
+    # thaw absolute deadlines by the paused duration (dt-driven timers freeze on their own)
+    game["countdown_end"] += d
+    for i in occupied():
+        b = game["players"][i]
+        b["prot"] = b["prot"]+d if b["prot"] else 0
+        if b["pending"]: b["pend_t"] += d
+    for ap in game["acid"]: ap["until"] += d
+    for f in game["fx"]: f["until"] += d
+    if game["blood_until"]: game["blood_until"] += d
 
 def now(): return time.time()
 def xp_next(lv): return int(6 + lv*3 + lv*lv*0.2)
@@ -664,25 +699,28 @@ def game_loop():
         t = time.time(); dt = min(0.05, t-last); last = t
         with lock:
             free_stale()
-            occ = occupied()
-            if game["phase"] == "waiting" and occ and all(game["players"][i]["ready"] for i in occ):
-                game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
-                game["time"] = 0; game["enemies"] = []; game["shots"] = []
-                game["gems"] = []; game["boss"] = None; game["kills"] = 0
-                game["axes"] = []; game["acid"] = []; game["fx"] = []
-                game["spawn_t"] = 1.0; game["elite_t"] = 30.0
-                game["boss_t"] = BOSS_EVERY; game["boss_n"] = 0
-                game["blood_until"] = 0.0; game["blood_next"] = 180.0
-                for i in occ:
-                    b = game["players"][i]
-                    nb = mkbuild()
-                    nb["x"], nb["y"] = (i%2)*400-200, (i//2)*400-200
-                    nb["prot"] = now()+3
-                    game["players"][i].update(nb)
-                    b["pending"] = draft_options(b); b["pend_t"] = now()+30
-                    game["event_id"] += 1
-                    game["last_lvl"] = {"seat": i+1, "lvl": 1, "id": game["event_id"]}
-            step(dt)
+            if game["paused"]:
+                pass  # frozen for all: no sim, no transitions, no deadlines
+            else:
+                occ = occupied()
+                if game["phase"] == "waiting" and occ and all(game["players"][i]["ready"] for i in occ):
+                    game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
+                    game["time"] = 0; game["enemies"] = []; game["shots"] = []
+                    game["gems"] = []; game["boss"] = None; game["kills"] = 0
+                    game["axes"] = []; game["acid"] = []; game["fx"] = []
+                    game["spawn_t"] = 1.0; game["elite_t"] = 30.0
+                    game["boss_t"] = BOSS_EVERY; game["boss_n"] = 0
+                    game["blood_until"] = 0.0; game["blood_next"] = 180.0
+                    for i in occ:
+                        b = game["players"][i]
+                        nb = mkbuild()
+                        nb["x"], nb["y"] = (i%2)*400-200, (i//2)*400-200
+                        nb["prot"] = now()+3
+                        game["players"][i].update(nb)
+                        b["pending"] = draft_options(b); b["pend_t"] = now()+30
+                        game["event_id"] += 1
+                        game["last_lvl"] = {"seat": i+1, "lvl": 1, "id": game["event_id"]}
+                step(dt)
         time.sleep(1/60)
 
 def snap_viewer(pid):
@@ -747,6 +785,8 @@ def snapshot(viewer=0):
         "last_goblin": game["last_goblin"],
         "last_boss": game["last_boss"],
         "last_over": game["last_over"],
+        "paused": game["paused"],
+        "paused_by": game["paused_by"],
         "event_id": game["event_id"],
     }
 
@@ -764,7 +804,7 @@ class Handler(SimpleHTTPRequestHandler):
         b=json.dumps(obj).encode()
         try:
             self.send_response(code); self.send_header("Content-Type","application/json")
-            self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
+            self.send_header("Cache-Control","no-store"); self.send_header("Content-Length",str(len(b))); self.end_headers(); self.wfile.write(b)
         except (ConnectionResetError, BrokenPipeError):
             pass
     def _body(self):
@@ -826,6 +866,17 @@ class Handler(SimpleHTTPRequestHandler):
                     if s>=0:
                         game["players"][s]=None
                     return self._json({"ok":True})
+                if self.path=="/api/pause":
+                    # pause-vote: any hunter freezes the sim for all; any resume thaws deadlines
+                    if game["paused"]:
+                        shift_paused(now()-game["paused_since"])
+                        game["paused"]=False; game["paused_by"]=""
+                    else:
+                        p = game["players"][s] if s>=0 else None
+                        game["paused"]=True
+                        game["paused_by"]=(p["name"] if p and p.get("name") else "Someone")
+                        game["paused_since"]=now()
+                    return self._json({"ok":True,"paused":game["paused"],"by":game["paused_by"]})
                 if self.path=="/api/restart":
                     if game["phase"]=="over":
                         for p in game["players"]:
@@ -854,7 +905,11 @@ if __name__=="__main__":
     srv=ThreadingHTTPServer(("0.0.0.0",PORT),Handler)
     srv.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     print(f"\n  NEON HORDE running! 2-4 hunters, endless infinite field.\n  On this laptop:  http://localhost:{PORT}")
-    for ip in lan_ips(): print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
+    _ips = lan_ips()
+    for ip in _ips: print(f"  Friend on same WiFi:  http://{ip}:{PORT}")
+    if _ips:
+        print("  Scan to join (same WiFi):")
+        print_qr(f"http://{_ips[0]}:{PORT}")
     print("\n  Survive. Revive. Draft. Boss every 4 minutes.\n")
     try: srv.serve_forever()
     except KeyboardInterrupt: print("\nbye!")

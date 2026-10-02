@@ -11,10 +11,10 @@
 ## Run
 
 ```bash
-python3 server.py        # serves on :3003 by default (PORT=xxxx to change)
+python3 server.py        # serves on :3004 by default (PORT=xxxx to change)
 ```
 
-Host opens `http://localhost:3003`, hunters open `http://<host-ip>:3003`. Enter names → Join → Ready (1+ hunters starts it, late joiners drop in shielded).
+Host opens `http://localhost:3004`, hunters open `http://<host-ip>:3004`. Enter names → Join → Ready (1+ hunters starts it, late joiners drop in shielded).
 
 ## Controls
 
