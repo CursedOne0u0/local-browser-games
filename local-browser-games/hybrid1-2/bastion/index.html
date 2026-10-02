@@ -73,7 +73,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <div id="overlay"><div class="card">
       <h1>🏰 BASTION BROS</h1>
       <p>Hold the winding road together. Pick towers in the shop panel, then stand on grass and build.<br>
-      P1: <kbd>1</kbd>–<kbd>7</kbd> select + <kbd>T</kbd> trap + <kbd>E</kbd> build · P2: cycle <kbd>.</kbd> + <kbd>,</kbd> trap + <kbd>/</kbd> build<br>
+      P1: <kbd>1</kbd>–<kbd>7</kbd> select + <kbd>E</kbd> build · P2: cycle <kbd>.</kbd> + <kbd>/</kbd> build · traps from the shop panel<br>
       <kbd>Space</kbd> starts each wave • building mid-wave costs +25% • stand on a tower + build key = repair (75%)</p>
       <div class="row"><button id="b1p">🛡 Solo</button><button id="b1pai">🤖 Solo + AI</button><button id="b2p">👥 2 Players</button></div>
       <div id="arcRow" style="margin:8px 0 0;font-size:13px;text-align:left"><span id="arcWho"></span><span id="arcEdit"><input id="arcName" maxlength="12" placeholder="arcade name…" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff33;background:#0e1208;color:#fff;font-size:14px;outline:none;margin-top:6px;user-select:text;-webkit-user-select:text"><button id="arcSave" class="ghost" style="width:100%;margin-top:6px">Save name</button><div id="arcMsg" style="font-size:11px;opacity:.75;min-height:16px;margin-top:4px"></div></span></div>
@@ -220,7 +220,7 @@ document.getElementById('b1pai').onclick=()=>pickMode('1pai','🤖 solo + AI');
 document.getElementById('b2p').onclick=()=>pickMode('2p','👥 local 2P — WASD+E vs arrows+/');
 document.getElementById('startBtn').onclick=()=>{if(lbGate())start();};
 // ---------- touch + mouse: tap map = walk there, double-tap = build there ----------
-let tapTarget=null,lastTapT=0,lastTapX=0,lastTapY=0;
+let tapTarget=null,lastTapT=0,lastTapX=0,lastTapY=0,lastPi=0;
 function ptrGame(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H};}
 function tapAt(gx,gy){
   const nowMs=performance.now();
@@ -417,9 +417,7 @@ window.addEventListener('keydown',e=>{
   if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}
   const i1=TKEYS1.indexOf(k);
   if(i1>=0&&players[0])players[0].sel=i1;
-  if(k==='t'&&players[0]){players[0].trap=(players[0].trap+1)%2;floater(players[0].x,players[0].y-40,players[0].trap?'TAR':'SPIKES','#c9a13b');}
   if(k==='.'&&players[1])players[1].sel=(players[1].sel+1)%TNAMES.length;
-  if(k===','&&players[1]){players[1].trap=(players[1].trap+1)%2;floater(players[1].x,players[1].y-40,players[1].trap?'TAR':'SPIKES','#c9a13b');}
   if(k==='e'&&players[0])tryBuild(players[0]);
   if(k==='/'&&players[1])tryBuild(players[1]);
   if((k==='y'||k==='Y'))aiAnswer(true);
@@ -466,7 +464,7 @@ function shopCost(s){
 }
 function renderShop(){
   const el=document.getElementById('shopList');if(!el)return;
-  const p=players[0];
+  const p=players[lastPi]||players[0];
   el.innerHTML=SHOPDEF.map((s,i)=>{
     const isT=(s.type==='spike'||s.type==='tar');
     const sel=isT?(p&&p.trap===(s.type==='tar'?1:0)):((p?p.sel:0)===TNAMES.indexOf(s.type));
@@ -474,7 +472,7 @@ function renderShop(){
     return '<div class="shopItem'+(sel?' sel':'')+'" data-i="'+i+'"><span class="ic">'+s.ic+'</span><span class="nm">'+nm+'</span><span class="pr">'+shopCost(s)+'🪙</span></div>';
   }).join('');
   el.querySelectorAll('.shopItem').forEach(div=>div.onclick=()=>{
-    const s=SHOPDEF[+div.dataset.i],p0=players[0];if(!p0)return;
+    const s=SHOPDEF[+div.dataset.i],p0=players[lastPi]||players[0];if(!p0)return;
     if(s.type==='spike'||s.type==='tar'){p0.trap=s.type==='tar'?1:0;beep(990,.06);}
     else{const ix=TNAMES.indexOf(s.type);if(ix>=0)p0.sel=ix;beep(990,.06);}
     renderShop();
@@ -497,7 +495,7 @@ function update(dt){
     const c=defs[pi];
     let dx=0,dy=0;
     if(keys[c.up])dy-=1;if(keys[c.dn])dy+=1;if(keys[c.lf])dx-=1;if(keys[c.rt])dx+=1;
-    if(dx||dy){const l=Math.hypot(dx,dy),sp=340*dt;p.x+=dx/l*sp;p.y+=dy/l*sp;}
+    if(dx||dy){const l=Math.hypot(dx,dy),sp=340*dt;p.x+=dx/l*sp;p.y+=dy/l*sp;lastPi=pi;}
     else if(pi===0&&tapTarget){const dx=tapTarget.x-p.x,dy=tapTarget.y-p.y;if(Math.hypot(dx,dy)<10)tapTarget=null;else steerAvatar(p,tapTarget.x,tapTarget.y,dt);}
     p.x=Math.max(20,Math.min(W-20,p.x));p.y=Math.max(20,Math.min(H-20,p.y));
   });
