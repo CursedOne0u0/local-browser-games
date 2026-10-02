@@ -1,0 +1,14 @@
+{
+ "blurb": "2–4 hunter LAN co-op survivors on an infinite void field. Endless horde, per-player level drafts, elites, a boss every 4 minutes, touch-to-revive. Full wipe ends the run.",
+ "dir": "2players/neon-horde",
+ "emoji": "👾",
+ "entry": "README.md",
+ "keys": "Run <code>python3 server.py</code> in <code>2players/neon-horde/</code>, then open the printed URL on each device. · <b>WASD</b>/arrows move (auto-weapons) · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · 🎮 touch supported",
+ "kind": "lan",
+ "order": 50,
+ "players": "2–4P LAN",
+ "port": 3003,
+ "screenshot": "screenshot.png",
+ "title": "Neon Horde",
+ "version": "1.9"
+}

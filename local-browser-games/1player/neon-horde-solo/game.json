@@ -1,0 +1,13 @@
+{
+ "blurb": "Solo survivors on an infinite void field: same arena, weapons, elites and 4-minute bosses as LAN Horde, but the game pauses for drafts and death ends the run. Time survived posts to the global board.",
+ "dir": "1player/neon-horde-solo",
+ "emoji": "👾",
+ "entry": "index.html",
+ "keys": "<b>WASD</b>/arrows move (auto-weapons) · draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> or click · <kbd>Space</kbd>/<kbd>P</kbd> pause · <kbd>M</kbd> mute · touch: drag to move",
+ "kind": "playable",
+ "order": 30,
+ "players": "Solo",
+ "screenshot": "screenshot.png",
+ "title": "Neon Horde Solo",
+ "version": "1.7"
+}

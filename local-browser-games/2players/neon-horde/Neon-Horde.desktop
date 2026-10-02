@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Neon Horde
+Comment=Starts the Horde server (visible console, Ctrl+C stops it) and opens the game
+Exec=bash -c 'cd -- "$(dirname "$(readlink -f %k)")" && exec ./start-linux.sh'
+Terminal=true
+Categories=Game;
+StartupNotify=false

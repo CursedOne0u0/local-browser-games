@@ -14,6 +14,12 @@ Zero installs (besides Python for the LAN ones), zero internet needed.
 
 `1player/breakout-blast/` — brick-breaker with combos, bombs, lasers and shields.
 
+### Neon Horde Solo
+
+<img src="local-browser-games/1player/neon-horde-solo/screenshot.png" width="500">
+
+`1player/neon-horde-solo/` — solo survivors: pause-drafts, death ends the run, best time saved.
+
 ### Neon Drift
 
 <img src="local-browser-games/1player/neon-drift/screenshot.png" width="500">
@@ -33,6 +39,12 @@ Zero installs (besides Python for the LAN ones), zero internet needed.
 <img src="local-browser-games/2players/bomb-tag/screenshot.png" width="500">
 
 `2players/bomb-tag/` — hot-potato chase, dash escapes → `:3002`
+
+### Neon Horde
+
+<img src="local-browser-games/2players/neon-horde/screenshot.png" width="500">
+
+`2players/neon-horde/` — 2–4 hunter co-op survivors, endless horde, per-player drafts, boss every 4 min → `:3003`
 
 ## hybrid1-2 — solo or 2-player
 
