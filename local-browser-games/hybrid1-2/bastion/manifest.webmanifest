@@ -1,0 +1,16 @@
+{
+  "name": "Bastion Bros",
+  "short_name": "Bastion",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0e07",
+  "theme_color": "#0b0e07",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

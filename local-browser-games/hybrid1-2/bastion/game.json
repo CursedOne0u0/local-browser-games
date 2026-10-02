@@ -1,0 +1,13 @@
+{
+  "blurb": "Co-op tower defense: you ARE the build cursor. Solo, solo + AI companion, or 2P local. Hold the winding road through escalating levels.",
+  "dir": "hybrid1-2/bastion",
+  "emoji": "🏰",
+  "entry": "index.html",
+  "keys": "<b>Solo:</b> <kbd>WASD</kbd> + <kbd>E</kbd> build · <b>2P:</b> P1 <kbd>WASD</kbd>+<kbd>E</kbd> vs P2 arrows+<kbd>/</kbd> · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> / <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> select · <kbd>Space</kbd> wave · 🎮 pad supported",
+  "kind": "playable",
+  "order": 45,
+  "players": "Solo or 2P",
+  "screenshot": "screenshot.png",
+  "title": "Bastion Bros",
+  "version": "1.0"
+}
