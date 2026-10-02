@@ -349,6 +349,28 @@ function frame(now){
       fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,...inp})}).catch(()=>{});
     }
   }
+  // facing: aim at nearest foe in range, else face movement (tweened shortest-arc)
+  if(state){
+    for(let i=0;i<4;i++){
+      const p=state.players[i];
+      if(!p||!state.connected[i])continue;
+      let want=null,bd=700*700;
+      for(const e of state.enemies){
+        const dx=e[0]-p.x,dy=e[1]-p.y,d=dx*dx+dy*dy;
+        if(d<bd){bd=d;want=Math.atan2(dy,dx);}
+      }
+      if(want===null){
+        const pp=hunterPrev[i];
+        if(pp){const dx=p.x-pp.x,dy=p.y-pp.y;if(dx*dx+dy*dy>9)want=Math.atan2(dy,dx);}
+      }
+      hunterPrev[i]={x:p.x,y:p.y};
+      if(want!==null){
+        const cur=hunterAng[i]===undefined?-Math.PI/2:hunterAng[i];
+        let d=want-cur;while(d>Math.PI)d-=6.283;while(d<-Math.PI)d+=6.283;
+        hunterAng[i]=cur+d*Math.min(1,16*dt);
+      }
+    }
+  }
   draw(now,dt);
 }
 function burst(x,y,color,n=16){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*380,vy:(Math.random()-0.5)*380,life:.8,color});}
@@ -359,6 +381,7 @@ function faceOf(i){
   return f===undefined?-Math.PI/2:f;
 }
 const faceMap={};
+const hunterAng={},hunterPrev={};
 function trackFace(i,x,y){
   const p=faceMap['_'+i];
   if(p){const dx=x-p.x,dy=y-p.y;if(dx*dx+dy*dy>9)faceMap[i]=Math.atan2(dy,dx);}
@@ -667,7 +690,7 @@ function draw(now,dt){
     const onScr=sx>-40&&sy>-40&&sx<CW+40&&sy<CH+40;
     if(onScr){
       trackFace(i,p.x,p.y);
-      sprHunter(sx,sy,faceOf(i),col,p.dead?0.25:(p.down?0.45:1));
+      sprHunter(sx,sy,hunterAng[i]===undefined?faceOf(i):hunterAng[i],col,p.dead?0.25:(p.down?0.45:1));
       ctx.save();ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
       ctx.fillText('P'+(i+1),sx,sy-26);ctx.restore();
       const bl=p.wpn?p.wpn.w_blades||0:0;

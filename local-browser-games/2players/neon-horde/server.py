@@ -34,7 +34,7 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3004"))
-VERSION = "2.1"  # bump on every update; shown on the site
+VERSION = "2.2"  # bump on every update; shown on the site
 MAX_SEATS = 4
 PUBLIC = Path(__file__).parent / "public"
 

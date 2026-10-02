@@ -53,7 +53,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">NEON HORDE <span>SOLO</span></div><div id="stats"><div>Lv <b id="lvl">1</b></div><div>⏱ <b id="clock">0:00</b></div><div>☠ <b id="kills">0</b></div><div>BEST <b id="best">0:00</b></div><div id="biome">MEADOW</div></div><div id="verBadge">v1.9</div></div>
+  <div id="topbar"><div class="logo">NEON HORDE <span>SOLO</span></div><div id="stats"><div>Lv <b id="lvl">1</b></div><div>⏱ <b id="clock">0:00</b></div><div>☠ <b id="kills">0</b></div><div>BEST <b id="best">0:00</b></div><div id="biome">MEADOW</div></div><div id="verBadge">v2.0</div></div>
   <div id="bossbar"><div id="bossfill"></div><div id="bossnum"></div></div>
   <div id="stage">
     <canvas id="cv" width="1600" height="1000"></canvas>
@@ -223,7 +223,7 @@ function gainXp(a){
   P.xp+=a;
   if(P.xp>=P.xpn){P.xp-=P.xpn;P.level++;P.xpn=xpNext(P.level);openDraft();}
 }
-function tierAt(x,y){return Math.min(2,Math.floor(Math.hypot(x,y)/900));}
+function tierAt(x,y){return Math.min(2,Math.floor(Math.hypot(x,y)/4500));}
 function spawnEnemy(elite=false,bossM=false){
   const m=60;let x=0,y=0;
   if(bossM){
@@ -351,7 +351,8 @@ cv.addEventListener('touchstart',e=>{const r=cv.getBoundingClientRect(),t=e.touc
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){stick.x=Math.max(-1,Math.min(1,(t.clientX-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(t.clientY-stick.oy)/70));}}e.preventDefault();},{passive:false});
 cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
 cv.addEventListener('touchcancel',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
-let faceAng=-Math.PI/2;
+let faceAng=-Math.PI/2;let lastTier=-1,pulseT=0,pulseTier=0;
+const BIOME_COL=['#7dff9a','#ff9f1c','#c026d3'];
 const dmgTxts=[];let hurtFx={t:0,ang:0},shakeT=0;
 function update(dt,now){
   time+=dt;
@@ -362,7 +363,12 @@ function update(dt,now){
   if(keys['s']||keys['arrowdown'])iy+=1;
   if(stick){ix+=stick.x;iy+=stick.y;}
   const n=Math.hypot(ix,iy);if(n>1){ix/=n;iy/=n;}
-  if(ix||iy)faceAng=Math.atan2(iy,ix);
+  // facing: aim at nearest foe in range, else face movement (tweened shortest-arc)
+  {let want=null;
+  const tgt=nearestFoe(P.x,P.y,700);
+  if(tgt)want=Math.atan2(tgt.y-P.y,tgt.x-P.x);
+  else if(ix||iy)want=Math.atan2(iy,ix);
+  if(want!==null){let d=want-faceAng;while(d>Math.PI)d-=6.283;while(d<-Math.PI)d+=6.283;faceAng+=d*Math.min(1,16*dt);}}
   P.x+=ix*P.speed*dt; // infinite field: no walls, camera follows you
   P.y+=iy*P.speed*dt;
   spawn_t-=dt;
@@ -779,7 +785,9 @@ requestAnimationFrame(loop);
   document.getElementById('hpnum').textContent=Math.ceil(P.hp)+'/'+Math.round(P.maxhp);
   document.getElementById('xpfill').style.width=(P.xp/P.xpn*100)+'%';
   document.getElementById('wrow').textContent=Object.entries(P.wpn).map(([k,v])=>(ICONS[k]||'•')+v).join(' ')+' '+P.evo.map(a=>ICONS[a]||'•').join('')+' '+P.arti.map(a=>ICONS[a]||'•').join('');
-  const bdt=Math.hypot(P.x,P.y),bt=bdt<900?0:bdt<1800?1:2;
+  const bdt=Math.hypot(P.x,P.y),bt=bdt<4500?0:bdt<9000?1:2;
+  if(lastTier>=0&&bt!==lastTier){pulseT=performance.now();pulseTier=bt;}
+  lastTier=bt;
   const bel=document.getElementById('biome');bel.textContent=['MEADOW','EMBER','VOID'][bt];bel.style.color=['#7dff9a','#ff9f1c','#c026d3'][bt];
   const bb=document.getElementById('bossbar');
   if(boss){bb.style.display='block';document.getElementById('bossfill').style.width=(Math.max(0,boss.hp/boss.maxhp)*100)+'%';document.getElementById('bossnum').textContent=Math.ceil(Math.max(0,boss.hp))+' / '+Math.round(boss.maxhp);}
@@ -791,11 +799,54 @@ function draw(now,dt){
   const X=wx=>wx-cx+W/2+(Math.random()-.5)*shMag, Y=wy=>wy-cy+H/2+(Math.random()-.5)*shMag;
   ctx.fillStyle='#0a0616';ctx.fillRect(0,0,W,H);
   const bd=Math.hypot(cx,cy);
-  if(bd>900){ctx.fillStyle=bd>1800?'rgba(120,60,255,0.10)':'rgba(160,90,255,0.06)';ctx.fillRect(0,0,W,H);}
+  if(bd>4500){ctx.fillStyle=bd>9000?'rgba(120,60,255,0.10)':'rgba(160,90,255,0.06)';ctx.fillRect(0,0,W,H);}
   ctx.strokeStyle='#a855f714';
   const gx0=Math.floor((cx-W/2)/80)*80,gy0=Math.floor((cy-H/2)/80)*80;
   for(let x=gx0;x<cx+W/2;x+=80){ctx.beginPath();ctx.moveTo(X(x),0);ctx.lineTo(X(x),H);ctx.stroke();}
   for(let y=gy0;y<cy+H/2;y+=80){ctx.beginPath();ctx.moveTo(0,Y(y));ctx.lineTo(W,Y(y));ctx.stroke();}
+  // biome foliage: graded density (sparse near spawn, lush far out, capped), seeded-stable
+  (function(){
+    const CELL=150;
+    const x0=Math.floor((cx-W/2)/CELL),x1=Math.floor((cx+W/2)/CELL);
+    const y0=Math.floor((cy-H/2)/CELL),y1=Math.floor((cy+H/2)/CELL);
+    let drawn=0;
+    for(let gx=x0;gx<=x1&&drawn<400;gx++)for(let gy=y0;gy<=y1&&drawn<400;gy++){
+      let h=(gx*374761393+gy*668265263)|0;h=(h^(h>>13))*1274126177;h=(h^(h>>16))>>>0;
+      const r1=h/4294967295;h=(h*2246822519+1)>>>0;const r2=h/4294967295;
+      const wx=(gx+0.5)*CELL,wy=(gy+0.5)*CELL;
+      const dist=Math.hypot(wx,wy);
+      if(r1>Math.min(0.85,0.15+dist/12000))continue;
+      const tier=dist<4500?0:dist<9000?1:2;
+      const sx=X(wx),sy=Y(wy);
+      if(sx<-20||sy<-20||sx>W+20||sy>H+20)continue;
+      drawn++;
+      const jx=(r2-0.5)*60,jy=((h%100)/100-0.5)*60;
+      if(tier===0){
+        ctx.save();ctx.globalAlpha=.5;ctx.strokeStyle='#3f7d44';ctx.lineWidth=2.5;
+        const sw=Math.sin(now/500+gx*1.7+gy)*3;
+        for(let b=-1;b<=1;b++){ctx.beginPath();ctx.moveTo(sx+jx+b*5,sy+jy);ctx.lineTo(sx+jx+b*5+sw,sy+jy-14-r2*6);ctx.stroke();}
+        ctx.restore();
+      }else if(tier===1){
+        ctx.save();ctx.globalAlpha=.45+0.25*Math.sin(now/400+r1*9);
+        ctx.fillStyle='#ff9f1c';
+        for(let b=0;b<3;b++){const a=r1*6.28+b*2.1;ctx.beginPath();ctx.arc(sx+jx+Math.cos(a)*9,sy+jy+Math.sin(a)*9,2.5,0,7);ctx.fill();}
+        ctx.restore();
+      }else{
+        ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle='#c026d3';ctx.lineWidth=2;
+        const sh=Math.sin(now/600+r2*9)*2;
+        ctx.beginPath();ctx.moveTo(sx+jx-6,sy+jy+8);ctx.lineTo(sx+jx+sh,sy+jy-12);ctx.lineTo(sx+jx+6,sy+jy+8);ctx.stroke();
+        ctx.restore();
+      }
+    }
+  })();
+  // biome crossing pulse: expanding ring + label, 1.2s
+  if(performance.now()-pulseT<1200){
+    const k=(performance.now()-pulseT)/1200;
+    ctx.save();ctx.globalAlpha=(1-k)*.9;ctx.strokeStyle=BIOME_COL[pulseTier];ctx.lineWidth=6;
+    ctx.beginPath();ctx.arc(W/2,H/2,60+k*560,0,7);ctx.stroke();
+    ctx.globalAlpha=(1-k);ctx.fillStyle=BIOME_COL[pulseTier];ctx.font='900 54px system-ui';ctx.textAlign='center';
+    ctx.fillText(['MEADOW','EMBER','VOID'][pulseTier],W/2,H/2-140-k*40);ctx.restore();
+  }
   if(Math.abs(cx)<1400&&Math.abs(cy)<1100){
     ctx.save();ctx.globalAlpha=.5+0.3*Math.sin(now/400);
     ctx.strokeStyle='#a855f7';ctx.lineWidth=2;ctx.setLineDash([10,8]);
