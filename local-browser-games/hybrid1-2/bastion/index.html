@@ -13,18 +13,26 @@
 :root{--c1:#a3b832;--c2:#e07b39;--bg:#0b0e07;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#232a12 0%,var(--bg) 60%) fixed,var(--bg);color:#f2f5e4;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
-#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
-#top{width:min(980px,96vw);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;row-gap:4px}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;padding:8px}
+#top{width:100%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;row-gap:4px}
+#layout{flex:1;min-height:0;display:flex;gap:8px;align-items:stretch;justify-content:center}
+#stage{position:relative;flex:1;min-width:0;aspect-ratio:16/10;max-height:100%;margin:auto 0;border-radius:14px;overflow:hidden;border:1px solid #a3b83233;background:#0e1208}
+canvas{width:100%;height:100%;display:block;touch-action:none;object-fit:contain}
+#side{width:228px;flex:none;background:#101408;border:1px solid #a3b83233;border-radius:14px;padding:10px;overflow-y:auto}
+#side h2{margin:2px 0 8px;font-family:var(--mono);font-size:15px;letter-spacing:.14em;text-align:center}
+.shopItem{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;border:2px solid transparent;background:#ffffff0d;margin-bottom:6px;cursor:pointer}
+.shopItem.sel{border-color:var(--c1)}
+.shopItem.poor{opacity:.45}
+.shopItem .ic{font-size:22px;width:28px;text-align:center;flex:none}
+.shopItem .nm{flex:1;font-family:var(--mono);font-weight:800;font-size:13px}
+.shopItem .pr{font-family:var(--mono);font-weight:800;font-size:13px;color:#ffd75e}
 .logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
 .logo span{color:var(--c2)}
 #verBadge{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--c1);border:1px solid #a3b83266;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #hud{display:flex;gap:12px;font-family:var(--mono);font-weight:800;font-size:13px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 #hud b{color:var(--c1)}
-#stage{position:relative;width:min(100vw,calc(100dvh*960/780));aspect-ratio:960/780;border-radius:14px;overflow:hidden;border:1px solid #a3b83233;background:#0e1208}
-canvas{width:100%;height:100%;display:block;touch-action:none}
-#dpad{position:absolute;left:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;z-index:5}
-#dpad button{margin:0;padding:0;min-width:52px;min-height:52px;font-size:20px;background:#00000088;color:#fff;border:1px solid #ffffff44}
-#placeBtn{position:absolute;right:12px;bottom:12px;z-index:5;width:84px;height:84px;min-width:84px;border-radius:50%;margin:0;padding:0;font-size:15px;background:#a3b832;color:#0b0e07;border:3px solid #ffffff66}
+#stage{position:relative;flex:1;min-width:0;aspect-ratio:16/10;max-height:100%;margin:auto 0;border-radius:14px;overflow:hidden;border:1px solid #a3b83233;background:#0e1208}
+canvas{width:100%;height:100%;display:block;touch-action:none;object-fit:contain}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(8,10,5,.82);backdrop-filter:blur(6px);padding:14px}
 .card{width:min(460px,94%);background:#141a0c;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:94%;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono)}
@@ -40,7 +48,10 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 #mbtns button{width:42px;height:42px;min-width:42px;padding:0;margin:0;border-radius:10px;background:#000000aa;color:#fff;border:1px solid #ffffff44;display:flex;align-items:center;justify-content:center}
 @media (orientation:portrait){
   #wrap{justify-content:flex-start;overflow-y:auto}
-  #stage{width:98vw}
+  #layout{flex-direction:column}
+  #side{width:100%;display:flex;gap:6px;overflow-x:auto}
+  #side h2{display:none}
+  .shopItem{min-width:104px;margin-bottom:0}
   #hint{font-size:11px}
   .card button{min-height:44px}
   #pveil .card{max-height:92dvh;overflow:auto}
@@ -51,18 +62,17 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BASTION <span>BROS</span></div>
-    <div id="verBadge">v1.4</div>
+    <div id="verBadge">v1.5-beta</div>
     <div id="hud"><div>LV <b id="level">1</b></div><div>WAVE <b id="wave">–</b></div><div>🪙 <b id="gold">0</b></div><div>🏰 <b id="base">20</b></div></div>
     <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
   </div>
   <div id="mode">menu</div>
+  <div id="layout">
   <div id="stage">
-    <canvas id="cv" width="960" height="780"></canvas>
-    <div id="dpad"><span></span><button data-d="up">▲</button><span></span><button data-d="lf">◀</button><span></span><button data-d="rt">▶</button><span></span><button data-d="dn">▼</button><span></span></div>
-    <button id="placeBtn">PLACE</button>
+    <canvas id="cv" width="960" height="600"></canvas>
     <div id="overlay"><div class="card">
       <h1>🏰 BASTION BROS</h1>
-      <p>Hold the winding road together. Walk down to the shop hall to pick a tower, then stand on grass and build.<br>
+      <p>Hold the winding road together. Pick towers in the shop panel, then stand on grass and build.<br>
       P1: <kbd>1</kbd>–<kbd>7</kbd> select + <kbd>T</kbd> trap + <kbd>E</kbd> build · P2: cycle <kbd>.</kbd> + <kbd>,</kbd> trap + <kbd>/</kbd> build<br>
       <kbd>Space</kbd> starts each wave • building mid-wave costs +25% • stand on a tower + build key = repair (75%)</p>
       <div class="row"><button id="b1p">🛡 Solo</button><button id="b1pai">🤖 Solo + AI</button><button id="b2p">👥 2 Players</button></div>
@@ -73,7 +83,9 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div style="margin-top:6px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
-  <div id="hint">Walk to the shop hall to pick (traps too) · P1 <kbd>WASD</kbd>+<kbd>E</kbd> · P2 arrows+<kbd>/</kbd> · P2 <kbd>.</kbd> cycles · <kbd>Space</kbd> wave · <kbd>P</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
+  <div id="side"><h2>SHOP</h2><div id="shopList"></div></div>
+  </div>
+  <div id="hint">WASD move · E place · Space start wave · P pause</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <button id="resumeBtn">Resume</button>
@@ -166,7 +178,7 @@ function lbRefresh(){try{const el=document.getElementById('lbLine');if(el){el.te
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const ov=document.getElementById('overlay');
 // BASTION BROS v1.4 — static co-op tower defense. All motion dt-based (per-second units).
-const W=960,H=780,COLS=16,ROWS=10,CELL=60;
+const W=960,H=600,COLS=16,ROWS=10,CELL=60;
 const TOWERS={
   arrow:{cost:36,dmg:8,rate:1.5,range:150,hp:100,col:'#a3b832',name:'Arrow'},
   cannon:{cost:85,dmg:22,rate:0.7,range:170,splash:55,hp:160,col:'#e07b39',name:'Cannon'},
@@ -207,17 +219,20 @@ document.getElementById('b1p').onclick=()=>pickMode('1p','🛡 solo — WASD + E
 document.getElementById('b1pai').onclick=()=>pickMode('1pai','🤖 solo + AI');
 document.getElementById('b2p').onclick=()=>pickMode('2p','👥 local 2P — WASD+E vs arrows+/');
 document.getElementById('startBtn').onclick=()=>{if(lbGate())start();};
-// ---------- touch: D-pad (P1) + PLACE, drag halves still steer ----------
-const dpadState={up:0,dn:0,lf:0,rt:0};
-document.querySelectorAll('#dpad button').forEach(b=>{
-  const d=b.dataset.d;
-  const on=e=>{e.preventDefault();dpadState[d==='up'?'up':d==='dn'?'dn':d==='lf'?'lf':'rt']=1;};
-  const off=e=>{e.preventDefault();dpadState[d==='up'?'up':d==='dn'?'dn':d==='lf'?'lf':'rt']=0;};
-  b.addEventListener('touchstart',on,{passive:false});b.addEventListener('touchend',off);b.addEventListener('touchcancel',off);
-  b.addEventListener('mousedown',on);b.addEventListener('mouseup',off);b.addEventListener('mouseleave',off);
-});
-document.getElementById('placeBtn').addEventListener('touchstart',e=>{e.preventDefault();if(players[0])tryBuild(players[0]);},{passive:false});
-document.getElementById('placeBtn').addEventListener('mousedown',()=>{if(players[0])tryBuild(players[0]);});
+// ---------- touch + mouse: tap map = walk there, double-tap = build there ----------
+let tapTarget=null,lastTapT=0,lastTapX=0,lastTapY=0;
+function ptrGame(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H};}
+function tapAt(gx,gy){
+  const nowMs=performance.now();
+  if(nowMs-lastTapT<350&&Math.hypot(gx-lastTapX,gy-lastTapY)<40){
+    if(players[0]){players[0].x=gx;players[0].y=gy;tryBuild(players[0]);}
+    tapTarget=null;lastTapT=0;return;
+  }
+  lastTapT=nowMs;lastTapX=gx;lastTapY=gy;
+  tapTarget={x:gx,y:gy};
+}
+cv.addEventListener('touchstart',e=>{const t=e.changedTouches[0];const p=ptrGame(t.clientX,t.clientY);tapAt(p.x,p.y);e.preventDefault();},{passive:false});
+cv.addEventListener('mousedown',e=>{const p=ptrGame(e.clientX,e.clientY);tapAt(p.x,p.y);});
 function showMenu(){
   running=false;over=false;paused=false;hideVeil();
   try{document.querySelector('#overlay .card h1').textContent='🏰 BASTION BROS';}catch(e){}
@@ -381,7 +396,9 @@ function aiAnswer(yes){
   }
   aiGhost=null;refreshHud();
 }
+let lastShop=0;
 function refreshHud(){
+  try{const n=Date.now();if(n-lastShop>250){lastShop=n;renderShop();}}catch(e){}
   try{
     document.getElementById('level').textContent=level;
     document.getElementById('wave').textContent=phase==='build'?'–':(wavesInLevel+'/'+wavesFor(level));
@@ -436,38 +453,32 @@ function gpTick(){
   _gpS=st;
 }
 setInterval(gpTick,33);
-// touch: left half drags P1, right half drags P2 (solo: P1)
-let touchT1=null,touchT2=null;const touchMap=new Map();
-function ptrFromClient(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H,left:(cx-r.left)<r.width/2};}
-cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const p=ptrFromClient(t.clientX,t.clientY);const side=(mode==='2p'&&!p.left)?'p2':'p1';touchMap.set(t.identifier,side);if(side==='p1')touchT1={x:p.x,y:p.y};else touchT2={x:p.x,y:p.y};}e.preventDefault();},{passive:false});
-cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(!touchMap.has(t.identifier))continue;const p=ptrFromClient(t.clientX,t.clientY);if(touchMap.get(t.identifier)==='p1')touchT1={x:p.x,y:p.y};else touchT2={x:p.x,y:p.y};}e.preventDefault();},{passive:false});
-function endTouch(e){for(const t of e.changedTouches){const s=touchMap.get(t.identifier);touchMap.delete(t.identifier);if(s==='p1'&&![...touchMap.values()].includes('p1'))touchT1=null;if(s==='p2'&&![...touchMap.values()].includes('p2'))touchT2=null;}}
-cv.addEventListener('touchend',endTouch);cv.addEventListener('touchcancel',endTouch);
-cv.addEventListener('mousedown',e=>{const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};});
-window.addEventListener('mouseup',()=>{touchT1=null;touchT2=null;});
-cv.addEventListener('mousemove',e=>{if(e.buttons){const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};}});
-// ---------- annex shop hall (walk onto a pad to select) ----------
-const SHOPS=[
-  {type:'arrow',x:80},{type:'cannon',x:180},{type:'frost',x:280},
-  {type:'sniper',x:380},{type:'mortar',x:480},{type:'tesla',x:580},
-  {type:'spike',x:700},{type:'tar',x:800},{type:'barricade',x:900},
+// ---------- sidebar shop (click to select; selection is per-avatar P1) ----------
+const SHOPDEF=[
+  {type:'arrow',ic:'➶'},{type:'cannon',ic:'💣'},{type:'frost',ic:'❄'},
+  {type:'sniper',ic:'◎'},{type:'mortar',ic:'💥'},{type:'tesla',ic:'⚡'},
+  {type:'spike',ic:'🗡'},{type:'tar',ic:'🛢'},{type:'barricade',ic:'🧱'},
 ];
-const SHOP_Y=690,SHOP_W=92,SHOP_H=86;
-const DOORS=[[200,260],[700,760]];
-function inDoor(x){return DOORS.some(d=>x>=d[0]&&x<=d[1]);}
-function shopPick(p){
-  for(const s of SHOPS){
-    if(Math.abs(p.x-s.x)<SHOP_W/2&&Math.abs(p.y-SHOP_Y)<SHOP_H/2){
-      if(s.type==='spike'||s.type==='tar'){
-        const ti=s.type==='tar'?1:0;
-        if(p.trap!==ti){p.trap=ti;floater(p.x,p.y-40,(ti?'TAR':'SPIKES'),'#c9a13b');beep(990,.06);}
-      }else{
-        const idx=TNAMES.indexOf(s.type);
-        if(idx>=0&&p.sel!==idx){p.sel=idx;floater(p.x,p.y-40,TOWERS[s.type].name.toUpperCase(),TOWERS[s.type].col);beep(990,.06);}
-      }
-      return;
-    }
-  }
+function shopCost(s){
+  if(s.type==='spike'||s.type==='tar')return towerCostTrap(s.type);
+  if(s.type==='barricade')return towerCost('barricade');
+  return towerCost(TNAMES[TNAMES.indexOf(s.type)]);
+}
+function renderShop(){
+  const el=document.getElementById('shopList');if(!el)return;
+  const p=players[0];
+  el.innerHTML=SHOPDEF.map((s,i)=>{
+    const isT=(s.type==='spike'||s.type==='tar');
+    const sel=isT?(p&&p.trap===(s.type==='tar'?1:0)):((p?p.sel:0)===TNAMES.indexOf(s.type));
+    const nm=isT?(s.type==='spike'?'SPIKES':'TAR'):TOWERS[s.type].name.toUpperCase();
+    return '<div class="shopItem'+(sel?' sel':'')+'" data-i="'+i+'"><span class="ic">'+s.ic+'</span><span class="nm">'+nm+'</span><span class="pr">'+shopCost(s)+'🪙</span></div>';
+  }).join('');
+  el.querySelectorAll('.shopItem').forEach(div=>div.onclick=()=>{
+    const s=SHOPDEF[+div.dataset.i],p0=players[0];if(!p0)return;
+    if(s.type==='spike'||s.type==='tar'){p0.trap=s.type==='tar'?1:0;beep(990,.06);}
+    else{const ix=TNAMES.indexOf(s.type);if(ix>=0)p0.sel=ix;beep(990,.06);}
+    renderShop();
+  });
 }
 function steerAvatar(p,tx,ty,dt){
   const dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);
@@ -478,8 +489,8 @@ function steerAvatar(p,tx,ty,dt){
 function update(dt){
   // avatars
   const defs=[
-    {up:'w',dn:'s',lf:'a',rt:'d',t:'touchT1'},
-    {up:'arrowup',dn:'arrowdown',lf:'arrowleft',rt:'arrowright',t:'touchT2'},
+    {up:'w',dn:'s',lf:'a',rt:'d'},
+    {up:'arrowup',dn:'arrowdown',lf:'arrowleft',rt:'arrowright'},
   ];
   players.forEach((p,pi)=>{
     if(pi>=2)return;
@@ -487,13 +498,8 @@ function update(dt){
     let dx=0,dy=0;
     if(keys[c.up])dy-=1;if(keys[c.dn])dy+=1;if(keys[c.lf])dx-=1;if(keys[c.rt])dx+=1;
     if(dx||dy){const l=Math.hypot(dx,dy),sp=340*dt;p.x+=dx/l*sp;p.y+=dy/l*sp;}
-    else{const tt=pi===0?touchT1:touchT2;if(tt)steerAvatar(p,tt.x,tt.y,dt);}
-    if(pi===0){if(dpadState.up)p.y-=340*dt;if(dpadState.dn)p.y+=340*dt;if(dpadState.lf)p.x-=340*dt;if(dpadState.rt)p.x+=340*dt;}
+    else if(pi===0&&tapTarget){const dx=tapTarget.x-p.x,dy=tapTarget.y-p.y;if(Math.hypot(dx,dy)<10)tapTarget=null;else steerAvatar(p,tapTarget.x,tapTarget.y,dt);}
     p.x=Math.max(20,Math.min(W-20,p.x));p.y=Math.max(20,Math.min(H-20,p.y));
-    // annex wall (y 600-620) with two door gaps
-    if(p.y>592&&p.y<628&&!inDoor(p.x))p.y=p.py<600?592:628;
-    p.py=p.y;
-    shopPick(p);
   });
   aiThink(dt);
   // fx decay runs in every phase so banners/particles never freeze between waves
@@ -666,27 +672,8 @@ function draw(now,dt){
   for(const [c,r] of PATH)ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
   ctx.strokeStyle='#3d3220';ctx.lineWidth=2;
   ctx.beginPath();WAYPTS.forEach((w,i)=>i?ctx.lineTo(w.x,w.y):ctx.moveTo(w.x,w.y));ctx.stroke();
-  // annex shop hall (below the arena): floor, wall with door gaps, walk-to pads
-  ctx.fillStyle='#101408';ctx.fillRect(0,600,W,H-600);
-  ctx.fillStyle='#2e2a18';
-  for(const [dx0,dx1] of [[0,200],[260,700],[760,960]])ctx.fillRect(dx0,600,dx1-dx0,20);
+
   ctx.fillStyle='#a3b832';ctx.font='900 20px ui-monospace,monospace';ctx.textAlign='center';
-  ctx.fillText('🛒 SHOP — walk onto a pad',W/2,642);
-  for(const s of SHOPS){
-    const isTrap=(s.type==='spike'||s.type==='tar');
-    const T=isTrap?{col:'#c9a13b',name:s.type==='spike'?'Spikes':'Tar'}:TOWERS[s.type];
-    const cost=isTrap?towerCostTrap(s.type):towerCost(s.type),afford=gold>=cost;
-    ctx.save();ctx.globalAlpha=afford?1:.45;
-    ctx.fillStyle='#1a2010';ctx.strokeStyle=T.col;ctx.lineWidth=3;
-    ctx.beginPath();ctx.rect(s.x-SHOP_W/2,SHOP_Y-SHOP_H/2,SHOP_W,SHOP_H);ctx.fill();ctx.stroke();
-    ctx.fillStyle=T.col;ctx.font='900 24px ui-monospace,monospace';
-    ctx.fillText(s.type==='arrow'?'➶':s.type==='cannon'?'💣':s.type==='frost'?'❄':s.type==='sniper'?'◎':s.type==='mortar'?'💥':s.type==='tesla'?'⚡':s.type==='barricade'?'🧱':s.type==='spike'?'🗡':'🛢',s.x,SHOP_Y-8);
-    ctx.fillStyle='#fff';ctx.font='900 13px ui-monospace,monospace';
-    ctx.fillText(T.name.toUpperCase(),s.x,SHOP_Y+20);
-    ctx.fillStyle=afford?'#ffd75e':'#ff6666';ctx.font='900 14px ui-monospace,monospace';
-    ctx.fillText(cost+'🪙',s.x,SHOP_Y+40);
-    ctx.restore();
-  }
   // base (right edge fort)
   ctx.fillStyle='#4a4438';ctx.fillRect(W-24,H/2-70,24,140);
   ctx.fillStyle='#a3b832';ctx.font='900 22px ui-monospace,monospace';ctx.textAlign='center';
@@ -796,7 +783,7 @@ function frame(now){
   refreshHud();
 }
 // ---------- boot ----------
-refreshMuteBtn();refreshBest();lbWireName();
+refreshMuteBtn();refreshBest();lbWireName();try{renderShop();}catch(e){}
 document.getElementById('pauseBtn').onclick=()=>togglePauseMenu();
 document.getElementById('resumeBtn').onclick=()=>resumeGame();
 document.getElementById('restartBtn').onclick=()=>{hideVeil();showMenu();};
