@@ -305,7 +305,7 @@ function draw(now,dt){
   ctx.textAlign='center';
   for(const f of floaters){ctx.globalAlpha=Math.max(0,Math.min(1,f.t));ctx.fillStyle=f.c;ctx.font='900 24px ui-monospace,monospace';ctx.fillText(f.txt,f.x,f.y);}
   ctx.globalAlpha=1;
-  if(state&&state.phase==='build'){ctx.save();ctx.textAlign='center';ctx.fillStyle='#a3b832';ctx.font='900 40px ui-monospace,monospace';ctx.fillText('BUILD — wave '+(((state.wave||0)+1))+' incoming',W/2,80);ctx.restore();}
+  if(state&&state.phase==='build'){ctx.save();ctx.textAlign='center';ctx.fillStyle='#a3b832';ctx.font='900 40px ui-monospace,monospace';ctx.fillText('BUILD — wave '+(((state.wave||0)+1))+' in '+Math.ceil(state.build_cd||0)+'s',W/2,80);ctx.restore();}
   if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 52px system-ui';ctx.fillStyle='#fff';ctx.fillText(flash,W/2,H/2);ctx.restore();}
 }
 // fixed road mirror (must match server PATH)

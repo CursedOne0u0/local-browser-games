@@ -69,6 +69,7 @@ game = {
     "enemies": [],  # {kind,x,y,hp,maxhp,seg,segT,segLen,slowT,smashT}
     "spawnQueue": [], "spawnT": 0,
     "winner": 0, "event_id": 0,
+    "build_end": 0,
     "last_wave": None, "last_over": None, "last_build": None,
     "paused": False, "paused_by": "", "paused_since": 0,
 }
@@ -129,6 +130,7 @@ def next_level():
     game["level"] += 1
     game["wave"] = 0
     game["phase"] = "build"
+    game["build_end"] = now()+10
     game["event_id"] += 1
     game["last_wave"] = {"level": game["level"], "wave": 0, "id": game["event_id"]}
 
@@ -179,6 +181,7 @@ def game_over():
 
 def shift_paused(d):
     game["countdown_end"] += d
+    game["build_end"] += d
 
 def step(dt):
     if game["phase"] == "countdown" and now() >= game["countdown_end"]:
@@ -200,6 +203,9 @@ def step(dt):
                 game["event_id"] += 1
                 game["last_build"] = {"seat": i+1, "what": r.get("what", ""),
                                       "type": r.get("type", ""), "id": game["event_id"]}
+    if game["phase"] == "build" and now() >= game["build_end"]:
+        start_wave()
+        return
     if game["phase"] != "combat": return
     if game["spawnQueue"]:
         game["spawnT"] -= dt
@@ -262,6 +268,7 @@ def step(dt):
             next_level()
         else:
             game["phase"] = "build"
+            game["build_end"] = now()+10
             game["event_id"] += 1
             game["last_wave"] = {"level": game["level"], "wave": 0, "id": game["event_id"]}
 
@@ -310,6 +317,7 @@ def snapshot():
         "last_build": game["last_build"],
         "paused": game["paused"],
         "paused_by": game["paused_by"],
+        "build_cd": round(max(0, game["build_end"]-now()), 1),
         "event_id": game["event_id"],
     }
 

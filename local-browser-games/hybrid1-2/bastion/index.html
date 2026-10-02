@@ -181,7 +181,7 @@ const PATHSET=new Set(PATH.map(c=>c[0]+','+c[1]));
 const WAYPTS=PATH.map(c=>({x:c[0]*CELL+CELL/2,y:c[1]*CELL+CELL/2}));
 const MAXBASE=20;
 let mode='1pai',diff='medium',running=false,paused=false,over=false;
-let level=1,wave=0,wavesInLevel=0,phase='build',gold=0,base=MAXBASE;
+let level=1,wave=0,wavesInLevel=0,phase='build',gold=0,base=MAXBASE,buildT=0;
 let grid=[],enemies=[],bullets=[],parts=[],floaters=[],spawnQueue=[],spawnT=0;
 let players=[],aiGhost=null,aiT=4,aiProposeT=5,aiCount=0,denied={};
 let best=0;try{best=parseInt(localStorage.getItem('bastion_best')||'0',10)||0;}catch(e){}
@@ -242,7 +242,7 @@ function start(){
   nextLevel();beep(700,.1);
 }
 function nextLevel(){
-  level++;wavesInLevel=0;phase='build';
+  level++;wavesInLevel=0;phase='build';buildT=10;
   banner('LEVEL '+level+' — '+wavesFor(level)+' waves','build your bastion, Space starts');
   beep(880,.15);
 }
@@ -360,7 +360,7 @@ function refreshHud(){
     document.getElementById('wave').textContent=phase==='build'?'–':(wavesInLevel+'/'+wavesFor(level));
     document.getElementById('gold').textContent=gold;
     document.getElementById('base').textContent=base;
-    document.getElementById('mode').textContent=(mode==='1p'?'🛡 solo':(mode==='1pai'?'🤖 solo + AI':'👥 local 2P'))+(phase==='build'?' · BUILD':'');
+    document.getElementById('mode').textContent=(mode==='1p'?'🛡 solo':(mode==='1pai'?'🤖 solo + AI':'👥 local 2P'))+(phase==='build'?' · BUILD '+Math.ceil(buildT)+'s':'');
   }catch(e){}
 }
 // ---------- input ----------
@@ -445,7 +445,9 @@ function update(dt){
   parts=parts.filter(p=>p.life>0);
   for(const f of floaters){f.y-=40*dt;f.t-=dt;}
   floaters=floaters.filter(f=>f.t>0);
-  if(phase==='build')return;
+  // tracers decay in every phase so none freeze at wave end
+  for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.life-=dt;if(b.life<=0)bullets.splice(i,1);}
+  if(phase==='build'){buildT-=dt;if(buildT<=0)startWave();return;}
   // spawning
   if(spawnQueue.length){spawnT-=dt;if(spawnT<=0){spawnT=spawnInterval();spawnEnemy(spawnQueue.pop());}}
   // towers fire
@@ -503,8 +505,6 @@ function update(dt){
       }
     }
   }
-  // bullets (tracers)
-  for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.life-=dt;if(b.life<=0)bullets.splice(i,1);}
   // wave clear?
   if(!spawnQueue.length&&!enemies.length){
     const bonus=15+6*level;gold+=bonus;
@@ -512,7 +512,7 @@ function update(dt){
     floater(W/2,H/2-60,'WAVE CLEAR +'+bonus+'🪙','#ffd75e');beep(880,.15);
     refreshHud();
     if(wavesInLevel>=wavesFor(level)){nextLevel();}
-    else{phase='build';banner('Build!','Space starts wave '+(wavesInLevel+1)+'/'+wavesFor(level));refreshHud();}
+    else{phase='build';buildT=10;banner('Build!','Space starts wave '+(wavesInLevel+1)+'/'+wavesFor(level));refreshHud();}
   }
 }
 function hurtFoe(e,dmg){
