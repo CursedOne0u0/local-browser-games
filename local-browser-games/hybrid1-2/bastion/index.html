@@ -51,7 +51,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BASTION <span>BROS</span></div>
-    <div id="verBadge">v1.3</div>
+    <div id="verBadge">v1.4</div>
     <div id="hud"><div>LV <b id="level">1</b></div><div>WAVE <b id="wave">–</b></div><div>🪙 <b id="gold">0</b></div><div>🏰 <b id="base">20</b></div></div>
     <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
   </div>
@@ -63,7 +63,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <div id="overlay"><div class="card">
       <h1>🏰 BASTION BROS</h1>
       <p>Hold the winding road together. Walk down to the shop hall to pick a tower, then stand on grass and build.<br>
-      P1: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> select + <kbd>E</kbd> build · P2: <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> + <kbd>/</kbd> build<br>
+      P1: <kbd>1</kbd>–<kbd>7</kbd> select + <kbd>T</kbd> trap + <kbd>E</kbd> build · P2: cycle <kbd>.</kbd> + <kbd>,</kbd> trap + <kbd>/</kbd> build<br>
       <kbd>Space</kbd> starts each wave • building mid-wave costs +25% • stand on a tower + build key = repair (75%)</p>
       <div class="row"><button id="b1p">🛡 Solo</button><button id="b1pai">🤖 Solo + AI</button><button id="b2p">👥 2 Players</button></div>
       <div id="arcRow" style="margin:8px 0 0;font-size:13px;text-align:left"><span id="arcWho"></span><span id="arcEdit"><input id="arcName" maxlength="12" placeholder="arcade name…" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff33;background:#0e1208;color:#fff;font-size:14px;outline:none;margin-top:6px;user-select:text;-webkit-user-select:text"><button id="arcSave" class="ghost" style="width:100%;margin-top:6px">Save name</button><div id="arcMsg" style="font-size:11px;opacity:.75;min-height:16px;margin-top:4px"></div></span></div>
@@ -73,7 +73,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div style="margin-top:6px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
-  <div id="hint">Walk to the shop hall below the arena to pick towers · P1 <kbd>WASD</kbd>+<kbd>E</kbd> · P2 arrows+<kbd>/</kbd> · <kbd>Space</kbd> wave · <kbd>P</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
+  <div id="hint">Walk to the shop hall to pick (traps too) · P1 <kbd>WASD</kbd>+<kbd>E</kbd> · P2 arrows+<kbd>/</kbd> · P2 <kbd>.</kbd> cycles · <kbd>Space</kbd> wave · <kbd>P</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <button id="resumeBtn">Resume</button>
@@ -165,14 +165,22 @@ function lbWireName(){
 function lbRefresh(){try{const el=document.getElementById('lbLine');if(el){el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(el,rows,v=>'level '+v));}}catch(e){}}
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const ov=document.getElementById('overlay');
-// BASTION BROS v1.3 — static co-op tower defense. All motion dt-based (per-second units).
+// BASTION BROS v1.4 — static co-op tower defense. All motion dt-based (per-second units).
 const W=960,H=780,COLS=16,ROWS=10,CELL=60;
 const TOWERS={
   arrow:{cost:36,dmg:8,rate:1.5,range:150,hp:100,col:'#a3b832',name:'Arrow'},
   cannon:{cost:85,dmg:22,rate:0.7,range:170,splash:55,hp:160,col:'#e07b39',name:'Cannon'},
   frost:{cost:65,dmg:3,rate:1.2,range:150,slow:0.55,slowT:2,hp:120,col:'#7dc4ff',name:'Frost'},
+  sniper:{cost:110,dmg:60,rate:0.4,range:260,hp:110,col:'#e8e4da',name:'Sniper'},
+  mortar:{cost:130,dmg:45,rate:0.35,range:300,minRange:90,splash:90,hp:140,col:'#c9a13b',name:'Mortar'},
+  tesla:{cost:100,dmg:14,rate:0.8,range:150,hp:130,col:'#9adcff',name:'Tesla'},
+  barricade:{cost:25,dmg:0,rate:0,range:0,hp:300,col:'#6b6257',name:'Barricade'},
 };
-const TKEYS1=['1','2','3'],TKEYS2=['7','8','9'],TNAMES=['arrow','cannon','frost'];
+const TRAPS={
+  spike:{cost:40,name:'Spikes'},
+  tar:{cost:45,name:'Tar'},
+};
+const TKEYS1=['1','2','3','4','5','6','7'],TKEYS2=[],TNAMES=['arrow','cannon','frost','sniper','mortar','tesla','barricade'];
 // fixed winding path (col,row cells)
 const PATH=[[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1],[8,1],[9,1],[10,1],[11,1],[12,1],[13,1],[14,1],[14,2],[14,3],[14,4],[13,4],[12,4],[11,4],[10,4],[9,4],[8,4],[7,4],[6,4],[5,4],[4,4],[3,4],[2,4],[1,4],[1,5],[1,6],[1,7],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[13,7],[14,7],[15,7]];
 const PATHSET=new Set(PATH.map(c=>c[0]+','+c[1]));
@@ -221,7 +229,7 @@ function openPause(){if(!running||over)return;paused=true;document.getElementByI
 function resumeGame(){if(!running||over)return;paused=false;hideVeil();beep(600,.06);}
 function togglePauseMenu(){if(!running||over)return;if(document.getElementById('pveil').style.display==='flex')resumeGame();else openPause();}
 // ---------- run state ----------
-function mkPlayer(id,color,x,y){return{id,color,x,y,py:y,sel:0};}
+function mkPlayer(id,color,x,y){return{id,color,x,y,py:y,sel:0,trap:0};}
 function cellAt(x,y){return[Math.floor(x/CELL),Math.floor(y/CELL)];}
 function inGrid(c,r){return c>=0&&c<COLS&&r>=0&&r<ROWS;}
 function tileFree(c,r){
@@ -255,11 +263,11 @@ function startWave(){
   banner('WAVE '+wavesInLevel+'/'+wavesFor(level),'hold the road!');
   beep(700,.1);
 }
-function enemyHP(kind){const m=1+0.28*(level-1);return Math.round(({walker:20,runner:12,brute:70,lord:500}[kind]||20)*m);}
-function enemySpd(kind){const m=1+0.07*(level-1);return {walker:55,runner:95,brute:40,lord:44}[kind]*m;}
+function enemyHP(kind){const m=1+0.28*(level-1);return Math.round(({walker:20,runner:12,brute:70,lord:500,splitter:45,burrower:35,ghost:25}[kind]||20)*m);}
+function enemySpd(kind){const m=1+0.07*(level-1);return {walker:55,runner:95,brute:40,lord:44,splitter:50,burrower:60,ghost:48}[kind]*m;}
 function buildWave(){
   const q=[];const n=7+(wavesInLevel)*3+level*2;
-  const unlock=level>=3?['walker','walker','runner','runner','brute']:(level>=2?['walker','walker','runner','brute']:['walker','walker','walker','runner']);
+  const unlock=level>=4?['walker','walker','runner','brute','splitter','ghost','burrower']:(level>=3?['walker','walker','runner','runner','brute','splitter','ghost']:(level>=2?['walker','walker','walker','runner','splitter']:['walker','walker','walker','runner']));
   for(let i=0;i<n;i++)q.push(unlock[(Math.random()*unlock.length)|0]);
   if(wavesInLevel%3===0)q.push('lord');
   for(let i=q.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;const t=q[i];q[i]=q[j];q[j]=t;}
@@ -267,25 +275,42 @@ function buildWave(){
 }
 function spawnInterval(){return Math.max(0.35,2.0-0.18*(wavesInLevel+level));}
 function spawnEnemy(kind){
-  enemies.push({kind,seg:0,segT:0,segLen:SEGLENS[0],segLens:SEGLENS,slowT:0,smashT:0,speed:enemySpd(kind),
+  enemies.push({kind,seg:0,segT:0,segLen:SEGLENS[0],segLens:SEGLENS,slowT:0,smashT:0,speed:enemySpd(kind),modeT:3,burrowT:0,burrowed:false,
     hp:enemyHP(kind),maxhp:enemyHP(kind),
     x:WAYPTS[0].x,y:WAYPTS[0].y,
-    bounty:kind==='lord'?70:(kind==='brute'?10:(kind==='runner'?5:4)),
-    leak:kind==='lord'?6:(kind==='brute'?3:1)});
+    bounty:kind==='lord'?70:(kind==='brute'?10:(kind==='splitter'?12:(kind==='burrower'?10:(kind==='ghost'?12:(kind==='runner'?5:4))))),
+    leak:kind==='lord'?6:(kind==='brute'?3:2)});
 }
 function tryBuild(p){
   if(!p||!running||paused||over)return;
   const [c,r]=cellAt(p.x,p.y);
-  const type=TNAMES[p.sel%3];
-  // repair own tower
+  // repair whatever stands here (tower or trap)
   const t=grid.find(t=>t.c===c&&t.r===r);
   if(t){
-    const max=TOWERS[t.type].hp;
+    const max=t.trap?60:TOWERS[t.type].hp;
     if(t.hp>=max){floater(p.x,p.y-40,'FULL','#7dff9a');return;}
-    const cost=Math.ceil(TOWERS[t.type].cost*0.75);
+    const base=t.trap?TRAPS[t.type].cost:TOWERS[t.type].cost;
+    const cost=Math.ceil(base*0.75);
     if(gold<cost){floater(p.x,p.y-40,'NEED '+cost+'🪙','#ff6666');beep(200,.1);return;}
     gold-=cost;t.hp=max;floater(p.x,p.y-40,'REPAIRED','#7dff9a');beep(880,.08);refreshHud();return;
   }
+  // road tiles take traps — or a barricade roadblock (selected barricade)
+  if(PATHSET.has(c+','+r)){
+    if(TNAMES[p.sel%TNAMES.length]==='barricade'){
+      const cost=towerCost('barricade');
+      if(gold<cost){floater(p.x,p.y-40,'NEED '+cost+'🪙','#ff6666');beep(200,.1);return;}
+      gold-=cost;
+      grid.push({c,r,type:'barricade',hp:TOWERS.barricade.hp,cd:0,x:c*CELL+CELL/2,y:r*CELL+CELL/2});
+      burst(c*CELL+CELL/2,r*CELL+CELL/2,'#6b6257',10);beep(660,.07);refreshHud();return;
+    }
+    const kind=p.trap===1?'tar':'spike';
+    const cost=towerCostTrap(kind);
+    if(gold<cost){floater(p.x,p.y-40,'NEED '+cost+'🪙','#ff6666');beep(200,.1);return;}
+    gold-=cost;
+    grid.push({c,r,trap:true,type:kind,kind,hp:60,cd:0,x:c*CELL+CELL/2,y:r*CELL+CELL/2});
+    burst(c*CELL+CELL/2,r*CELL+CELL/2,'#c9a13b',10);beep(660,.07);refreshHud();return;
+  }
+  const type=TNAMES[p.sel%TNAMES.length];
   if(!tileFree(c,r)){floater(p.x,p.y-40,'BLOCKED','#ff6666');beep(200,.1);return;}
   const cost=towerCost(type);
   if(gold<cost){floater(p.x,p.y-40,'NEED '+cost+'🪙','#ff6666');beep(200,.1);return;}
@@ -293,6 +318,7 @@ function tryBuild(p){
   grid.push({c,r,type,hp:TOWERS[type].hp,cd:0,x:c*CELL+CELL/2,y:r*CELL+CELL/2});
   burst(c*CELL+CELL/2,r*CELL+CELL/2,'#a3b832',10);beep(660,.07);refreshHud();
 }
+function towerCostTrap(kind){const base=TRAPS[kind].cost;return phase==='combat'?Math.ceil(base*1.25):base;}
 function banner(a,b){try{
   floaters.push({x:W/2,y:H/2-120,txt:a,c:'#fff',t:2.2,big:true});
   if(b)floaters.push({x:W/2,y:H/2-70,txt:b,c:'#a3b832',t:2.2});
@@ -332,7 +358,8 @@ function aiThink(dt){
   }
   if(!best||bs<4)return;
   aiCount=(aiCount||0)+1;
-  const type=aiCount%4===0?'frost':(brutesSeen()?'cannon':'arrow');
+  const lords=enemies.some(e=>e.kind==='lord');
+  const type=lords?'sniper':(brutesSeen()?'cannon':['arrow','tesla','frost'][aiCount%3]);
   if(gold<TOWERS[type].cost)return; // don't nag what you can't afford
   aiGhost={c:best.c,r:best.r,x:best.x,y:best.y,type,t:20};
   beep(990,.08);
@@ -371,9 +398,11 @@ window.addEventListener('keydown',e=>{
   if(k===' '){if(!running||over)return;if(phase==='build')startWave();return;}
   if(k==='escape'||k==='p')togglePauseMenu();
   if(k==='m'){muted=!muted;saveSharedMute(muted);refreshMuteBtn();}
-  const i1=TKEYS1.indexOf(k),i2=TKEYS2.indexOf(k);
+  const i1=TKEYS1.indexOf(k);
   if(i1>=0&&players[0])players[0].sel=i1;
-  if(i2>=0&&players[1])players[1].sel=i2;
+  if(k==='t'&&players[0]){players[0].trap=(players[0].trap+1)%2;floater(players[0].x,players[0].y-40,players[0].trap?'TAR':'SPIKES','#c9a13b');}
+  if(k==='.'&&players[1])players[1].sel=(players[1].sel+1)%TNAMES.length;
+  if(k===','&&players[1]){players[1].trap=(players[1].trap+1)%2;floater(players[1].x,players[1].y-40,players[1].trap?'TAR':'SPIKES','#c9a13b');}
   if(k==='e'&&players[0])tryBuild(players[0]);
   if(k==='/'&&players[1])tryBuild(players[1]);
   if((k==='y'||k==='Y'))aiAnswer(true);
@@ -419,16 +448,23 @@ window.addEventListener('mouseup',()=>{touchT1=null;touchT2=null;});
 cv.addEventListener('mousemove',e=>{if(e.buttons){const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};}});
 // ---------- annex shop hall (walk onto a pad to select) ----------
 const SHOPS=[
-  {type:'arrow',x:240},{type:'cannon',x:480},{type:'frost',x:720},
+  {type:'arrow',x:80},{type:'cannon',x:180},{type:'frost',x:280},
+  {type:'sniper',x:380},{type:'mortar',x:480},{type:'tesla',x:580},
+  {type:'spike',x:700},{type:'tar',x:800},{type:'barricade',x:900},
 ];
-const SHOP_Y=690,SHOP_W=120,SHOP_H=90;
+const SHOP_Y=690,SHOP_W=92,SHOP_H=86;
 const DOORS=[[200,260],[700,760]];
 function inDoor(x){return DOORS.some(d=>x>=d[0]&&x<=d[1]);}
 function shopPick(p){
   for(const s of SHOPS){
     if(Math.abs(p.x-s.x)<SHOP_W/2&&Math.abs(p.y-SHOP_Y)<SHOP_H/2){
-      const idx=TNAMES.indexOf(s.type);
-      if(idx>=0&&p.sel!==idx){p.sel=idx;floater(p.x,p.y-40,TOWERS[s.type].name.toUpperCase(),TOWERS[s.type].col);beep(990,.06);}
+      if(s.type==='spike'||s.type==='tar'){
+        const ti=s.type==='tar'?1:0;
+        if(p.trap!==ti){p.trap=ti;floater(p.x,p.y-40,(ti?'TAR':'SPIKES'),'#c9a13b');beep(990,.06);}
+      }else{
+        const idx=TNAMES.indexOf(s.type);
+        if(idx>=0&&p.sel!==idx){p.sel=idx;floater(p.x,p.y-40,TOWERS[s.type].name.toUpperCase(),TOWERS[s.type].col);beep(990,.06);}
+      }
       return;
     }
   }
@@ -470,22 +506,44 @@ function update(dt){
   if(phase==='build'){buildT-=dt;if(buildT<=0)startWave();return;}
   // spawning
   if(spawnQueue.length){spawnT-=dt;if(spawnT<=0){spawnT=spawnInterval();spawnEnemy(spawnQueue.pop());}}
-  // towers fire
+  // towers fire (traps + barricades don't shoot)
   for(const t of grid){
+    if(t.trap||t.type==='barricade')continue;
     t.cd-=dt;
     const T=TOWERS[t.type];
     const R=T.range+(t.type==='cannon'?10:0);
     let best=null,bd=R*R;
     for(const e of enemies){
+      if(e.dead||e.burrowed)continue;
       const dx=e.x-t.x,dy=e.y-t.y,d=dx*dx+dy*dy;
       if(d<bd){bd=d;best=e;}
+    }
+    if(best&&t.cd<=0){
+      if(t.type==='mortar'&&Math.hypot(best.x-t.x,best.y-t.y)<(T.minRange||0)){best=null;}
     }
     if(best&&t.cd<=0){
       t.cd=1/T.rate;
       const mult=1;
       if(t.type==='cannon'){
         burst(best.x,best.y,'#e07b39',8);beep(180,.12,'sawtooth',.08);
-        for(const e of enemies){if(Math.hypot(e.x-best.x,e.y-best.y)<T.splash){hurtFoe(e,T.dmg*mult);}}
+        for(const e of enemies){if(!e.dead&&!e.burrowed&&Math.hypot(e.x-best.x,e.y-best.y)<T.splash){hurtFoe(e,T.dmg*mult);}}
+      }else if(t.type==='mortar'){
+        burst(best.x,best.y,'#c9a13b',14);beep(120,.2,'sawtooth',.1);
+        for(const e of enemies){if(!e.dead&&!e.burrowed&&Math.hypot(e.x-best.x,e.y-best.y)<T.splash){hurtFoe(e,T.dmg*mult);}}
+      }else if(t.type==='tesla'){
+        beep(1400,.06,'square',.07);
+        let cur=best,dd=T.dmg*mult;const seen=new Set();
+        for(let k=0;k<4&&cur;k++){
+          seen.add(cur);hurtFoe(cur,dd);dd*=0.75;
+          burst(cur.x,cur.y,'#9adcff',4);bullets.push({x:t.x,y:t.y,tx:cur.x,ty:cur.y,life:.12});
+          let nxt=null,nd=150*150;
+          for(const e of enemies){
+            if(e.dead||e.burrowed||seen.has(e))continue;
+            const d=(e.x-cur.x)*(e.x-cur.x)+(e.y-cur.y)*(e.y-cur.y);
+            if(d<nd){nd=d;nxt=e;}
+          }
+          cur=nxt;
+        }
       }else if(t.type==='frost'){
         hurtFoe(best,T.dmg*mult);best.slowT=T.slowT;beep(1200,.05,'sine',.04);
       }else{
@@ -494,11 +552,29 @@ function update(dt){
       }
     }
   }
-  // enemies walk the path
+  // enemies walk the path (ghosts fly straight, burrowers tunnel, barricades block)
   for(let i=enemies.length-1;i>=0;i--){
     const e=enemies[i];
     if(e.slowT>0)e.slowT-=dt;
-    const sp=e.speed*(e.slowT>0?0.55:1)*dt;
+    if(e.kind==='ghost'){
+      const dx=(W-30)-e.x,dy=H/2-e.y,d=Math.hypot(dx,dy)||1;
+      e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;
+      if(d<40){base-=e.leak;enemies.splice(i,1);burst(W-30,H/2,'#ff4444',14);beep(150,.3,'sawtooth',.12);floater(W-60,H/2-40,'-'+e.leak+' 🏰','#ff6666');refreshHud();if(base<=0){base=0;gameOver();return;}continue;}
+      continue;
+    }
+    if(e.kind==='burrower'){
+      e.modeT-=dt;
+      if(e.burrowed){
+        e.burrowT-=dt;
+        if(e.burrowT<=0){e.burrowed=false;e.modeT=3;burst(e.x,e.y,'#8a6a3a',10);}
+      }else if(e.modeT<=0){e.burrowed=true;e.burrowT=2;burst(e.x,e.y,'#8a6a3a',10);}
+    }
+    const sp=e.speed*(e.slowT>0?0.55:1)*(e.burrowed?3:1)*dt;
+    let blocked=false;
+    if(!e.burrowed)for(const t of grid){
+      if(t.type==='barricade'&&Math.hypot(t.x-e.x,t.y-e.y)<42){blocked=true;t.hp-=15*dt;if(t.hp<=0)removeTower(t);break;}
+    }
+    if(blocked)continue;
     e.segT+=sp;
     while(e.segT>=e.segLen){e.segT-=e.segLen;e.seg++;
       if(e.seg>=e.segLens.length){ // reached the base!
@@ -525,10 +601,20 @@ function update(dt){
       }
     }
   }
+  // traps tick: spikes melt passers, tar slows them
+  for(const t of grid){
+    if(!t.trap)continue;
+    for(const e of enemies){
+      if(e.dead||e.burrowed)continue;
+      const d=Math.hypot(e.x-t.x,e.y-t.y);
+      if(t.type==='spike'){if(d<32)hurtFoe(e,10*dt);}
+      else if(t.type==='tar'){if(d<55)e.slowT=Math.max(e.slowT,0.5);}
+    }
+  }
   // wave clear?
   if(!spawnQueue.length&&!enemies.length){
     const bonus=15+6*level;gold+=bonus;
-    for(const t of grid)t.hp=Math.min(TOWERS[t.type].hp,t.hp+TOWERS[t.type].hp*0.10);
+    for(const t of grid){const mx=t.trap?60:TOWERS[t.type].hp;t.hp=Math.min(mx,t.hp+mx*0.10);}
     floater(W/2,H/2-60,'WAVE CLEAR +'+bonus+'🪙','#ffd75e');beep(880,.15);
     refreshHud();
     if(wavesInLevel>=wavesFor(level)){nextLevel();}
@@ -541,6 +627,10 @@ function hurtFoe(e,dmg){
     e.dead=true;
     const bi=enemies.indexOf(e);if(bi>=0)enemies.splice(bi,1);
     gold+=e.bounty;kills++;
+    if(e.kind==='splitter'){
+      for(let k=0;k<2;k++)enemies.push({kind:'runner',seg:e.seg,segT:e.segT,segLen:e.segLen,segLens:e.segLens,slowT:0,smashT:0,speed:enemySpd('runner'),hp:enemyHP('runner'),maxhp:enemyHP('runner'),x:e.x+(k?20:-20),y:e.y,modeT:3,burrowT:0,burrowed:false,bounty:5,leak:1});
+      burst(e.x,e.y,'#e07b39',12);
+    }
     burst(e.x,e.y,'#ffd75e',8);beep(520,.05);
     refreshHud();
   }
@@ -583,38 +673,60 @@ function draw(now,dt){
   ctx.fillStyle='#a3b832';ctx.font='900 20px ui-monospace,monospace';ctx.textAlign='center';
   ctx.fillText('🛒 SHOP — walk onto a pad',W/2,642);
   for(const s of SHOPS){
-    const T=TOWERS[s.type],afford=gold>=towerCost(s.type);
+    const isTrap=(s.type==='spike'||s.type==='tar');
+    const T=isTrap?{col:'#c9a13b',name:s.type==='spike'?'Spikes':'Tar'}:TOWERS[s.type];
+    const cost=isTrap?towerCostTrap(s.type):towerCost(s.type),afford=gold>=cost;
     ctx.save();ctx.globalAlpha=afford?1:.45;
     ctx.fillStyle='#1a2010';ctx.strokeStyle=T.col;ctx.lineWidth=3;
     ctx.beginPath();ctx.rect(s.x-SHOP_W/2,SHOP_Y-SHOP_H/2,SHOP_W,SHOP_H);ctx.fill();ctx.stroke();
-    ctx.fillStyle=T.col;ctx.font='900 26px ui-monospace,monospace';
-    ctx.fillText(s.type==='arrow'?'➶':s.type==='cannon'?'💣':'❄',s.x,SHOP_Y-8);
-    ctx.fillStyle='#fff';ctx.font='900 17px ui-monospace,monospace';
+    ctx.fillStyle=T.col;ctx.font='900 24px ui-monospace,monospace';
+    ctx.fillText(s.type==='arrow'?'➶':s.type==='cannon'?'💣':s.type==='frost'?'❄':s.type==='sniper'?'◎':s.type==='mortar'?'💥':s.type==='tesla'?'⚡':s.type==='barricade'?'🧱':s.type==='spike'?'🗡':'🛢',s.x,SHOP_Y-8);
+    ctx.fillStyle='#fff';ctx.font='900 13px ui-monospace,monospace';
     ctx.fillText(T.name.toUpperCase(),s.x,SHOP_Y+20);
-    ctx.fillStyle=afford?'#ffd75e':'#ff6666';ctx.font='900 15px ui-monospace,monospace';
-    ctx.fillText(towerCost(s.type)+'🪙',s.x,SHOP_Y+40);
+    ctx.fillStyle=afford?'#ffd75e':'#ff6666';ctx.font='900 14px ui-monospace,monospace';
+    ctx.fillText(cost+'🪙',s.x,SHOP_Y+40);
     ctx.restore();
   }
   // base (right edge fort)
   ctx.fillStyle='#4a4438';ctx.fillRect(W-24,H/2-70,24,140);
   ctx.fillStyle='#a3b832';ctx.font='900 22px ui-monospace,monospace';ctx.textAlign='center';
   ctx.fillText('🏰',W-12,H/2-80);
-  // towers
+  // towers + traps
   for(const t of grid){
-    const T=TOWERS[t.type];
     const x=t.x,y=t.y;
+    if(t.trap){
+      ctx.save();
+      if(t.type==='spike'){
+        ctx.fillStyle='#c9a13b';
+        for(let k=-1;k<=1;k++){ctx.beginPath();ctx.moveTo(x+k*12-6,y+8);ctx.lineTo(x+k*12,y-10);ctx.lineTo(x+k*12+6,y+8);ctx.closePath();ctx.fill();}
+      }else{
+        ctx.globalAlpha=.85;ctx.fillStyle='#1a0f2e';
+        ctx.beginPath();ctx.ellipse(x,y,26,16,0,0,7);ctx.fill();
+        ctx.globalAlpha=.6;ctx.fillStyle='#5b21b6';
+        ctx.beginPath();ctx.ellipse(x,y,18,11,0,0,7);ctx.fill();
+      }
+      const f=t.hp/60;
+      if(f<1){ctx.globalAlpha=1;ctx.fillStyle='#00000088';ctx.fillRect(x-18,y-24,36,4);ctx.fillStyle='#ff5555';ctx.fillRect(x-18,y-24,36*Math.max(0,f),4);}
+      ctx.restore();
+      continue;
+    }
+    const T=TOWERS[t.type];
     ctx.save();
     ctx.fillStyle='#0b0e07';ctx.strokeStyle=T.col;ctx.lineWidth=3;
     ctx.beginPath();ctx.arc(x,y,20,0,7);ctx.fill();ctx.stroke();
     ctx.fillStyle=T.col;
     if(t.type==='arrow'){ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+9,y+7);ctx.lineTo(x-9,y+7);ctx.closePath();ctx.fill();}
     else if(t.type==='cannon'){ctx.fillRect(x-9,y-9,18,18);ctx.fillStyle='#0b0e07';ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill();}
+    else if(t.type==='sniper'){ctx.strokeStyle=T.col;ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,10,0,7);ctx.stroke();ctx.beginPath();ctx.moveTo(x-14,y);ctx.lineTo(x+14,y);ctx.moveTo(x,y-14);ctx.lineTo(x,y+14);ctx.stroke();}
+    else if(t.type==='mortar'){ctx.fillStyle=T.col;ctx.beginPath();ctx.arc(x,y,12,0,7);ctx.fill();ctx.fillStyle='#0b0e07';ctx.beginPath();ctx.arc(x,y,6,0,7);ctx.fill();}
+    else if(t.type==='tesla'){ctx.strokeStyle=T.col;ctx.lineWidth=2.5;ctx.beginPath();for(let k=0;k<3;k++){const a=-1.57+k*2.1;ctx.moveTo(x+Math.cos(a)*4,y+Math.sin(a)*4);ctx.lineTo(x+Math.cos(a)*12,y+Math.sin(a)*12);}ctx.stroke();ctx.beginPath();ctx.arc(x,y,3,0,7);ctx.fill();}
+    else if(t.type==='barricade'){ctx.fillStyle=T.col;ctx.fillRect(x-16,y-12,32,24);ctx.fillStyle='#0b0e07';for(let k=-1;k<=1;k++)ctx.fillRect(x+k*10-2,y-12,4,24);}
     else{ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+10,y);ctx.lineTo(x,y+11);ctx.lineTo(x-10,y,);ctx.closePath();ctx.fill();
       ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-10,y);ctx.lineTo(x+10,y);ctx.stroke();}
     const f=t.hp/T.hp;
     if(f<1){ctx.fillStyle='#00000088';ctx.fillRect(x-18,y-30,36,5);ctx.fillStyle=f>0.5?'#7dff6a':'#ff5555';ctx.fillRect(x-18,y-30,36*f,5);}
     ctx.restore();
-    if(t.type!=='frost'&&T.range){ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle=T.col;ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,T.range,0,7);ctx.stroke();ctx.restore();}
+    if(t.type!=='frost'&&t.type!=='barricade'&&T.range){ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle=T.col;ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,T.range,0,7);ctx.stroke();ctx.restore();}
   }
   // AI ghost proposal
   if(aiGhost){
@@ -638,6 +750,10 @@ function draw(now,dt){
     else if(e.kind==='runner'){ctx.fillStyle='#e07b39';ctx.beginPath();ctx.moveTo(e.x,e.y-13);ctx.lineTo(e.x+9,e.y+9);ctx.lineTo(e.x-9,e.y+9);ctx.closePath();ctx.fill();}
     else if(e.kind==='brute'){ctx.fillStyle='#8a4a2e';ctx.fillRect(e.x-15,e.y-15,30,30);ctx.fillStyle='#c96a2e';ctx.fillRect(e.x-9,e.y-9,18,18);}
     else if(e.kind==='lord'){ctx.fillStyle='#5a1e1e';ctx.beginPath();ctx.arc(e.x,e.y,24,0,7);ctx.fill();ctx.strokeStyle='#ff2222';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,24,0,7);ctx.stroke();ctx.fillStyle='#ff6666';ctx.font='900 20px system-ui';ctx.textAlign='center';ctx.fillText('♛',e.x,e.y+7);}
+    else if(e.kind==='splitter'){ctx.fillStyle='#b45fd0';ctx.beginPath();ctx.arc(e.x-8,e.y,11,0,7);ctx.fill();ctx.beginPath();ctx.arc(e.x+8,e.y,11,0,7);ctx.fill();ctx.fillStyle='#e3a7f5';ctx.beginPath();ctx.arc(e.x-8,e.y,5,0,7);ctx.fill();ctx.beginPath();ctx.arc(e.x+8,e.y,5,0,7);ctx.fill();}
+    else if(e.kind==='burrower'){if(e.burrowed){ctx.globalAlpha=.45;ctx.fillStyle='#8a6a3a';ctx.beginPath();ctx.ellipse(e.x,e.y,16,9,0,0,7);ctx.fill();}
+      else{ctx.fillStyle='#8a6a3a';ctx.beginPath();ctx.arc(e.x,e.y,12,0,7);ctx.fill();ctx.fillStyle='#5a4426';for(let k=0;k<3;k++){const a=k*2.1;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*7,e.y+Math.sin(a)*7,3,0,7);ctx.fill();}}}
+    else if(e.kind==='ghost'){ctx.globalAlpha=.6;ctx.fillStyle='#9adcff';ctx.beginPath();ctx.arc(e.x,e.y,13,0,7);ctx.fill();ctx.globalAlpha=.85;ctx.fillStyle='#e8fbff';ctx.beginPath();ctx.arc(e.x,e.y,7,0,7);ctx.fill();}
     ctx.restore();
     if(e.maxhp>1&&e.hp<e.maxhp){ctx.fillStyle='#00000088';ctx.fillRect(e.x-16,e.y-22,32,4);ctx.fillStyle='#ff5555';ctx.fillRect(e.x-16,e.y-22,32*Math.max(0,e.hp/e.maxhp),4);}
   }
@@ -655,7 +771,7 @@ function draw(now,dt){
     ctx.fillText(p.id==='AI'?'AI':('P'+(pi+1)),p.x,p.y+5);
     // selected tower ghost on current tile
     if(inGrid(c,r)){
-      const type=TNAMES[p.sel%3];
+      const type=TNAMES[p.sel%TNAMES.length];
       ctx.globalAlpha=.4;ctx.strokeStyle=TOWERS[type].col;ctx.lineWidth=2;
       ctx.strokeRect(c*CELL+8,r*CELL+8,CELL-16,CELL-16);
       ctx.globalAlpha=1;ctx.fillStyle=TOWERS[type].col;ctx.font='900 12px ui-monospace,monospace';
