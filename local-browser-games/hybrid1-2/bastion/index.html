@@ -170,9 +170,9 @@ const ov=document.getElementById('overlay');
 // BASTION BROS v1.1 — static co-op tower defense. All motion dt-based (per-second units).
 const W=960,H=600,COLS=16,ROWS=10,CELL=60;
 const TOWERS={
-  arrow:{cost:30,dmg:8,rate:2.0,range:150,hp:100,col:'#a3b832',name:'Arrow'},
-  cannon:{cost:70,dmg:22,rate:0.7,range:170,splash:70,hp:160,col:'#e07b39',name:'Cannon'},
-  frost:{cost:55,dmg:3,rate:1.2,range:150,slow:0.55,slowT:2,hp:120,col:'#7dc4ff',name:'Frost'},
+  arrow:{cost:36,dmg:8,rate:1.5,range:150,hp:100,col:'#a3b832',name:'Arrow'},
+  cannon:{cost:85,dmg:22,rate:0.7,range:170,splash:55,hp:160,col:'#e07b39',name:'Cannon'},
+  frost:{cost:65,dmg:3,rate:1.2,range:150,slow:0.55,slowT:2,hp:120,col:'#7dc4ff',name:'Frost'},
 };
 const TKEYS1=['1','2','3'],TKEYS2=['7','8','9'],TNAMES=['arrow','cannon','frost'];
 // fixed winding path (col,row cells)
@@ -232,7 +232,7 @@ function towerCost(type){const base=TOWERS[type].cost;return phase==='combat'?Ma
 function start(){
   grid=[];enemies=[];bullets=[];parts=[];floaters=[];spawnQueue=[];
   aiGhost=null;aiT=4;denied={};kills=0;
-  gold=130;base=MAXBASE;level=0;over=false;
+  gold=90;base=MAXBASE;level=0;over=false;
   players=[mkPlayer('P1','#a3b832',120,540)];
   if(mode!=='1p')players.push(mkPlayer(mode==='2p'?'P2':'AI','#e07b39',240,540));
   if(mode==='1pai')players[1].ai=true;
@@ -255,22 +255,22 @@ function startWave(){
   banner('WAVE '+wavesInLevel+'/'+wavesFor(level),'hold the road!');
   beep(700,.1);
 }
-function enemyHP(kind){const m=1+0.18*(level-1);return Math.round(({walker:20,runner:12,brute:70,lord:500}[kind]||20)*m);}
-function enemySpd(kind){const m=1+0.04*(level-1);return {walker:55,runner:95,brute:40,lord:34}[kind]*m;}
+function enemyHP(kind){const m=1+0.28*(level-1);return Math.round(({walker:20,runner:12,brute:70,lord:500}[kind]||20)*m);}
+function enemySpd(kind){const m=1+0.07*(level-1);return {walker:55,runner:95,brute:40,lord:44}[kind]*m;}
 function buildWave(){
-  const q=[];const n=5+(wavesInLevel)*2+level;
-  const unlock=level>=3?['walker','walker','runner','runner','brute']:(level>=2?['walker','walker','walker','runner']:['walker','walker','walker','walker','runner']);
+  const q=[];const n=7+(wavesInLevel)*3+level*2;
+  const unlock=level>=3?['walker','walker','runner','runner','brute']:(level>=2?['walker','walker','runner','brute']:['walker','walker','walker','runner']);
   for(let i=0;i<n;i++)q.push(unlock[(Math.random()*unlock.length)|0]);
   if(wavesInLevel%3===0)q.push('lord');
   for(let i=q.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;const t=q[i];q[i]=q[j];q[j]=t;}
   return q;
 }
-function spawnInterval(){return Math.max(0.5,2.2-0.15*(wavesInLevel+level));}
+function spawnInterval(){return Math.max(0.35,2.0-0.18*(wavesInLevel+level));}
 function spawnEnemy(kind){
   enemies.push({kind,seg:0,segT:0,segLen:SEGLENS[0],segLens:SEGLENS,slowT:0,smashT:0,speed:enemySpd(kind),
     hp:enemyHP(kind),maxhp:enemyHP(kind),
     x:WAYPTS[0].x,y:WAYPTS[0].y,
-    bounty:kind==='lord'?90:(kind==='brute'?15:(kind==='runner'?7:6)),
+    bounty:kind==='lord'?70:(kind==='brute'?10:(kind==='runner'?5:4)),
     leak:kind==='lord'?6:(kind==='brute'?3:1)});
 }
 function tryBuild(p){
@@ -282,7 +282,7 @@ function tryBuild(p){
   if(t){
     const max=TOWERS[t.type].hp;
     if(t.hp>=max){floater(p.x,p.y-40,'FULL','#7dff9a');return;}
-    const cost=Math.ceil(TOWERS[t.type].cost*0.5);
+    const cost=Math.ceil(TOWERS[t.type].cost*0.75);
     if(gold<cost){floater(p.x,p.y-40,'NEED '+cost+'🪙','#ff6666');beep(200,.1);return;}
     gold-=cost;t.hp=max;floater(p.x,p.y-40,'REPAIRED','#7dff9a');beep(880,.08);refreshHud();return;
   }
@@ -507,7 +507,7 @@ function update(dt){
   for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.life-=dt;if(b.life<=0)bullets.splice(i,1);}
   // wave clear?
   if(!spawnQueue.length&&!enemies.length){
-    const bonus=20+8*level;gold+=bonus;
+    const bonus=15+6*level;gold+=bonus;
     for(const t of grid)t.hp=Math.min(TOWERS[t.type].hp,t.hp+TOWERS[t.type].hp*0.10);
     floater(W/2,H/2-60,'WAVE CLEAR +'+bonus+'🪙','#ffd75e');beep(880,.15);
     refreshHud();

@@ -2,7 +2,7 @@
 """Bastion Bros LAN — 2-4 player co-op tower defense server. Zero deps, stdlib only.
 Run:  python3 server.py   (each defender opens the printed LAN URL on their own screen)
 Authoritative sim: grid, gold, base, waves, enemies. Clients send move/build intents.
-Build anytime (mid-wave +25%). Repair by building on your own tower (50%).
+Build anytime (mid-wave +25%). Repair by building on your own tower (75%).
 """
 import json, time, math, random, threading, socket, os, sys
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -38,9 +38,9 @@ MAX_SEATS = 4
 MAXBASE = 20
 W, H, COLS, ROWS, CELL = 960, 600, 16, 10, 60
 TOWERS = {
-    "arrow": {"cost": 30, "dmg": 8, "rate": 2.0, "range": 150, "hp": 100},
-    "cannon": {"cost": 70, "dmg": 22, "rate": 0.7, "range": 170, "splash": 70, "hp": 160},
-    "frost": {"cost": 55, "dmg": 3, "rate": 1.2, "range": 150, "slow": 0.55, "slowT": 2, "hp": 120},
+    "arrow": {"cost": 36, "dmg": 8, "rate": 1.5, "range": 150, "hp": 100},
+    "cannon": {"cost": 85, "dmg": 22, "rate": 0.7, "range": 170, "splash": 55, "hp": 160},
+    "frost": {"cost": 65, "dmg": 3, "rate": 1.2, "range": 150, "slow": 0.55, "slowT": 2, "hp": 120},
 }
 TNAMES = ["arrow", "cannon", "frost"]
 PATH = [(c, 1) for c in range(15)] + [(14, 2), (14, 3), (14, 4)] + \
@@ -51,10 +51,10 @@ WAYPTS = [{"x": c*CELL+CELL/2, "y": r*CELL+CELL/2} for c, r in PATH]
 SEGLENS = [math.hypot(WAYPTS[i+1]["x"]-WAYPTS[i]["x"], WAYPTS[i+1]["y"]-WAYPTS[i]["y"])
            for i in range(len(WAYPTS)-1)]
 EKIND = {
-    "walker": {"hp": 20, "spd": 55, "bounty": 6, "leak": 1},
-    "runner": {"hp": 12, "spd": 95, "bounty": 7, "leak": 1},
-    "brute": {"hp": 70, "spd": 40, "bounty": 15, "leak": 3},
-    "lord": {"hp": 500, "spd": 34, "bounty": 90, "leak": 6},
+    "walker": {"hp": 20, "spd": 55, "bounty": 4, "leak": 1},
+    "runner": {"hp": 12, "spd": 95, "bounty": 5, "leak": 1},
+    "brute": {"hp": 70, "spd": 40, "bounty": 10, "leak": 3},
+    "lord": {"hp": 500, "spd": 44, "bounty": 70, "leak": 6},
 }
 PUBLIC = Path(__file__).parent / "public"
 
@@ -76,11 +76,11 @@ game = {
 def now(): return time.time()
 def waves_for(lv): return lv+2
 def enemy_hp(kind):
-    m = 1+0.18*(game["level"]-1)
+    m = 1+0.28*(game["level"]-1)
     return round({"walker": 20, "runner": 12, "brute": 70, "lord": 500}[kind]*m)
 def enemy_spd(kind):
-    m = 1+0.04*(game["level"]-1)
-    return {"walker": 55, "runner": 95, "brute": 40, "lord": 34}[kind]*m
+    m = 1+0.07*(game["level"]-1)
+    return {"walker": 55, "runner": 95, "brute": 40, "lord": 44}[kind]*m
 
 def occupied():
     return [i for i, p in enumerate(game["players"]) if p]
@@ -113,7 +113,7 @@ def try_build(i):
     if t:
         mx = TOWERS[t["type"]]["hp"]
         if t["hp"] >= mx: return {"ok": False, "why": "full"}
-        cost = math.ceil(TOWERS[t["type"]]["cost"]*0.5)
+        cost = math.ceil(TOWERS[t["type"]]["cost"]*0.75)
         if game["gold"] < cost: return {"ok": False, "why": "poor"}
         game["gold"] -= cost; t["hp"] = mx
         return {"ok": True, "what": "repair"}
@@ -135,8 +135,10 @@ def next_level():
 def build_wave():
     lv, wv = game["level"], game["wave"]+1
     q = []
-    n = 5+wv*2+lv
-    unlock = ["walker"]*4+["runner"] if lv >= 3 else (["walker"]*3+["runner"] if lv >= 2 else ["walker"]*4+["runner"])
+    n = 7+wv*3+lv*2
+    if lv >= 3: unlock = ["walker"]*2+["runner"]*2+["brute"]
+    elif lv >= 2: unlock = ["walker"]*3+["runner"]+["brute"]
+    else: unlock = ["walker"]*3+["runner"]
     for _ in range(n):
         q.append(random.choice(unlock))
     if wv % 3 == 0: q.append("lord")
@@ -154,10 +156,10 @@ def start_wave():
     return True
 
 def spawn_interval():
-    return max(0.5, 2.2-0.15*(game["wave"]+game["level"]))
+    return max(0.35, 2.0-0.18*(game["wave"]+game["level"]))
 def spawn_enemy(kind):
     lv = game["level"]
-    spd = {"walker": 55, "runner": 95, "brute": 40, "lord": 34}[kind]*(1+0.04*(lv-1))
+    spd = {"walker": 55, "runner": 95, "brute": 40, "lord": 44}[kind]*(1+0.04*(lv-1))
     hp = enemy_hp(kind)
     game["enemies"].append({"kind": kind, "seg": 0, "segT": 0, "segLen": SEGLENS[0],
                             "slowT": 0, "smashT": 0, "spd": spd,
@@ -168,7 +170,7 @@ def hurt_foe(e, dmg):
     e["hp"] -= dmg
     if e["hp"] <= 0 and not e.get("dead"):
         e["dead"] = True
-        game["gold"] += {"walker": 6, "runner": 7, "brute": 15, "lord": 90}[e["kind"]]
+        game["gold"] += {"walker": 4, "runner": 5, "brute": 10, "lord": 70}[e["kind"]]
 
 def game_over():
     game["phase"] = "over"
@@ -253,7 +255,7 @@ def step(dt):
     game["enemies"] = [e for e in game["enemies"] if not e.get("dead")]
     # wave clear
     if not game["spawnQueue"] and not game["enemies"] and game["phase"] == "combat":
-        game["gold"] += 20+8*game["level"]
+        game["gold"] += 15+6*game["level"]
         for t in game["grid"]:
             t["hp"] = min(TOWERS[t["type"]]["hp"], t["hp"]+TOWERS[t["type"]]["hp"]*0.10)
         if game["wave"] >= game["level"]+2:
@@ -276,7 +278,7 @@ def game_loop():
                 if game["phase"] == "waiting" and len(occ) >= 2 and all(game["players"][i]["ready"] for i in occ):
                     game["phase"] = "countdown"; game["countdown_end"] = now()+2.4
                     game["level"] = 0; game["wave"] = 0
-                    game["grid"] = []; game["gold"] = 130; game["base"] = MAXBASE
+                    game["grid"] = []; game["gold"] = 90; game["base"] = MAXBASE
                     game["enemies"] = []; game["spawnQueue"] = []
                     game["winner"] = 0
                     next_level()
