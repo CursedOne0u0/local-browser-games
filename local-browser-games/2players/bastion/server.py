@@ -33,7 +33,7 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3005"))
-VERSION = "1.0"  # bump on every update; shown on the site
+VERSION = "1.1"  # bump on every update; shown on the site
 MAX_SEATS = 4
 MAXBASE = 20
 W, H, COLS, ROWS, CELL = 960, 600, 16, 10, 60
