@@ -20,8 +20,11 @@ body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#232a12 0%,var
 #verBadge{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--c1);border:1px solid #a3b83266;border-radius:6px;padding:3px 10px;white-space:nowrap}
 #hud{display:flex;gap:12px;font-family:var(--mono);font-weight:800;font-size:13px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 #hud b{color:var(--c1)}
-#stage{position:relative;width:min(980px,96vw,calc((100dvh - 210px)*1.6));aspect-ratio:16/10;border-radius:14px;overflow:hidden;border:1px solid #a3b83233;background:#0e1208}
+#stage{position:relative;width:min(100vw,calc(100dvh*960/780));aspect-ratio:960/780;border-radius:14px;overflow:hidden;border:1px solid #a3b83233;background:#0e1208}
 canvas{width:100%;height:100%;display:block;touch-action:none}
+#dpad{position:absolute;left:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;z-index:5}
+#dpad button{margin:0;padding:0;min-width:52px;min-height:52px;font-size:20px;background:#00000088;color:#fff;border:1px solid #ffffff44}
+#placeBtn{position:absolute;right:12px;bottom:12px;z-index:5;width:84px;height:84px;min-width:84px;border-radius:50%;margin:0;padding:0;font-size:15px;background:#a3b832;color:#0b0e07;border:3px solid #ffffff66}
 #overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(8,10,5,.82);backdrop-filter:blur(6px);padding:14px}
 .card{width:min(460px,94%);background:#141a0c;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:94%;overflow:auto}
 .card h1{margin:.2em 0;font-size:22px;font-family:var(--mono)}
@@ -31,8 +34,6 @@ button.ghost{background:#ffffff14;color:#fff;border:1px solid #ffffff2a}
 .row{display:flex;gap:8px}
 #hint{font-size:11px;opacity:.65;text-align:center;line-height:1.7;max-width:96vw}
 kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
-#touchbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-#touchbar button{width:auto;margin:0;padding:10px 12px;min-width:44px;min-height:44px}
 #pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(8,10,5,.85);padding:14px}
 #pveil .card{width:min(340px,92%)}
 #mbtns{display:flex;gap:6px}
@@ -50,18 +51,20 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BASTION <span>BROS</span></div>
-    <div id="verBadge">v1.2</div>
+    <div id="verBadge">v1.3</div>
     <div id="hud"><div>LV <b id="level">1</b></div><div>WAVE <b id="wave">–</b></div><div>🪙 <b id="gold">0</b></div><div>🏰 <b id="base">20</b></div></div>
     <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
   </div>
   <div id="mode">menu</div>
   <div id="stage">
-    <canvas id="cv" width="960" height="600"></canvas>
+    <canvas id="cv" width="960" height="780"></canvas>
+    <div id="dpad"><span></span><button data-d="up">▲</button><span></span><button data-d="lf">◀</button><span></span><button data-d="rt">▶</button><span></span><button data-d="dn">▼</button><span></span></div>
+    <button id="placeBtn">PLACE</button>
     <div id="overlay"><div class="card">
       <h1>🏰 BASTION BROS</h1>
-      <p>Hold the winding road together. You are the build cursor — stand on grass, place towers.<br>
+      <p>Hold the winding road together. Walk down to the shop hall to pick a tower, then stand on grass and build.<br>
       P1: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> select + <kbd>E</kbd> build · P2: <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> + <kbd>/</kbd> build<br>
-      <kbd>Space</kbd> starts each wave • building mid-wave costs +25% • stand on a tower + build key = repair (50%)</p>
+      <kbd>Space</kbd> starts each wave • building mid-wave costs +25% • stand on a tower + build key = repair (75%)</p>
       <div class="row"><button id="b1p">🛡 Solo</button><button id="b1pai">🤖 Solo + AI</button><button id="b2p">👥 2 Players</button></div>
       <div id="arcRow" style="margin:8px 0 0;font-size:13px;text-align:left"><span id="arcWho"></span><span id="arcEdit"><input id="arcName" maxlength="12" placeholder="arcade name…" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff33;background:#0e1208;color:#fff;font-size:14px;outline:none;margin-top:6px;user-select:text;-webkit-user-select:text"><button id="arcSave" class="ghost" style="width:100%;margin-top:6px">Save name</button><div id="arcMsg" style="font-size:11px;opacity:.75;min-height:16px;margin-top:4px"></div></span></div>
       <div class="row"><button id="startBtn">Start</button></div>
@@ -70,12 +73,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <div style="margin-top:6px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
     </div></div>
   </div>
-  <div id="touchbar">
-    <button data-t="1">1</button><button data-t="2">2</button><button data-t="3">3</button><button data-t="E">E</button>
-    <button data-t="7">7</button><button data-t="8">8</button><button data-t="9">9</button><button data-t="/">/</button>
-    <button data-t=" ">Wave</button>
-  </div>
-  <div id="hint">P1 <kbd>WASD</kbd> + <kbd>E</kbd> · P2 arrows + <kbd>/</kbd> · <kbd>Space</kbd> wave · <kbd>P</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
+  <div id="hint">Walk to the shop hall below the arena to pick towers · P1 <kbd>WASD</kbd>+<kbd>E</kbd> · P2 arrows+<kbd>/</kbd> · <kbd>Space</kbd> wave · <kbd>P</kbd> pause · <kbd>M</kbd> mute · 🎮 dual pads</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <button id="resumeBtn">Resume</button>
@@ -167,8 +165,8 @@ function lbWireName(){
 function lbRefresh(){try{const el=document.getElementById('lbLine');if(el){el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(el,rows,v=>'level '+v));}}catch(e){}}
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const ov=document.getElementById('overlay');
-// BASTION BROS v1.2 — static co-op tower defense. All motion dt-based (per-second units).
-const W=960,H=600,COLS=16,ROWS=10,CELL=60;
+// BASTION BROS v1.3 — static co-op tower defense. All motion dt-based (per-second units).
+const W=960,H=780,COLS=16,ROWS=10,CELL=60;
 const TOWERS={
   arrow:{cost:36,dmg:8,rate:1.5,range:150,hp:100,col:'#a3b832',name:'Arrow'},
   cannon:{cost:85,dmg:22,rate:0.7,range:170,splash:55,hp:160,col:'#e07b39',name:'Cannon'},
@@ -201,15 +199,17 @@ document.getElementById('b1p').onclick=()=>pickMode('1p','🛡 solo — WASD + E
 document.getElementById('b1pai').onclick=()=>pickMode('1pai','🤖 solo + AI');
 document.getElementById('b2p').onclick=()=>pickMode('2p','👥 local 2P — WASD+E vs arrows+/');
 document.getElementById('startBtn').onclick=()=>{if(lbGate())start();};
-document.querySelectorAll('#touchbar button').forEach(b=>b.onclick=()=>tapKey(b.dataset.t));
-function tapKey(k){
-  if(k===' '){if(phase==='build')startWave();return;}
-  if(k==='E'){tryBuild(players[0]);return;}
-  if(k==='/'){if(players[1])tryBuild(players[1]);return;}
-  const i1=TKEYS1.indexOf(k),i2=TKEYS2.indexOf(k);
-  if(i1>=0&&players[0])players[0].sel=i1;
-  if(i2>=0&&players[1])players[1].sel=i2;
-}
+// ---------- touch: D-pad (P1) + PLACE, drag halves still steer ----------
+const dpadState={up:0,dn:0,lf:0,rt:0};
+document.querySelectorAll('#dpad button').forEach(b=>{
+  const d=b.dataset.d;
+  const on=e=>{e.preventDefault();dpadState[d==='up'?'up':d==='dn'?'dn':d==='lf'?'lf':'rt']=1;};
+  const off=e=>{e.preventDefault();dpadState[d==='up'?'up':d==='dn'?'dn':d==='lf'?'lf':'rt']=0;};
+  b.addEventListener('touchstart',on,{passive:false});b.addEventListener('touchend',off);b.addEventListener('touchcancel',off);
+  b.addEventListener('mousedown',on);b.addEventListener('mouseup',off);b.addEventListener('mouseleave',off);
+});
+document.getElementById('placeBtn').addEventListener('touchstart',e=>{e.preventDefault();if(players[0])tryBuild(players[0]);},{passive:false});
+document.getElementById('placeBtn').addEventListener('mousedown',()=>{if(players[0])tryBuild(players[0]);});
 function showMenu(){
   running=false;over=false;paused=false;hideVeil();
   try{document.querySelector('#overlay .card h1').textContent='🏰 BASTION BROS';}catch(e){}
@@ -221,7 +221,7 @@ function openPause(){if(!running||over)return;paused=true;document.getElementByI
 function resumeGame(){if(!running||over)return;paused=false;hideVeil();beep(600,.06);}
 function togglePauseMenu(){if(!running||over)return;if(document.getElementById('pveil').style.display==='flex')resumeGame();else openPause();}
 // ---------- run state ----------
-function mkPlayer(id,color,x,y){return{id,color,x,y,sel:0};}
+function mkPlayer(id,color,x,y){return{id,color,x,y,py:y,sel:0};}
 function cellAt(x,y){return[Math.floor(x/CELL),Math.floor(y/CELL)];}
 function inGrid(c,r){return c>=0&&c<COLS&&r>=0&&r<ROWS;}
 function tileFree(c,r){
@@ -417,7 +417,22 @@ cv.addEventListener('touchend',endTouch);cv.addEventListener('touchcancel',endTo
 cv.addEventListener('mousedown',e=>{const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};});
 window.addEventListener('mouseup',()=>{touchT1=null;touchT2=null;});
 cv.addEventListener('mousemove',e=>{if(e.buttons){const p=ptrFromClient(e.clientX,e.clientY);if(mode==='2p'&&!p.left)touchT2={x:p.x,y:p.y};else touchT1={x:p.x,y:p.y};}});
-// ---------- update ----------
+// ---------- annex shop hall (walk onto a pad to select) ----------
+const SHOPS=[
+  {type:'arrow',x:240},{type:'cannon',x:480},{type:'frost',x:720},
+];
+const SHOP_Y=690,SHOP_W=120,SHOP_H=90;
+const DOORS=[[200,260],[700,760]];
+function inDoor(x){return DOORS.some(d=>x>=d[0]&&x<=d[1]);}
+function shopPick(p){
+  for(const s of SHOPS){
+    if(Math.abs(p.x-s.x)<SHOP_W/2&&Math.abs(p.y-SHOP_Y)<SHOP_H/2){
+      const idx=TNAMES.indexOf(s.type);
+      if(idx>=0&&p.sel!==idx){p.sel=idx;floater(p.x,p.y-40,TOWERS[s.type].name.toUpperCase(),TOWERS[s.type].col);beep(990,.06);}
+      return;
+    }
+  }
+}
 function steerAvatar(p,tx,ty,dt){
   const dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);
   if(d<4)return;
@@ -437,7 +452,12 @@ function update(dt){
     if(keys[c.up])dy-=1;if(keys[c.dn])dy+=1;if(keys[c.lf])dx-=1;if(keys[c.rt])dx+=1;
     if(dx||dy){const l=Math.hypot(dx,dy),sp=340*dt;p.x+=dx/l*sp;p.y+=dy/l*sp;}
     else{const tt=pi===0?touchT1:touchT2;if(tt)steerAvatar(p,tt.x,tt.y,dt);}
+    if(pi===0){if(dpadState.up)p.y-=340*dt;if(dpadState.dn)p.y+=340*dt;if(dpadState.lf)p.x-=340*dt;if(dpadState.rt)p.x+=340*dt;}
     p.x=Math.max(20,Math.min(W-20,p.x));p.y=Math.max(20,Math.min(H-20,p.y));
+    // annex wall (y 600-620) with two door gaps
+    if(p.y>592&&p.y<628&&!inDoor(p.x))p.y=p.py<600?592:628;
+    p.py=p.y;
+    shopPick(p);
   });
   aiThink(dt);
   // fx decay runs in every phase so banners/particles never freeze between waves
@@ -556,6 +576,25 @@ function draw(now,dt){
   for(const [c,r] of PATH)ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
   ctx.strokeStyle='#3d3220';ctx.lineWidth=2;
   ctx.beginPath();WAYPTS.forEach((w,i)=>i?ctx.lineTo(w.x,w.y):ctx.moveTo(w.x,w.y));ctx.stroke();
+  // annex shop hall (below the arena): floor, wall with door gaps, walk-to pads
+  ctx.fillStyle='#101408';ctx.fillRect(0,600,W,H-600);
+  ctx.fillStyle='#2e2a18';
+  for(const [dx0,dx1] of [[0,200],[260,700],[760,960]])ctx.fillRect(dx0,600,dx1-dx0,20);
+  ctx.fillStyle='#a3b832';ctx.font='900 20px ui-monospace,monospace';ctx.textAlign='center';
+  ctx.fillText('🛒 SHOP — walk onto a pad',W/2,642);
+  for(const s of SHOPS){
+    const T=TOWERS[s.type],afford=gold>=towerCost(s.type);
+    ctx.save();ctx.globalAlpha=afford?1:.45;
+    ctx.fillStyle='#1a2010';ctx.strokeStyle=T.col;ctx.lineWidth=3;
+    ctx.beginPath();ctx.rect(s.x-SHOP_W/2,SHOP_Y-SHOP_H/2,SHOP_W,SHOP_H);ctx.fill();ctx.stroke();
+    ctx.fillStyle=T.col;ctx.font='900 26px ui-monospace,monospace';
+    ctx.fillText(s.type==='arrow'?'➶':s.type==='cannon'?'💣':'❄',s.x,SHOP_Y-8);
+    ctx.fillStyle='#fff';ctx.font='900 17px ui-monospace,monospace';
+    ctx.fillText(T.name.toUpperCase(),s.x,SHOP_Y+20);
+    ctx.fillStyle=afford?'#ffd75e':'#ff6666';ctx.font='900 15px ui-monospace,monospace';
+    ctx.fillText(towerCost(s.type)+'🪙',s.x,SHOP_Y+40);
+    ctx.restore();
+  }
   // base (right edge fort)
   ctx.fillStyle='#4a4438';ctx.fillRect(W-24,H/2-70,24,140);
   ctx.fillStyle='#a3b832';ctx.font='900 22px ui-monospace,monospace';ctx.textAlign='center';
