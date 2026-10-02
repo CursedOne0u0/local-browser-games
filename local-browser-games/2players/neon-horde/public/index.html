@@ -248,6 +248,7 @@ function camPos(){
   return [0,0];
 }
 let pollSeq=0;
+let lastTier=-1,pulseT=0,pulseTier=0; // biome crossing pulse
 function poll(){
   const mySeq=++pollSeq;
   api('/api/state?id='+cid).then(s=>{
@@ -261,7 +262,9 @@ function poll(){
     else bb.style.display='none';
     const nm=s.names.map((n,i)=>n||('P'+(i+1)));
     const [cx,cy]=camPos();
-    const bd=Math.hypot(cx,cy),btier=bd<900?0:bd<1800?1:2;
+    const bd=Math.hypot(cx,cy),btier=bd<4500?0:bd<9000?1:2;
+    if(lastTier>=0&&btier!==lastTier){pulseT=performance.now();pulseTier=btier;beep(440+btier*220,.18,'sine',.1);}
+    lastTier=btier;
     biomeEl.textContent=BIOME_NAMES[btier];
     biomeEl.style.color=BIOME_COL[btier];
     namesEl.textContent=s.connected.map((c,i)=>c?nm[i]:null).filter(Boolean).join(' · ')+(you?` — you are P${you}`:joined?' — spectating':'');
@@ -521,6 +524,49 @@ function draw(now,dt){
   const gx0=Math.floor((cx-CW/2)/80)*80,gy0=Math.floor((cy-CH/2)/80)*80;
   for(let x=gx0;x<cx+CW/2;x+=80){ctx.beginPath();ctx.moveTo(X(x),0);ctx.lineTo(X(x),CH);ctx.stroke();}
   for(let y=gy0;y<cy+CH/2;y+=80){ctx.beginPath();ctx.moveTo(0,Y(y));ctx.lineTo(CW,Y(y));ctx.stroke();}
+  // biome foliage: graded density (sparse near spawn, lush far out, capped), seeded-stable
+  (function(){
+    const CELL=150;
+    const x0=Math.floor((cx-CW/2)/CELL),x1=Math.floor((cx+CW/2)/CELL);
+    const y0=Math.floor((cy-CH/2)/CELL),y1=Math.floor((cy+CH/2)/CELL);
+    let drawn=0;
+    for(let gx=x0;gx<=x1&&drawn<400;gx++)for(let gy=y0;gy<=y1&&drawn<400;gy++){
+      let h=(gx*374761393+gy*668265263)|0;h=(h^(h>>13))*1274126177;h=(h^(h>>16))>>>0;
+      const r1=h/4294967295;h=(h*2246822519+1)>>>0;const r2=h/4294967295;
+      const wx=(gx+0.5)*CELL,wy=(gy+0.5)*CELL;
+      const dist=Math.hypot(wx,wy);
+      if(r1>Math.min(0.85,0.15+dist/12000))continue;
+      const tier=dist<4500?0:dist<9000?1:2;
+      const sx=X(wx),sy=Y(wy);
+      if(sx<-20||sy<-20||sx>CW+20||sy>CH+20)continue;
+      drawn++;
+      const jx=(r2-0.5)*60,jy=((h%100)/100-0.5)*60;
+      if(tier===0){
+        ctx.save();ctx.globalAlpha=.5;ctx.strokeStyle='#3f7d44';ctx.lineWidth=2.5;
+        const sw=Math.sin(now/500+gx*1.7+gy)*3;
+        for(let b=-1;b<=1;b++){ctx.beginPath();ctx.moveTo(sx+jx+b*5,sy+jy);ctx.lineTo(sx+jx+b*5+sw,sy+jy-14-r2*6);ctx.stroke();}
+        ctx.restore();
+      }else if(tier===1){
+        ctx.save();ctx.globalAlpha=.45+0.25*Math.sin(now/400+r1*9);
+        ctx.fillStyle='#ff9f1c';
+        for(let b=0;b<3;b++){const a=r1*6.28+b*2.1;ctx.beginPath();ctx.arc(sx+jx+Math.cos(a)*9,sy+jy+Math.sin(a)*9,2.5,0,7);ctx.fill();}
+        ctx.restore();
+      }else{
+        ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle='#c026d3';ctx.lineWidth=2;
+        const sh=Math.sin(now/600+r2*9)*2;
+        ctx.beginPath();ctx.moveTo(sx+jx-6,sy+jy+8);ctx.lineTo(sx+jx+sh,sy+jy-12);ctx.lineTo(sx+jx+6,sy+jy+8);ctx.stroke();
+        ctx.restore();
+      }
+    }
+  })();
+  // biome crossing pulse: expanding ring + label, 1.2s
+  if(performance.now()-pulseT<1200){
+    const k=(performance.now()-pulseT)/1200;
+    ctx.save();ctx.globalAlpha=(1-k)*.9;ctx.strokeStyle=BIOME_COL[pulseTier];ctx.lineWidth=6;
+    ctx.beginPath();ctx.arc(CW/2,CH/2,60+k*560,0,7);ctx.stroke();
+    ctx.globalAlpha=(1-k);ctx.fillStyle=BIOME_COL[pulseTier];ctx.font='900 54px system-ui';ctx.textAlign='center';
+    ctx.fillText(BIOME_NAMES[pulseTier],CW/2,CH/2-140-k*40);ctx.restore();
+  }
   // spawn beacon at origin
   if(Math.abs(cx)<1400&&Math.abs(cy)<1100){
     ctx.save();ctx.globalAlpha=.5+0.3*Math.sin(now/400);
@@ -689,7 +735,7 @@ function draw(now,dt){
   });
   if(state.boss)arrow(state.boss[0],state.boss[1],'#ff2fd6','BOSS');
   // minimap
-  const MW=170,MH=120,mx=CW-MW-12,my=CH-MH-12,R=4200;
+  const MW=170,MH=120,mx=CW-MW-12,my=CH-MH-12,R=12000;
   ctx.save();ctx.globalAlpha=0.85;ctx.fillStyle='#050816cc';ctx.fillRect(mx,my,MW,MH);
   ctx.strokeStyle='#ffffff33';ctx.strokeRect(mx,my,MW,MH);
   const dot=(wx,wy,c,r=3)=>{

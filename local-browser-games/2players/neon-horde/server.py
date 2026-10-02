@@ -34,7 +34,7 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3004"))
-VERSION = "2.0"  # bump on every update; shown on the site
+VERSION = "2.1"  # bump on every update; shown on the site
 MAX_SEATS = 4
 PUBLIC = Path(__file__).parent / "public"
 
@@ -46,7 +46,7 @@ ENEMY_CAP = 110
 GEM_CAP = 170
 BOSS_EVERY = 240
 ELITE_EVERY = 45
-TIER_DIST = 900     # biome ring width from origin
+TIER_DIST = 4500    # biome ring width from origin (meadow 0-4500, ember to 9000, void beyond)
 
 lock = threading.Lock()
 game = {
