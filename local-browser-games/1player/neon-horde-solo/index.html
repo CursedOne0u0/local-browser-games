@@ -27,6 +27,7 @@ button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:
 button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #ffffff2a}
 #draft{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.6);padding:10px}
 #draftCards{display:flex;gap:10px;width:min(640px,94%)}
+@media (max-width:640px){#draftCards{flex-direction:column;max-height:86%;overflow:auto}.dcard{padding:12px 10px}.dcard .ic{font-size:26px}}
 .dcard{flex:1;background:#0d1430;border:2px solid #00f6ff66;border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer}
 .dcard:hover{border-color:#fff;background:#14204a}
 .dcard .ic{font-size:34px}
@@ -49,7 +50,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
 </head>
 <body>
 <div id="wrap">
-  <div id="topbar"><div class="logo">NEON HORDE <span>SOLO</span></div><div id="stats"><div>Lv <b id="lvl">1</b></div><div>⏱ <b id="clock">0:00</b></div><div>☠ <b id="kills">0</b></div><div>BEST <b id="best">0:00</b></div><div id="biome">FRINGE</div></div><div id="verBadge">v1.7</div></div>
+  <div id="topbar"><div class="logo">NEON HORDE <span>SOLO</span></div><div id="stats"><div>Lv <b id="lvl">1</b></div><div>⏱ <b id="clock">0:00</b></div><div>☠ <b id="kills">0</b></div><div>BEST <b id="best">0:00</b></div><div id="biome">FRINGE</div></div><div id="verBadge">v1.8</div></div>
   <div id="bossbar"><div id="bossfill"></div><div id="bossnum"></div></div>
   <div id="stage">
     <canvas id="cv" width="1600" height="1000"></canvas>
@@ -327,9 +328,10 @@ window.addEventListener('keydown',e=>{
   if(k==='m')muted=!muted;
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-cv.addEventListener('touchstart',e=>{stick={ox:e.touches[0].clientX,oy:e.touches[0].clientY,x:0,y:0,id:e.touches[0].identifier};e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{const r=cv.getBoundingClientRect(),t=e.touches[0];stick={ox:t.clientX,oy:t.clientY,x:0,y:0,id:t.identifier,cx:(t.clientX-r.left)/r.width*W,cy:(t.clientY-r.top)/r.height*H};e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){stick.x=Math.max(-1,Math.min(1,(t.clientX-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(t.clientY-stick.oy)/70));}}e.preventDefault();},{passive:false});
 cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
+cv.addEventListener('touchcancel',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
 let faceAng=-Math.PI/2;
 const dmgTxts=[];let hurtFx={t:0,ang:0},shakeT=0;
 function update(dt,now){
@@ -896,6 +898,14 @@ function draw(now,dt){
   if(boss)dot(boss.x,boss.y,'#ff2fd6',5);
   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(mx+MW/2,my+MH/2,3,0,7);ctx.fill();
   ctx.restore();
+  // touch joystick (screen space)
+  if(stick&&stick.cx!==undefined){
+    ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle='#fff';ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(stick.cx,stick.cy,52,0,7);ctx.stroke();
+    ctx.globalAlpha=.65;ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(stick.cx+stick.x*38,stick.cy+stick.y*38,20,0,7);ctx.fill();
+    ctx.restore();
+  }
   parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;const d=Math.pow(0.3,dt);p.vx*=d;p.vy*=d;p.life-=dt*1.2;ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(X(p.x)-2,Y(p.y)-2,4,4);});ctx.globalAlpha=1;
   for(let i=dmgTxts.length-1;i>=0;i--){
     const d=dmgTxts[i],age=(Date.now()-d.t)/900;

@@ -11,7 +11,7 @@ from pathlib import Path
 import urllib.parse
 
 PORT = int(os.environ.get("PORT", "3003"))
-VERSION = "1.9"  # bump on every update; shown on the site
+VERSION = "2.0"  # bump on every update; shown on the site
 MAX_SEATS = 4
 PUBLIC = Path(__file__).parent / "public"
 

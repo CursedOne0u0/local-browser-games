@@ -33,6 +33,7 @@ button.ghost{background:#ffffff14;color:#fff;box-shadow:none;border:1px solid #f
 button:disabled{opacity:.4}
 #draft{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,6,15,.55);padding:10px}
 #draftCards{display:flex;gap:10px;width:min(640px,94%)}
+@media (max-width:640px){#draftCards{flex-direction:column;max-height:86%;overflow:auto}.dcard{padding:12px 10px}.dcard .ic{font-size:26px}}
 .dcard{flex:1;background:#0d1430;border:2px solid #00f6ff66;border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer}
 .dcard:hover{border-color:#fff;background:#14204a}
 .dcard .ic{font-size:34px}
@@ -75,7 +76,7 @@ kbd{background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1p
     </div></div>
   </div>
   <div id="panels"></div>
-  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> move (auto-weapons) • draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> or click • <kbd>M</kbd> mute • touch: drag to move</div>
+  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> move (auto-weapons) • draft <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> or tap • <kbd>M</kbd> mute • touch: drag to move (landscape best)</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
@@ -120,9 +121,10 @@ function input(){
   const n=Math.hypot(x,y);if(n>1){x/=n;y/=n;}
   return {x,y};
 }
-cv.addEventListener('touchstart',e=>{stick={ox:e.touches[0].clientX,oy:e.touches[0].clientY,x:0,y:0,id:e.touches[0].identifier};e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{const r=cv.getBoundingClientRect(),t=e.touches[0];stick={ox:t.clientX,oy:t.clientY,x:0,y:0,id:t.identifier,cx:(t.clientX-r.left)/r.width*CW,cy:(t.clientY-r.top)/r.height*CH};e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id){stick.x=Math.max(-1,Math.min(1,(t.clientX-stick.ox)/70));stick.y=Math.max(-1,Math.min(1,(t.clientY-stick.oy)/70));}}e.preventDefault();},{passive:false});
 cv.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
+cv.addEventListener('touchcancel',e=>{for(const t of e.changedTouches){if(stick&&t.identifier===stick.id)stick=null;}});
 function camPos(){
   if(state&&you&&state.connected[you-1]){const p=state.players[you-1];return [p.x,p.y];}
   if(state){for(let i=0;i<4;i++)if(state.connected[i])return [state.players[i].x,state.players[i].y];}
@@ -568,6 +570,14 @@ function draw(now,dt){
   state.players.forEach((p,i)=>{if(state.connected[i])dot(p.x,p.y,p.dead?'#555':p.down?'#ff5555':PCOL[i]);});
   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(mx+MW/2,my+MH/2,3,0,7);ctx.fill();
   ctx.restore();
+  // touch joystick (screen space)
+  if(stick&&stick.cx!==undefined){
+    ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle='#fff';ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(stick.cx,stick.cy,52,0,7);ctx.stroke();
+    ctx.globalAlpha=.65;ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(stick.cx+stick.x*38,stick.cy+stick.y*38,20,0,7);ctx.fill();
+    ctx.restore();
+  }
   parts=parts.filter(p=>p.life>0);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;const d=Math.pow(0.3,dt);p.vx*=d;p.vy*=d;p.life-=dt*1.2;ctx.globalAlpha=Math.max(0,Math.min(1,p.life));ctx.fillStyle=p.color;ctx.fillRect(X(p.x),Y(p.y)-2,4,4);});ctx.globalAlpha=1;
 }
 function drawShowcase(now){
