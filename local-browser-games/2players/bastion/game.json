@@ -1,0 +1,14 @@
+{
+  "blurb": "LAN co-op tower defense for 2–4 defenders, each on their own screen. Shared gold, build anytime (+25% mid-wave), repair at 50%. Base has 20 HP.",
+  "dir": "2players/bastion",
+  "emoji": "🏰",
+  "entry": "README.md",
+  "keys": "Run <code>python3 server.py</code> in <code>2players/bastion/</code>, then open the printed URL on each device. · move <kbd>WASD</kbd>/arrows/tap · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> + <kbd>E</kbd> build · <kbd>Enter</kbd> wave · 🎮 pad supported",
+  "kind": "lan",
+  "order": 60,
+  "players": "2–4P LAN",
+  "port": 3005,
+  "screenshot": "screenshot.png",
+  "title": "Bastion Bros LAN",
+  "version": "1.0"
+}

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Bastion Bros LAN
+Comment=Starts the Bastion LAN server (visible console, Ctrl+C stops it) and opens the game
+Exec=bash -c 'cd -- "$(dirname "$(readlink -f %k)")" && exec ./start-linux.sh'
+Terminal=true
+Categories=Game;
+StartupNotify=false

@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e07">
+<title>Bastion Bros — LAN 2-4P</title>
+<style>
+:root{--c1:#a3b832;--c2:#e07b39;--bg:#0b0e07;--mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{margin:0;background:radial-gradient(1000px 600px at 50% -10%,#232a12 0%,var(--bg) 60%) fixed,var(--bg);color:#f2f5e4;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;overflow:hidden}
+#wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
+#topbar{width:min(980px,96vw);display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:var(--mono);font-weight:900;letter-spacing:.14em;font-size:clamp(14px,2.6vw,20px)}
+.logo span{color:var(--c2)}
+#score{font-family:var(--mono);font-weight:900;font-variant-numeric:tabular-nums;font-size:clamp(14px,2.6vw,22px)}
+#verBadge{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--c1);border:1px solid #a3b83266;border-radius:6px;padding:3px 10px}
+#names{font-family:var(--mono);font-size:12px;opacity:.85}
+#stage{position:relative;width:min(980px,96vw);aspect-ratio:16/10;border-radius:14px;overflow:hidden;border:1px solid #a3b83233;background:#0e1208}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(8,10,5,.82);backdrop-filter:blur(6px);padding:14px}
+.card{width:min(440px,94%);background:#141a0c;border:1px solid #ffffff22;border-radius:16px;padding:20px;text-align:center;max-height:92dvh;overflow:auto}
+.card h1{margin:.2em 0;font-size:22px;font-family:var(--mono)}
+.card p{font-size:13px;opacity:.8;line-height:1.6}
+#slots{display:flex;gap:8px;margin:10px 0}
+.slot{flex:1;padding:8px;border-radius:10px;background:#ffffff0d;border:1px dashed #ffffff33;font-size:13px}
+.slot.on{border-style:solid;border-color:var(--c1)}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #ffffff33;background:#0e1208;color:#fff;font-size:16px;outline:none;margin:8px 0}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-family:var(--mono);font-weight:800;font-size:14px;color:#0b0e07;background:var(--c1);width:100%;margin-top:8px}
+button.ghost{background:#ffffff14;color:#fff;border:1px solid #ffffff2a}
+button:disabled{opacity:.4}
+#hint{width:min(980px,96vw);font-size:11px;opacity:.65;text-align:center;line-height:1.6}
+kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;border-radius:6px;padding:1px 6px;font-size:11px}
+#toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000000aa;border:1px solid #ffffff33;padding:6px 12px;border-radius:99px;font-size:13px;display:none}
+#tbar{display:flex;gap:6px;justify-content:center}
+#tbar button{width:auto;margin:0;padding:10px 12px;min-width:44px;min-height:44px}
+#pveil{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(8,10,5,.85);padding:14px}
+#pveil.show{display:flex}
+#pveil .card{width:min(340px,92%)}
+@media (orientation:portrait){
+  #wrap{justify-content:flex-start;overflow-y:auto}
+  #topbar{flex-wrap:wrap;row-gap:4px;width:98vw}
+  #stage{width:98vw}
+  #hint{font-size:11px;white-space:normal;max-width:98vw}
+  .card{width:94vw}
+  .card button{min-height:44px}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar"><div class="logo">BASTION <span>BROS</span></div><div id="verBadge">v…</div><div id="score">LV 1</div><button id="pauseBtn" class="ghost" title="Pause for everyone (P)" style="width:auto;margin:0;padding:8px 14px;flex:none">⏸</button></div>
+  <div id="names">connecting…</div>
+  <div id="stage">
+    <canvas id="cv" width="960" height="600"></canvas>
+    <div id="toast"></div>
+    <div id="overlay"><div class="card" id="joinCard">
+      <h1>🏰 BASTION BROS <span style="font-size:14px;opacity:.75">— LAN 2-4P</span></h1>
+      <p>Host runs <b>python3 server.py</b> in <b>bastion/</b>. Everyone opens the same LAN URL.<br>Stand on grass + build key. Mid-wave builds +25%. Repair at 50%.</p>
+      <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div><div class="slot" id="s3">P3: —</div><div class="slot" id="s4">P4: —</div></div>
+      <input id="name" maxlength="32" placeholder="Your name…" value="Player"><div id="arcRow" style="font-size:12px;margin-top:6px;opacity:.9"><span id="arcWho"></span><span id="arcEdit" style="display:none"> <input id="arcName" maxlength="12" placeholder="arcade name…" style="width:130px"> <button id="arcSave" class="ghost">Save</button> <span id="arcMsg"></span></span></div>
+      <button id="joinBtn">Join defense</button>
+      <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
+      <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
+      </div>
+      <div class="card" id="endCard" style="display:none">
+        <h1 id="winText">💀 OVERRUN</h1>
+        <p id="finalScore"></p>
+        <div id="lbLine" style="font-size:11px;opacity:.7;margin-top:6px;line-height:1.6"></div>
+        <button id="againBtn">Back to lobby</button>
+      </div></div>
+  </div>
+  <div id="tbar"><button data-t="1">1</button><button data-t="2">2</button><button data-t="3">3</button><button data-t="E">Build</button><button data-t=" ">Wave</button></div>
+  <div id="hint"><kbd>WASD</kbd>/<kbd>arrows</kbd> move • <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> select • <kbd>E</kbd>/<kbd>Space</kbd> build • <kbd>Enter</kbd> wave • <kbd>P</kbd> pause • touch: tap to move, buttons build</div>
+  <div id="pveil"><div class="card">
+    <h1>⏸ PAUSED</h1>
+    <p id="pveilBy"></p>
+    <button id="resumeBtn" class="ghost">Resume (P)</button>
+  </div></div>
+</div>
+<script>
+// 🌍 global board: arcade-site scores only (benjooyt.github.io), one shared name
+const SUPA_URL='https://sdmzslvdbontnjxculyt.supabase.co',SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkbXpzbHZkYm9udG5qeGN1bHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4Mzc3MjUsImV4cCI6MjEwNjQxMzcyNX0.01-T2NJHDn4uoWShVM_k2fpjNurPtHzULyCNYuBVfJQ';
+const LB_GAME='bastion',LB_ASC=false;
+const LB_Q=new URLSearchParams(location.search);
+const LB_ON=/(^|\.)benjooyt\.github\.io$/.test(location.hostname)||LB_Q.has('lbtest');
+const LB_API=LB_Q.get('lbapi')||SUPA_URL;
+function lbName(){try{return localStorage.getItem('arcade_name')||'';}catch(e){return '';}}
+function lbHeads(){return {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};}
+async function lbTaken(name){
+  try{
+    const r=await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(name)+'&select=id&limit=1',{headers:lbHeads()});
+    const j=await r.json();return Array.isArray(j)&&j.length>0;
+  }catch(e){return false;}
+}
+async function lbSetName(name){
+  name=String(name||'').trim().slice(0,12);
+  if(!name)return{ok:false,reason:'empty'};
+  const old=lbName();
+  if(old!==name){
+    let taken=false;try{taken=await lbTaken(name);}catch(e){taken=false;}
+    if(taken)return{ok:false,reason:'taken'};
+    if(old){try{await fetch(LB_API+'/rest/v1/scores?name=eq.'+encodeURIComponent(old),{method:'DELETE',headers:lbHeads()});}catch(e){}}
+  }
+  try{localStorage.setItem('arcade_name',name);}catch(e){}
+  return{ok:true};
+}
+async function lbPost(value){
+  if(!LB_ON)return;const name=lbName();if(!name)return;
+  try{
+    value=Math.max(0,Math.min(1000000,Math.round(value|0)));if(!(value>=0))return;
+    const r=await fetch(LB_API+'/rest/v1/scores',{method:'POST',headers:Object.assign(lbHeads(),{'Prefer':'return=minimal'}),body:JSON.stringify({game:LB_GAME,name,value})});
+    if(!r.ok){lbFail('post '+r.status);return;}
+    try{localStorage.removeItem('lb_last_err');}catch(e){}
+    try{const el=document.getElementById('lbLine');if(el&&el._fmt){const rows=await lbTop(5);lbRender(el,rows,el._fmt);}}catch(e){}
+  }catch(e){lbFail('post offline');}
+}
+function lbFail(what){
+  try{localStorage.setItem('lb_last_err',what);}catch(e){}
+  try{const el=document.getElementById('lbLine');if(el&&LB_ON)el.textContent='global board error ('+what+') — scores not saving';}catch(e){}
+}
+async function lbTop(n){
+  if(!LB_ON)return[];
+  try{
+    n=n||5;
+    const r=await fetch(LB_API+'/rest/v1/scores?game=eq.'+encodeURIComponent(LB_GAME)+'&select=name,value&order=value.'+(LB_ASC?'asc':'desc')+'&limit='+n,{headers:Object.assign(lbHeads(),{'Cache-Control':'no-cache'})});
+    if(!r.ok){lbFail('read '+r.status);return[];}
+    const j=await r.json();if(Array.isArray(j)){try{localStorage.removeItem('lb_last_err');}catch(e){}return j;}return[];
+  }catch(e){return[];}
+}
+function lbRender(el,rows,fmt){
+  if(!el)return;
+  try{el._fmt=fmt;}catch(e){}
+  if(!LB_ON){el.textContent='global board lives on the arcade site';return;}
+  if(!rows.length){el.textContent='global board: no scores yet — be the first!';}
+  else el.textContent=rows.map((r,i)=>(i+1)+'. '+(r.name||'?')+' — '+fmt(r.value)).join('   ');
+  try{const le=localStorage.getItem('lb_last_err');if(le&&LB_ON)el.textContent+=' [last error: '+le+']';}catch(e){}
+}
+function lbGate(){
+  if(LB_ON&&!lbName()){
+    const inp=document.getElementById('arcName'),msg=document.getElementById('arcMsg');
+    if(msg)msg.textContent='enter an arcade name first';
+    if(inp){try{inp.focus();inp.scrollIntoView({block:'nearest'});}catch(e){}}
+    return false;
+  }
+  return true;
+}
+function lbWireName(){
+  const who=document.getElementById('arcWho'),edit=document.getElementById('arcEdit'),
+        inp=document.getElementById('arcName'),save=document.getElementById('arcSave'),
+        msg=document.getElementById('arcMsg');
+  if(!who||!edit||!inp||!save)return;
+  const paint=()=>{
+    const n=lbName();
+    if(n){who.innerHTML='playing as <b></b> (<a href="#" id="arcChange">change</a>)';who.querySelector('b').textContent=n;edit.style.display='none';
+      const ch=document.getElementById('arcChange');if(ch)ch.onclick=e=>{e.preventDefault();edit.style.display='';inp.value=n;if(msg)msg.textContent='';};
+    }else{who.textContent=LB_ON?'enter an arcade name to join the global board:':'global board lives on the arcade site';edit.style.display=LB_ON?'':'none';}
+  };
+  save.onclick=async()=>{if(msg)msg.textContent='checking…';const r=await lbSetName(inp.value);if(r.ok){paint();try{const seat=document.getElementById('name');if(seat&&(!seat.value||seat.value==='Player'))seat.value=lbName();}catch(e){}try{lbRefresh();}catch(e){}}else if(msg)msg.textContent=r.reason==='taken'?'name taken — choose another':'enter 1–12 characters';};
+  paint();
+}
+function lbRefresh(){try{const el=document.getElementById('lbLine');if(el){el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(el,rows,v=>'level '+v));}}catch(e){}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=960,H=600,CELL=60;
+const ov=document.getElementById('overlay'),joinCard=document.getElementById('joinCard'),endCard=document.getElementById('endCard');
+const nameI=document.getElementById('name'),joinBtn=document.getElementById('joinBtn'),readyBtn=document.getElementById('readyBtn'),againBtn=document.getElementById('againBtn');
+const scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),verEl=document.getElementById('verBadge');
+try{nameI.value=localStorage.getItem('bastion_name')||'Player';}catch(e){}
+nameI.addEventListener('input',()=>{try{localStorage.setItem('bastion_name',nameI.value);}catch(e){}});
+try{const _an=lbName();if(_an&&(!nameI.value||nameI.value==='Player'))nameI.value=_an;}catch(e){}lbWireName();
+const cid=(()=>{try{let id=sessionStorage.getItem('bastion_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('bastion_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
+let you=0,joined=false,state=null,synced=false,lastPhase='',lastWaveId=0,lastOverId=0,overShown=false,flash='',flashT=0;
+let keys={},parts=[],floaters=[],lastSent='',lastMoveSend=0,sel=0,moveT=null;
+const SEAT_COLS=['#a3b832','#e07b39','#7dc4ff','#ff2fd6'];
+const TCOL={arrow:'#a3b832',cannon:'#e07b39',frost:'#7dc4ff'};
+let AC=null,muted=false;
+try{muted=window.localStorage&&window.localStorage.getItem('bgames_muted')==='1';}catch(e){}
+function setMuted(m){muted=m;try{window.localStorage&&window.localStorage.setItem('bgames_muted',m?'1':'0');}catch(e){}}
+function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d);}catch(e){}}
+function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
+joinBtn.onclick=async()=>{if(!lbGate())return;const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':('You are P'+d.you));beep(660,.08);};
+readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for crew…';beep(700,.07);};
+function resetLobby(){endCard.style.display='none';joinCard.style.display='block';ov.style.display='flex';overShown=false;if(joined&&you!==0){readyBtn.disabled=false;readyBtn.textContent='Ready up ⚡';}else{readyBtn.disabled=true;if(joined)readyBtn.textContent='Spectating 👀';}}
+againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});resetLobby();beep(700,.07);};
+async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(600,.06);}
+document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
+document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();keys[k]=true;
+  if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+  if(k===' '){doBuild();return;}
+  if(k==='enter'){startWaveReq();return;}
+  if(k==='escape'||k==='p')votePause();
+  if(k==='m'&&document.activeElement!==nameI)setMuted(!muted);
+  if(k==='1')sel=0;if(k==='2')sel=1;if(k==='3')sel=2;
+  if(k==='e')doBuild();
+});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function doBuild(){lastBuildKey=true;}
+let lastBuildKey=false;
+async function startWaveReq(){try{const r=await api('/api/wave',{clientId:cid});if(!r.ok)showToast('Build phase only');}catch(e){}}
+// 🎮 gamepads: pad0 moves, A = build, X = cycle tower, Y = wave, Start = pause
+let _gpS=false,_gpX=false,_gpY=false;
+function gpTick(){
+  let gp=null;try{const gs=navigator.getGamepads?navigator.getGamepads():[];for(const g of gs){if(g&&g.connected){gp=g;break;}}}catch(e){}
+  for(const k of ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'])if(keys[k+'__gp']){keys[k]=false;keys[k+'__gp']=false;}
+  if(!gp)return;
+  const ax=gp.axes[0]||0,ay=gp.axes[1]||0,b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const set=k=>{keys[k]=true;keys[k+'__gp']=true;};
+  if(b(12)||ay<-0.28){set('w');set('arrowup');}if(b(13)||ay>0.28){set('s');set('arrowdown');}
+  if(b(14)||ax<-0.28)set('a'),set('arrowleft');if(b(15)||ax>0.28)set('d'),set('arrowright');
+  if(b(0))doBuild();
+  const xc=b(2);if(xc&&!_gpX){sel=(sel+1)%3;showToast('Selected: '+['Arrow','Cannon','Frost'][sel]);}_gpX=xc;
+  const yc=b(3);if(yc&&!_gpY)startWaveReq();_gpY=yc;
+  const st=b(9);
+  if(st&&!_gpS)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));
+  _gpS=st;
+}
+setInterval(gpTick,33);
+function inputFor(){
+  let x=0,y=0;
+  if(keys['a']||keys['arrowleft'])x-=1;
+  if(keys['d']||keys['arrowright'])x+=1;
+  if(keys['w']||keys['arrowup'])y-=1;
+  if(keys['s']||keys['arrowdown'])y+=1;
+  if(moveT){x+=moveT.x;y+=moveT.y;}
+  const n=Math.hypot(x,y);if(n>1){x/=n;y/=n;}
+  return {x,y};
+}
+// touch: tap tile = walk there; buttons build/select/wave
+function ptrGame(cx,cy){const r=cv.getBoundingClientRect();return{x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H};}
+cv.addEventListener('touchstart',e=>{const t=e.changedTouches[0];const p=ptrGame(t.clientX,t.clientY);moveT={x:(p.x-480)/300,y:(p.y-300)/300};const n=Math.hypot(moveT.x,moveT.y)||1;moveT.x/=n;moveT.y/=n;e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{const t=e.changedTouches[0];const p=ptrGame(t.clientX,t.clientY);moveT={x:(p.x-480)/300,y:(p.y-300)/300};const n=Math.hypot(moveT.x,moveT.y)||1;moveT.x/=Math.max(1,n);moveT.y/=Math.max(1,n);e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',()=>{moveT=null;});
+cv.addEventListener('touchcancel',()=>{moveT=null;});
+cv.addEventListener('mousedown',e=>{const p=ptrGame(e.clientX,e.clientY);moveT={x:(p.x-480)/300,y:(p.y-300)/300};const n=Math.hypot(moveT.x,moveT.y)||1;moveT.x/=Math.max(1,n);moveT.y/=Math.max(1,n);});
+window.addEventListener('mouseup',()=>{moveT=null;});
+document.querySelectorAll('#tbar button').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.t;
+  if(k===' '){startWaveReq();return;}
+  if(k==='E'){doBuild();return;}
+  sel={'1':0,'2':1,'3':2}[k]??sel;showToast('Selected: '+['Arrow','Cannon','Frost'][sel]);
+});
+function draw(now,dt){
+  for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(0.3,dt);p.vy*=Math.pow(0.3,dt);p.life-=dt;}
+  parts=parts.filter(p=>p.life>0);
+  for(const f of floaters){f.y-=40*dt;f.t-=dt;}
+  floaters=floaters.filter(f=>f.t>0);
+  ctx.fillStyle='#0e1208';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#1a2410';
+  for(let gx=0;gx<16;gx++)for(let gy=0;gy<10;gy++){
+    const h=((gx*374761393+gy*668265263)|0)>>>0;
+    if(h%3===0)ctx.fillRect(gx*60+((h>>8)%48)+6,gy*60+((h>>16)%48)+6,3,3);
+  }
+  // path cells (server layout unknown client-side: draw road under enemies' trail is complex;
+  // instead draw road from server? we don't send path. use fixed layout mirror:)
+  drawRoad();
+  // towers
+  const gs=state?state.grid:[];
+  for(const t of gs){
+    const col=TCOL[t.type]||'#fff',x=t.c*60+30,y=t.r*60+30;
+    ctx.save();
+    ctx.fillStyle='#0b0e07';ctx.strokeStyle=col;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(x,y,20,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle=col;
+    if(t.type==='arrow'){ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+9,y+7);ctx.lineTo(x-9,y+7);ctx.closePath();ctx.fill();}
+    else if(t.type==='cannon'){ctx.fillRect(x-9,y-9,18,18);ctx.fillStyle='#0b0e07';ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill();}
+    else{ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+10,y);ctx.lineTo(x,y+11);ctx.lineTo(x-10,y);ctx.closePath();ctx.fill();}
+    const f=t.hp/t.max;
+    if(f<1){ctx.fillStyle='#00000088';ctx.fillRect(x-18,y-30,36,5);ctx.fillStyle=f>0.5?'#7dff6a':'#ff5555';ctx.fillRect(x-18,y-30,36*f,5);}
+    ctx.restore();
+  }
+  // enemies
+  const es=state?state.enemies:[];
+  for(const e of es){
+    ctx.save();
+    if(e.kind==='walker'){ctx.fillStyle='#c96a2e';ctx.beginPath();ctx.arc(e.x,e.y,11,0,7);ctx.fill();}
+    else if(e.kind==='runner'){ctx.fillStyle='#e07b39';ctx.beginPath();ctx.moveTo(e.x,e.y-13);ctx.lineTo(e.x+9,e.y+9);ctx.lineTo(e.x-9,e.y+9);ctx.closePath();ctx.fill();}
+    else if(e.kind==='brute'){ctx.fillStyle='#8a4a2e';ctx.fillRect(e.x-15,e.y-15,30,30);ctx.fillStyle='#c96a2e';ctx.fillRect(e.x-9,e.y-9,18,18);}
+    else if(e.kind==='lord'){ctx.fillStyle='#5a1e1e';ctx.beginPath();ctx.arc(e.x,e.y,24,0,7);ctx.fill();ctx.strokeStyle='#ff2222';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,24,0,7);ctx.stroke();}
+    ctx.restore();
+    if(e.maxhp>1&&e.hp<e.maxhp){ctx.fillStyle='#00000088';ctx.fillRect(e.x-16,e.y-22,32,4);ctx.fillStyle='#ff5555';ctx.fillRect(e.x-16,e.y-22,32*Math.max(0,e.hp/e.maxhp),4);}
+  }
+  // players
+  const ps=state?state.players:[];
+  ps.forEach((p,i)=>{
+    if(!p||!state.connected[i])return;
+    const col=SEAT_COLS[i%SEAT_COLS.length];
+    ctx.save();
+    ctx.fillStyle=col;ctx.strokeStyle='#fff';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(p.x,p.y,14,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#0b0e07';ctx.font='900 13px ui-monospace,monospace';ctx.textAlign='center';
+    ctx.fillText('P'+(i+1),p.x,p.y+5);
+    if(you===i+1){
+      ctx.strokeStyle='#ffffff88';ctx.beginPath();ctx.arc(p.x,p.y,24,0,7);ctx.stroke();
+      const c=Math.floor(p.x/60),r=Math.floor(p.y/60);
+      const tn=['arrow','cannon','frost'][sel%3];
+      ctx.globalAlpha=.4;ctx.strokeStyle=TCOL[tn];ctx.beginPath();ctx.rect(c*60+8,r*60+8,44,44);ctx.stroke();ctx.globalAlpha=1;
+    }
+    ctx.restore();
+  });
+  for(const p of parts){ctx.globalAlpha=Math.max(0,Math.min(1,p.life*2));ctx.fillStyle=p.color;ctx.fillRect(p.x-3,p.y-3,6,6);}
+  ctx.globalAlpha=1;
+  ctx.textAlign='center';
+  for(const f of floaters){ctx.globalAlpha=Math.max(0,Math.min(1,f.t));ctx.fillStyle=f.c;ctx.font='900 24px ui-monospace,monospace';ctx.fillText(f.txt,f.x,f.y);}
+  ctx.globalAlpha=1;
+  if(state&&state.phase==='build'){ctx.save();ctx.textAlign='center';ctx.fillStyle='#a3b832';ctx.font='900 40px ui-monospace,monospace';ctx.fillText('BUILD — wave '+(((state.wave||0)+1))+' incoming',W/2,80);ctx.restore();}
+  if(Date.now()<flashT){ctx.save();ctx.textAlign='center';ctx.font='900 52px system-ui';ctx.fillStyle='#fff';ctx.fillText(flash,W/2,H/2);ctx.restore();}
+}
+// fixed road mirror (must match server PATH)
+const ROAD=[[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1],[8,1],[9,1],[10,1],[11,1],[12,1],[13,1],[14,1],[14,2],[14,3],[14,4],[13,4],[12,4],[11,4],[10,4],[9,4],[8,4],[7,4],[6,4],[5,4],[4,4],[3,4],[2,4],[1,4],[1,5],[1,6],[1,7],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[13,7],[14,7],[15,7]];
+function drawRoad(){
+  ctx.fillStyle='#2a2410';
+  for(const [c,r] of ROAD)ctx.fillRect(c*60,r*60,60,60);
+  ctx.strokeStyle='#3d3220';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,90);
+  const pts=[[840,90],[870,120],[870,240],[810,270],[120,270],[90,300],[90,420],[120,450],[900,450]];
+  pts.forEach(p=>ctx.lineTo(p[0],p[1]));ctx.stroke();
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(0.05,(now-lastFrame)/1000)||0.016;lastFrame=now;
+  if(joined&&you!==0){
+    const inp=(state&&(state.phase==='playing'||state.phase==='build'))?inputFor():{x:0,y:0,fire:false};
+    const key=inp.x.toFixed(2)+','+inp.y.toFixed(2)+','+sel+','+lastBuildKey;
+    if(key!==lastSent||now-lastMoveSend>100){
+      lastSent=key;lastMoveSend=now;
+      const fire=lastBuildKey;lastBuildKey=false;
+      fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,x:inp.x,y:inp.y,sel,build:fire})}).catch(()=>{});
+    }
+  }
+  draw(now,dt);
+}
+function inputFor(){
+  let x=0,y=0;
+  if(keys['a']||keys['arrowleft'])x-=1;
+  if(keys['d']||keys['arrowright'])x+=1;
+  if(keys['w']||keys['arrowup'])y-=1;
+  if(keys['s']||keys['arrowdown'])y+=1;
+  if(moveT){x+=moveT.x;y+=moveT.y;}
+  const n=Math.hypot(x,y);if(n>1){x/=n;y/=n;}
+  return {x,y};
+}
+let lastFrame=performance.now();
+function poll(){
+  const ctl=new AbortController();
+  const kill=setTimeout(()=>ctl.abort(),5000);
+  fetch('/api/state?id='+cid,{cache:'no-store',signal:ctl.signal}).then(r=>r.json()).then(s=>{
+    state=s;
+    if(!synced){synced=true;}
+    if(s.v)verEl.textContent='v'+s.v;
+    scoreEl.textContent='LV '+s.level+' · W'+(s.phase==='build'?'–':s.wave)+'/'+s.wavesTotal+' · 🪙'+s.gold+' · 🏰'+s.base;
+    const nm=s.names.map((n,i)=>n||('Player '+(i+1)));
+    namesEl.textContent=s.connected.map((c,i)=>c?nm[i]:null).filter(Boolean).join('   ')+(you?` — you are P${you}`:joined?' — spectating':'');
+    for(let i=0;i<4;i++){const el=document.getElementById('s'+(i+1));el.textContent='P'+(i+1)+': '+(s.names[i]||'—')+(s.ready[i]?' ✅':'');el.classList.toggle('on',!!s.connected[i]);}
+    if(s.phase==='playing'||s.phase==='countdown'||s.phase==='build'){ov.style.display='none';endCard.style.display='none';overShown=false;}
+    const pv=document.getElementById('pveil');
+    if(s.paused){document.getElementById('pveilBy').textContent='Paused by '+(s.paused_by||'someone')+' — press P to resume';pv.classList.add('show');}
+    else pv.classList.remove('show');
+    if(s.phase==='over'){
+      ov.style.display='flex';
+      if(!joined)return;
+      if(!overShown){overShown=true;
+        document.getElementById('winText').textContent=`💀 OVERRUN — Level ${s.level}`;
+        document.getElementById('finalScore').textContent=`Held ${s.wave} waves on level ${s.level} · ${s.gold}🪙 banked`;
+        joinCard.style.display='none';endCard.style.display='block';beep(523,.12);
+        try{lbPost(s.level);}catch(e){}
+        try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>'level '+v));}}catch(e){}
+      }
+    }
+    if(s.phase==='waiting'&&lastPhase==='over')resetLobby();
+    lastPhase=s.phase;
+  }).catch(()=>{}).finally(()=>{clearTimeout(kill);setTimeout(poll,100);});
+}
+function burst(x,y,color,n=12){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-0.5)*300,vy:(Math.random()-0.5)*300,life:.6,color});}
+function floater(x,y,txt,c){try{floaters.push({x,y,txt,c:c||'#fff',t:1.4});}catch(e){}}
+poll();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
