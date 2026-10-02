@@ -50,7 +50,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
 <div id="wrap">
   <div id="top">
     <div class="logo">BASTION <span>BROS</span></div>
-    <div id="verBadge">v1.0</div>
+    <div id="verBadge">v1.1</div>
     <div id="hud"><div>LV <b id="level">1</b></div><div>WAVE <b id="wave">–</b></div><div>🪙 <b id="gold">0</b></div><div>🏰 <b id="base">20</b></div></div>
     <div id="mbtns"><button id="pauseBtn" title="Pause">⏸</button><button id="muteBtn" title="Mute">🔊</button></div>
   </div>
@@ -167,7 +167,7 @@ function lbWireName(){
 function lbRefresh(){try{const el=document.getElementById('lbLine');if(el){el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(el,rows,v=>'level '+v));}}catch(e){}}
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const ov=document.getElementById('overlay');
-// BASTION BROS v1.0 — static co-op tower defense. All motion dt-based (per-second units).
+// BASTION BROS v1.1 — static co-op tower defense. All motion dt-based (per-second units).
 const W=960,H=600,COLS=16,ROWS=10,CELL=60;
 const TOWERS={
   arrow:{cost:30,dmg:8,rate:2.0,range:150,hp:100,col:'#a3b832',name:'Arrow'},
