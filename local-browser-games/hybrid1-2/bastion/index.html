@@ -440,6 +440,11 @@ function update(dt){
     p.x=Math.max(20,Math.min(W-20,p.x));p.y=Math.max(20,Math.min(H-20,p.y));
   });
   aiThink(dt);
+  // fx decay runs in every phase so banners/particles never freeze between waves
+  for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(0.3,dt);p.vy*=Math.pow(0.3,dt);p.life-=dt;}
+  parts=parts.filter(p=>p.life>0);
+  for(const f of floaters){f.y-=40*dt;f.t-=dt;}
+  floaters=floaters.filter(f=>f.t>0);
   if(phase==='build')return;
   // spawning
   if(spawnQueue.length){spawnT-=dt;if(spawnT<=0){spawnT=spawnInterval();spawnEnemy(spawnQueue.pop());}}
@@ -509,11 +514,6 @@ function update(dt){
     if(wavesInLevel>=wavesFor(level)){nextLevel();}
     else{phase='build';banner('Build!','Space starts wave '+(wavesInLevel+1)+'/'+wavesFor(level));refreshHud();}
   }
-  // fx decay
-  for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(0.3,dt);p.vy*=Math.pow(0.3,dt);p.life-=dt;}
-  parts=parts.filter(p=>p.life>0);
-  for(const f of floaters){f.y-=40*dt;f.t-=dt;}
-  floaters=floaters.filter(f=>f.t>0);
 }
 function hurtFoe(e,dmg){
   e.hp-=dmg;
