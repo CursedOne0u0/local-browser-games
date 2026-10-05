@@ -103,6 +103,9 @@ func writeJSON(w http.ResponseWriter, obj any, code int) {
 }
 
 func publicDir() string {
+	if d := os.Getenv("GAMESERVER_PUBLIC"); d != "" {
+		return d
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return "public"
