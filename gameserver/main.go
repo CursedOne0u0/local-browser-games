@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"local-browser-games/gameserver/bomb"
+	"local-browser-games/gameserver/echo"
+	"local-browser-games/gameserver/pong"
 	"local-browser-games/gameserver/tank"
 )
 
@@ -23,10 +25,10 @@ type entry struct {
 }
 
 var games = []entry{
-	{"1", "Neon Pong", 3000, nil},
+	{"1", "Neon Pong", 3000, pong.Run},
 	{"2", "Tank Duel", 3001, tank.Run},
 	{"3", "Bomb Tag", 3002, bomb.Run},
-	{"4", "Echo Hunt", 3003, nil},
+	{"4", "Echo Hunt", 3003, echo.Run},
 	{"5", "Neon Horde", 3004, nil},
 	{"6", "Bastion LAN", 3005, nil},
 }
