@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 PORT=3002
 PIDF=.server.pid
-alive(){ [ -n "$1" ] && ps -p "$1" >/dev/null 2>&1 && tr '\0' ' ' < "/proc/$1/cmdline" 2>/dev/null | grep -q "server.py"; }
+alive(){ [ -n "$1" ] && ps -p "$1" >/dev/null 2>&1 && tr '\0' ' ' < "/proc/$1/cmdline" 2>/dev/null | grep -qE "server.py|gameserver"; }
 stop_srv(){
   if [ -f "$PIDF" ]; then
     PID=$(cat "$PIDF"); rm -f "$PIDF"
@@ -20,7 +20,17 @@ case "${1:-start}" in
     stop_srv >/dev/null 2>&1
     # keep the host CPU awake while serving (Termux:API only; harmless elsewhere)
     command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock
-    python3 server.py &
+    # prefer the prebuilt Go server; fall back to python3 server.py
+    GOBIN=""
+    case "$(uname -sm)" in
+      "Linux x86_64") GOBIN="../../../gameserver/bin/gameserver-linux-amd64";;
+      "Linux aarch64"|"Linux arm64") GOBIN="../../../gameserver/bin/gameserver-linux-arm64";;
+    esac
+    if [ -n "$GOBIN" ] && [ -x "$GOBIN" ]; then
+      "$GOBIN" -game 3 -port "$PORT" &
+    else
+      python3 server.py &
+    fi
     SRV=$!; echo $SRV > "$PIDF"
     trap "kill $SRV 2>/dev/null; rm -f $PIDF; command -v termux-wake-unlock >/dev/null 2>&1 && termux-wake-unlock" EXIT INT TERM
     for i in $(seq 1 60); do
