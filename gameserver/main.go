@@ -13,6 +13,7 @@ import (
 
 	"local-browser-games/gameserver/bomb"
 	"local-browser-games/gameserver/echo"
+	"local-browser-games/gameserver/horde"
 	"local-browser-games/gameserver/pong"
 	"local-browser-games/gameserver/tank"
 )
@@ -29,7 +30,7 @@ var games = []entry{
 	{"2", "Tank Duel", 3001, tank.Run},
 	{"3", "Bomb Tag", 3002, bomb.Run},
 	{"4", "Echo Hunt", 3003, echo.Run},
-	{"5", "Neon Horde", 3004, nil},
+	{"5", "Neon Horde", 3004, horde.Run},
 	{"6", "Bastion LAN", 3005, nil},
 }
 
