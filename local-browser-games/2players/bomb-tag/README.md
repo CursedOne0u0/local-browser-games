@@ -1,4 +1,4 @@
-# Bomb Tag — LAN 2P 💣
+# Bomb Tag — LAN 2–4P 💣
 
 ![Gameplay](screenshot.png)
 
@@ -14,5 +14,6 @@ Host opens `http://localhost:3002`, friend opens `http://<host-ip>:3002`. Enter 
 
 ## Controls
 
-- `WASD`/arrows to run, `Space`/`E` to dash
-- Touch: drag to run, right-side button to dash
+- P1: `WASD` to run, `Space`/`E` to dash
+- P2: arrows to run, `Enter` to dash (same keyboard, or gamepads)
+- P3/P4: join from phones — touch: drag to run, right-side button to dash

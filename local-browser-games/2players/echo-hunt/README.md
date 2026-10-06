@@ -7,7 +7,7 @@ Fullscreen browser game on a 2200×1400 trench (tap ⛶, landscape best — the 
 - **Terror radius:** divers hear a heartbeat that quickens as a warden closes in (380px), with blood-red edges. If you hear it, RUN.
 - Sprinting drains stamina (~4s tank); empty = forced stroll until it recovers.
 - Nodes take 3 wire puzzles each (3–8 color pairs, match-only). Touch 2s to claim a puzzle, solve all 3 to crack the node. Claiming, solving, and cracking all shout on sonar. Two divers can work different puzzles on the same node. Move (or 🏃 RUN) abandons your puzzle, banked count kept.
-- Round win: crack the target (`4 + #divers`, so 6 at classic 1v2), tag out every diver, or survive the 150s timer (divers). First side to 3 round-wins takes the match.
+- Round win: crack the target (`4 + #divers`, so 6 at classic 1v2), tag out every diver, or survive the 180s timer (divers). First side to 3 round-wins takes the match.
 
 ## Run
 

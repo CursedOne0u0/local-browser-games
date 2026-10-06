@@ -1,4 +1,4 @@
-# Neon Pong Showdown — LAN 2-player 🏓 (v1.18)
+# Neon Pong Showdown — LAN 2-player 🏓 (v1.38)
 
 ![Gameplay](screenshot.png)
 
@@ -39,6 +39,10 @@ Friend on same WiFi:   http://192.168.0.240:3000
 - Green `◔` — Slow ball
 - Teal `🛡` — Shield: blocks one goal on your side
 - Ice `❄` — Freeze: foe's paddle frozen 2.5s
+- Magnet `🧲` — incoming balls on your half bend toward you (8s)
+- Ghost `👻` — the ball turns invisible to your foe (2.5s)
+- Swap `🔀` — paddles trade places
+- Vortex `🌀` — gravity well bends nearby shots (4.5s)
 
 ## New mechanics
 

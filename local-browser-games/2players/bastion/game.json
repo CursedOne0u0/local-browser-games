@@ -1,5 +1,5 @@
 {
-  "blurb": "LAN co-op tower defense for 2–4 defenders, each on their own screen. Shared gold, build anytime (+25% mid-wave), repair at 50%. Base has 20 HP.",
+    "blurb": "LAN co-op tower defense for 2–4 defenders, each on their own screen. Shared gold, build anytime (+25% mid-wave), repair at 75%. Base has 20 HP.",
   "dir": "2players/bastion",
   "emoji": "🏰",
   "entry": "README.md",
