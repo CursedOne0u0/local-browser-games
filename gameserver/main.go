@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"local-browser-games/gameserver/bastion"
 	"local-browser-games/gameserver/bomb"
 	"local-browser-games/gameserver/echo"
 	"local-browser-games/gameserver/horde"
@@ -31,7 +32,7 @@ var games = []entry{
 	{"3", "Bomb Tag", 3002, bomb.Run},
 	{"4", "Echo Hunt", 3003, echo.Run},
 	{"5", "Neon Horde", 3004, horde.Run},
-	{"6", "Bastion LAN", 3005, nil},
+	{"6", "Bastion LAN", 3005, bastion.Run},
 }
 
 func main() {
