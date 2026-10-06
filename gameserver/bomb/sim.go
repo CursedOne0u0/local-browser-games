@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	Version    = "1.26"
+	Version    = "1.29"
 	WinRounds  = 5
 	MaxSeats   = 4
 	BaseW      = 800
@@ -26,6 +26,8 @@ const (
 	PadR       = 30.0
 	BoostTime  = 0.55
 	BoostMult  = 1.7
+	SlingSpeed = 650.0
+	SlingTime  = 0.45
 	MaxPads    = 2
 	PadLife    = 10.0
 )
@@ -73,6 +75,9 @@ type gameT struct {
 	pads        []pad
 	padTimer    float64
 	boostUntil  [MaxSeats]time.Time
+	slingDX     [MaxSeats]float64
+	slingDY     [MaxSeats]float64
+	slingUntil  [MaxSeats]time.Time
 	lastBoost   map[string]any
 	winner      int
 	eventID     int
@@ -156,6 +161,8 @@ func (g *gameT) resetPositions() {
 		g.dashUntil[i] = z
 		g.dashCD[i] = z
 		g.boostUntil[i] = z
+		g.slingDX[i], g.slingDY[i] = 0, 0
+		g.slingUntil[i] = z
 	}
 	g.pads = nil
 	g.padTimer = 2.5
@@ -211,6 +218,9 @@ func (g *gameT) resetScores() {
 func (g *gameT) newRound() {
 	g.resetPositions()
 	occ := g.occupied()
+	if len(occ) == 0 {
+		occ = []int{0, 1} // nobody seated: keep seats 1-2 as the holder pool
+	}
 	pool := []int{}
 	for _, i := range occ {
 		if !g.out[i] {
@@ -422,9 +432,24 @@ func (g *gameT) step(dt float64) {
 			spd *= DashMult
 		}
 		if t.Before(g.boostUntil[i]) {
-			spd *= BoostMult
+			// descending boost: 1.7x easing back to normal (holder or runner) speed
+			left := g.boostUntil[i].Sub(t).Seconds() / BoostTime
+			if left < 0 {
+				left = 0
+			}
+			spd *= 1 + (BoostMult-1)*left
 		}
 		x, y := g.pos[i].X+ix*spd*dt, g.pos[i].Y+iy*spd*dt
+		if t.Before(g.slingUntil[i]) {
+			// slingshot fling along the pad arrow, decaying to zero
+			left := g.slingUntil[i].Sub(t).Seconds() / SlingTime
+			if left < 0 {
+				left = 0
+			}
+			sv := SlingSpeed * left
+			x += g.slingDX[i] * sv * dt
+			y += g.slingDY[i] * sv * dt
+		}
 		g.pos[i].X, g.pos[i].Y = g.collide(x, y)
 		g.padTimer -= dt
 		if g.padTimer <= 0 {
@@ -444,8 +469,8 @@ func (g *gameT) step(dt float64) {
 				if math.Hypot(g.pos[j].X-pd.X, g.pos[j].Y-pd.Y) < PadR {
 					pd.Dead = true
 					g.boostUntil[j] = t.Add(time.Duration(BoostTime * float64(time.Second)))
-					nx, ny := g.collide(g.pos[j].X+pd.DX*95, g.pos[j].Y+pd.DY*95)
-					g.pos[j].X, g.pos[j].Y = nx, ny
+					g.slingDX[j], g.slingDY[j] = pd.DX, pd.DY
+					g.slingUntil[j] = t.Add(time.Duration(SlingTime * float64(time.Second)))
 					g.eventID++
 					g.lastBoost = map[string]any{"x": pd.X, "y": pd.Y, "by": j + 1, "id": g.eventID}
 					break
@@ -517,6 +542,7 @@ func (g *gameT) shiftPaused(d time.Duration) {
 		g.dashCD[i] = shift(g.dashCD[i])
 		g.immUntil[i] = shift(g.immUntil[i])
 		g.boostUntil[i] = shift(g.boostUntil[i])
+		g.slingUntil[i] = shift(g.slingUntil[i])
 	}
 	for k := range g.pads {
 		g.pads[k].Expires = g.pads[k].Expires.Add(d)

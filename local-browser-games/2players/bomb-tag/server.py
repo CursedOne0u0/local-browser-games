@@ -32,7 +32,7 @@ def print_qr(url):
         print("  " + row)
 
 PORT = int(os.environ.get("PORT", "3002"))
-VERSION = "1.28"  # bump on every update; shown on the site
+VERSION = "1.29"  # bump on every update; shown on the site
 WIN_ROUNDS = 5  # 2P: points to win. 3-4P: total blasts per match (highest score wins).
 MAX_SEATS = 4
 W, H = 800, 560  # base arena (2P); 3-4P scales to drift size below
@@ -70,6 +70,8 @@ def layout_for(aw, ah):
 PAD_R = 30
 BOOST_TIME = 0.55
 BOOST_MULT = 1.7
+SLING_SPEED = 650  # pad fling: initial velocity along the pad arrow...
+SLING_TIME = 0.45  # ...decaying linearly to zero over this long
 MAX_PADS = 2
 PAD_LIFE = 10.0
 
@@ -89,6 +91,7 @@ game = {
     "pads": [],  # live pads {x,y,dx,dy,expires}
     "pad_timer": 2.5,
     "boost_until": [0, 0, 0, 0],
+    "sling": [None, None, None, None],  # live pad fling {dx,dy,until}
     "last_boost": None,  # {x,y,by,id}
     "winner": 0,
     "loser": 0,  # most recent elimination (3-4P)
@@ -110,6 +113,8 @@ def shift_paused(d):
     game["countdown_end"] += d; game["round_end"] += d
     for k in ("dash_until", "dash_cd", "imm_until", "boost_until"):
         game[k] = [t+d if t else t for t in game[k]]
+    for i, sl in enumerate(game["sling"]):
+        if sl: sl["until"] += d
     for pd in game["pads"]:
         pd["expires"] += d
 
@@ -120,6 +125,7 @@ def reset_positions():
     game["imm_until"] = [0]*n
     game["dash_until"] = [0]*n; game["dash_cd"] = [0]*n
     game["pads"] = []; game["pad_timer"] = 2.5; game["boost_until"] = [0]*n
+    game["sling"] = [None]*n
 
 def spawn_pad():
     if len(game["pads"]) >= MAX_PADS: return
@@ -270,8 +276,15 @@ def step(dt):
         if n > 1: ix/=n; iy/=n
         spd = (HOLDER_SPEED if game["holder"] == i+1 else RUN_SPEED)
         if t < game["dash_until"][i]: spd *= DASH_MULT
-        if t < game["boost_until"][i]: spd *= BOOST_MULT
+        if t < game["boost_until"][i]:
+            # descending boost: 1.7x easing back to normal (holder or runner) speed
+            spd *= 1+(BOOST_MULT-1)*max(0, (game["boost_until"][i]-t)/BOOST_TIME)
         x, y = game["pos"][i]["x"]+ix*spd*dt, game["pos"][i]["y"]+iy*spd*dt
+        sl = game["sling"][i]
+        if sl and t < sl["until"]:
+            # slingshot fling along the pad arrow, decaying to zero
+            sv = SLING_SPEED*max(0, (sl["until"]-t)/SLING_TIME)
+            x, y = x+sl["dx"]*sv*dt, y+sl["dy"]*sv*dt
         game["pos"][i]["x"], game["pos"][i]["y"] = collide(x, y)
         # boost pads: random spawns, one-shot slingshots along their arrow
         game["pad_timer"] -= dt
@@ -287,8 +300,7 @@ def step(dt):
                 if math.hypot(game["pos"][i]["x"]-pd["x"], game["pos"][i]["y"]-pd["y"]) < PAD_R:
                     pd["dead"] = True
                     game["boost_until"][i] = t+BOOST_TIME
-                    game["pos"][i]["x"], game["pos"][i]["y"] = collide(
-                        game["pos"][i]["x"]+pd["dx"]*95, game["pos"][i]["y"]+pd["dy"]*95)
+                    game["sling"][i] = {"dx": pd["dx"], "dy": pd["dy"], "until": t+SLING_TIME}
                     game["event_id"] += 1
                     game["last_boost"] = {"x": pd["x"], "y": pd["y"], "by": i+1, "id": game["event_id"]}
                     break
