@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const VERSION = "1.25"
+const VERSION = "1.26"
 
 const (
 	WinRounds = 5

@@ -1,0 +1,18 @@
+{
+  "version": "1.26",
+  "notes": "Tank Duel: local 2P on one keyboard (P2 join).",
+  "builds": {
+    "linux-amd64": {
+      "file": "bin/gameserver-linux-amd64",
+      "sha256": "a7f26899bfe7a5331c2c771a7237780910b94d9af49c413e5337a2c03b11e18b"
+    },
+    "linux-arm64": {
+      "file": "bin/gameserver-linux-arm64",
+      "sha256": "576ccc0265cb848458dada89af26d2fcc457f38998460c8ef28d50de0f0ff4ee"
+    },
+    "windows-amd64": {
+      "file": "bin/gameserver.exe",
+      "sha256": "3442d721eccde51b61f50aaefa25cd916fb049095aa17e4dbc0e5731619e02b1"
+    }
+  }
+}

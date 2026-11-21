@@ -11,6 +11,12 @@ LAN games run from a single Go binary or fall back to Python (see below).
 
 `gameserver/bin/` holds prebuilt servers (`gameserver-linux-amd64`, `gameserver-linux-arm64`, `gameserver.exe` — no runtime needed). Run it, pick a game from the menu (`1`–`6`, or `a` for all), or launch directly: `gameserver -game 3 -port 3002` (`-no-browser` skips auto-open). Each game's `start-linux.sh` uses the Go binary when present and falls back to `python3 server.py` otherwise — same protocol, same client.
 
+### Auto-update
+
+A downloaded binary checks `gameserver/update.json` on startup and replaces itself when a newer release is published, so an old copy never goes stale: it downloads the matching platform build, verifies the published SHA-256, swaps the executable, and restarts with the same arguments (same PID on Linux/macOS). Every failure — offline, missing build, bad checksum — is non-fatal and the current version keeps running. `-no-update` skips the check, `-version` prints the build, and `GAMESERVER_UPDATE_URL` points the check at a test manifest.
+
+Releasing: bump `VERSION` in `gameserver/main.go`, then run `gameserver/build-binaries.sh "<notes>"` — it rebuilds all three binaries and rewrites `update.json` with fresh checksums.
+
 ## 1player — solo, just open `index.html`
 
 ### Breakout Blast

@@ -66,13 +66,14 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
     <div id="toast"></div>
     <div id="overlay"><div class="card" id="joinCard">
       <h1>🤖 TANK DUEL <span id="duelSub" style="font-size:14px;opacity:.75">— first to 5</span></h1>
-      <p>Host runs <b>python3 server.py</b> in <b>tank-duel/</b>. Both open the same LAN URL.<br>Shells bounce off walls — bank your shots!</p>
+      <p>Host runs <b>python3 server.py</b> in <b>tank-duel/</b>. Both open the same LAN URL — or P2 joins on this keyboard.<br>Shells bounce off walls — bank your shots!</p>
       <div id="slots"><div class="slot" id="s1">P1: —</div><div class="slot" id="s2">P2: —</div></div>
       <input id="name" maxlength="32" placeholder="Your name…" value="Player"><div id="arcRow" style="font-size:12px;margin-top:6px;opacity:.9"><span id="arcWho"></span><span id="arcEdit" style="display:none"> <input id="arcName" maxlength="12" placeholder="arcade name…" style="width:130px"> <button id="arcSave" class="ghost">Save</button> <span id="arcMsg"></span></span></div>
       <button id="joinBtn">Join game</button>
       <button id="readyBtn" class="ghost" disabled>Ready up ⚡</button>
+      <button id="localBtn" class="ghost" style="display:none">👥 P2 join — same keyboard</button>
       <div style="margin-top:10px;font-size:12px;opacity:.7"><a href="https://benjooyt.github.io/browser-games/" target="_blank" rel="noopener" style="color:inherit">more games →</a></div>
-      <p id="joinMsg">WASD / arrows + Space. Touch: left drag steers, right button fires.</p>
+      <p id="joinMsg">WASD / arrows + Space. Local 2P: first seat WASD+Space, second arrows+Enter. Touch: left drag steers, right button fires.</p>
     </div>
     <div class="card" id="endCard" style="display:none">
       <h1 id="winText">🏆 WINS!</h1>
@@ -81,7 +82,7 @@ kbd{font-family:var(--mono);background:#ffffff1a;border:1px solid #ffffff2e;bord
       <button id="againBtn">Back to lobby</button>
     </div></div>
   </div>
-  <div id="hint"><kbd>W</kbd><kbd>S</kbd> drive • <kbd>A</kbd><kbd>D</kbd> rotate • <kbd>Space</kbd> fire — shells bounce 6×, watch your own ricochets! Pickups: <b style="color:#ff9f1c">✹ spread</b> • <b style="color:#ffe14d">⚡ rapid</b> • <b style="color:#7dffcb">🛡 shield</b> • <b style="color:#ff6b6b">🎯 homing</b> (125° seeker cone) • <b style="color:#b9a7ff">💣 mines</b> • <b style="color:#66ffff">🔫 rail</b> (0.9s red telegraph, then a hitscan beam — dodge!)</div>
+  <div id="hint"><kbd>W</kbd><kbd>S</kbd> drive • <kbd>A</kbd><kbd>D</kbd> rotate • <kbd>Space</kbd> fire — local 2P: second tank drives with <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> + <kbd>Enter</kbd> — shells bounce 6×, watch your own ricochets! Pickups: <b style="color:#ff9f1c">✹ spread</b> • <b style="color:#ffe14d">⚡ rapid</b> • <b style="color:#7dffcb">🛡 shield</b> • <b style="color:#ff6b6b">🎯 homing</b> (125° seeker cone) • <b style="color:#b9a7ff">💣 mines</b> • <b style="color:#66ffff">🔫 rail</b> (0.9s red telegraph, then a hitscan beam — dodge!)</div>
   <div id="pveil"><div class="card">
     <h1>⏸ PAUSED</h1>
     <p id="pveilBy"></p>
@@ -176,7 +177,9 @@ try{nameI.value=localStorage.getItem('tankduel_name')||'Player';}catch(e){}
 nameI.addEventListener('input',()=>{try{localStorage.setItem('tankduel_name',nameI.value);}catch(e){}});try{const _an=lbName();if(_an&&(!nameI.value||nameI.value==='Player'))nameI.value=_an;}catch(e){}lbWireName();
 const s1=document.getElementById('s1'),s2=document.getElementById('s2'),scoreEl=document.getElementById('score'),namesEl=document.getElementById('names'),toast=document.getElementById('toast'),verEl=document.getElementById('verBadge');
 const cid=(()=>{try{let id=sessionStorage.getItem('tankduel_cid');if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('tankduel_cid',id);}return id;}catch(e){return Math.random().toString(36).slice(2)+Date.now().toString(36);}})();
-window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));}catch(e){}}});
+window.addEventListener('pagehide',()=>{if(joined){try{navigator.sendBeacon('/api/leave',JSON.stringify({clientId:cid}));for(const lc of localCids)navigator.sendBeacon('/api/leave',JSON.stringify({clientId:lc}));}catch(e){}}});
+// local 2P: one browser drives two seats — first seat on WASD+Space, second on arrows+Enter
+let localCids=[],localSeats=[],lastSent2='',lastMoveSend2=0;
 let you=0,joined=false,state=null,lastPhase='',lastCd=0,lastKillId=0,lastBlockId=0,lastPickupId=0,lastShotId=0,lastBeamId=0,beamFx=null,lastPopId=0,lastPopBeep=0,lastBounceN=0,lastBounceBeep=0,lastFrame=performance.now(),overShown=false;
 let keys={},parts=[],btrail=[],flash='',flashT=0,lastSent='',lastMoveSend=0;
 let stick=null,fireTouch=false,fireId=null;
@@ -190,44 +193,77 @@ function beep(f=440,d=.08,t='square',v=.1){if(muted)return;try{AC=AC||new(window
 function showToast(t){toast.textContent=t;toast.style.display='block';clearTimeout(showToast._t);showToast._t=setTimeout(()=>toast.style.display='none',2200);}
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return r.json();}
 joinBtn.onclick=async()=>{if(!lbGate())return;const d=await api('/api/join',{clientId:cid,name:nameI.value||'Player'});you=d.you;joined=true;readyBtn.disabled=(d.you===0);if(d.you===0)readyBtn.textContent='Spectating 👀';showToast(d.you===0?'Room full — spectating 👀':(d.you===1?'You are OLIVE (bottom-left)':'You are RUST (top-right)'));beep(660,.08);};
+// 👥 local 2P: second seat from the same browser; P1 drives with WASD/Space, P2 with arrows/Enter
+const localBtn=document.getElementById('localBtn');
+localBtn.onclick=async()=>{
+  if(localCids.length||!joined||!you)return;
+  const lc=cid+'#local2';
+  const d=await api('/api/join',{clientId:lc,name:(nameI.value||'Player').slice(0,24)+' (P2)'});
+  if(d.you===0){showToast('Room full — no seat for P2 👀');return;}
+  localCids=[lc];localSeats=[d.you];
+  await api('/api/ready',{clientId:lc});
+  localBtn.style.display='none';
+  showToast('👥 Local 2P! P1: WASD+Space • P2: arrows+Enter');beep(700,.07);
+};
+function syncLocalBtn(connected){
+  localBtn.style.display=(!joined||!you||localCids.length||connected.every(Boolean))?'none':'';
+}
 readyBtn.onclick=async()=>{if(!joined||!you)return;await api('/api/ready',{clientId:cid});readyBtn.disabled=true;readyBtn.textContent='Waiting for foe…';beep(700,.07);};
 function resetLobby(){endCard.style.display='none';joinCard.style.display='block';ov.style.display='flex';overShown=false;if(joined&&you!==0){readyBtn.disabled=false;readyBtn.textContent='Ready up ⚡';}else{readyBtn.disabled=true;if(joined)readyBtn.textContent='Spectating 👀';}}
-againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});resetLobby();beep(700,.07);};
+againBtn.onclick=async()=>{await api('/api/restart',{clientId:cid});for(const lc of localCids)await api('/api/ready',{clientId:lc});resetLobby();beep(700,.07);};
 async function votePause(){try{await api('/api/pause',{clientId:cid});}catch(e){}beep(600,.06);}
 document.getElementById('pauseBtn').onclick=e=>{e.stopPropagation();votePause();};
 document.getElementById('resumeBtn').onclick=e=>{e.stopPropagation();votePause();};
-window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k===' ')e.preventDefault();keys[k]=true;if(k==='escape'){votePause();return;}if(document.activeElement===nameI)return;if(k==='m')setMuted(!muted);if(k==='p')votePause();});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();const typing=document.activeElement===nameI||(document.activeElement&&document.activeElement.tagName==='INPUT');if(k===' ')e.preventDefault();if(!typing&&k.startsWith('arrow'))e.preventDefault();keys[k]=true;if(k==='escape'){votePause();return;}if(document.activeElement===nameI)return;if(k==='m')setMuted(!muted);if(k==='p')votePause();});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-// 🎮 gamepad: left stick/dpad → move, A/RT → action, Start → pause (@30Hz so menus work too)
-const GPACT=[' '];
-let _gpA=false,_gpS=false;
+// 🎮 gamepads: pad0 → P1 (WASD+Space), pad1 → P2 (arrows+Enter); Start either pad = pause
+let _gpA1=false,_gpA2=false,_gpS=false,_gpS2=false;
+function _gpGet(i){try{const gs=navigator.getGamepads?navigator.getGamepads():[];let n=0;for(const g of gs){if(g&&g.connected){if(n===i)return g;n++;}}}catch(e){}return null;}
+function _gpSt(gp){const ax=gp.axes[0]||0,ay=gp.axes[1]||0,b=j=>!!(gp.buttons[j]&&gp.buttons[j].pressed);
+  return{up:b(12)||ay<-0.28,dn:b(13)||ay>0.28,lf:b(14)||ax<-0.28,rt:b(15)||ax>0.28,a:b(0)||b(7),st:b(9)};}
 function gpTick(){
-  let gp=null;try{const gs=navigator.getGamepads?navigator.getGamepads():[];for(const g of gs){if(g&&g.connected){gp=g;break;}}}catch(e){}
   for(const k of ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','enter'])if(keys[k+'__gp']){keys[k]=false;keys[k+'__gp']=false;}
-  if(!gp)return;
-  const ax=gp.axes[0]||0,ay=gp.axes[1]||0,b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
-  const up=b(12)||ay<-0.28,dn=b(13)||ay>0.28,lf=b(14)||ax<-0.28,rt=b(15)||ax>0.28;
   const set=k=>{keys[k]=true;keys[k+'__gp']=true;};
-  if(up){set('w');set('arrowup');}if(dn){set('s');set('arrowdown');}if(lf){set('a');set('arrowleft');}if(rt){set('d');set('arrowright');}
-  const a=b(0)||b(7),st=b(9);
-  if(a){set(' ');if(!_gpA)for(const k of GPACT)window.dispatchEvent(new KeyboardEvent('keydown',{key:k}));}
-  else if(_gpA)for(const k of GPACT)window.dispatchEvent(new KeyboardEvent('keyup',{key:k}));
-  _gpA=a;
-  if(st&&!_gpS)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));
-  _gpS=st;
+  const g0=_gpGet(0),g1=_gpGet(1);
+  if(g0){const s=_gpSt(g0);
+    if(s.up)set('w');if(s.dn)set('s');if(s.lf)set('a');if(s.rt)set('d');
+    if(s.a){set(' ');if(!_gpA1)window.dispatchEvent(new KeyboardEvent('keydown',{key:' '}));}
+    else if(_gpA1)window.dispatchEvent(new KeyboardEvent('keyup',{key:' '}));
+    _gpA1=s.a;if(s.st&&!_gpS)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));_gpS=s.st;}
+  if(g1){const s=_gpSt(g1);
+    if(s.up)set('arrowup');if(s.dn)set('arrowdown');if(s.lf)set('arrowleft');if(s.rt)set('arrowright');
+    if(s.a){set('enter');if(!_gpA2)window.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));}
+    else if(_gpA2)window.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter'}));
+    _gpA2=s.a;if(s.st&&!_gpS2)window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}));_gpS2=s.st;}
 }
 setInterval(gpTick,33);
-function input(){
+function inputFor(p){
   let fwd=0,turn=0,fire=false;
-  if(keys['w']||keys['arrowup'])fwd+=1;
-  if(keys['s']||keys['arrowdown'])fwd-=1;
-  if(keys['a']||keys['arrowleft'])turn-=1;
-  if(keys['d']||keys['arrowright'])turn+=1;
-  if(keys[' ']||keys['enter'])fire=true;
-  if(stick){fwd+=stick.f;turn+=stick.t;}
-  if(fireTouch)fire=true;
+  if(p===1){
+    if(keys['w'])fwd+=1;
+    if(keys['s'])fwd-=1;
+    if(keys['a'])turn-=1;
+    if(keys['d'])turn+=1;
+    if(keys[' '])fire=true;
+    if(!localCids.length){ // solo: arrows still drive the same tank, Space/Enter both fire
+      if(keys['arrowup'])fwd+=1;
+      if(keys['arrowdown'])fwd-=1;
+      if(keys['arrowleft'])turn-=1;
+      if(keys['arrowright'])turn+=1;
+      if(keys['enter'])fire=true;
+    }
+    if(stick){fwd+=stick.f;turn+=stick.t;}
+    if(fireTouch)fire=true;
+  }else{
+    if(keys['arrowup'])fwd+=1;
+    if(keys['arrowdown'])fwd-=1;
+    if(keys['arrowleft'])turn-=1;
+    if(keys['arrowright'])turn+=1;
+    if(keys['enter'])fire=true;
+  }
   return {fwd:Math.max(-1,Math.min(1,fwd)),turn:Math.max(-1,Math.min(1,turn)),fire};
 }
+function input(){return inputFor(1);}
 // touch: left half = stick, right half = fire button
 function tpos(e){const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return {x:(t.clientX-r.left)/r.width*W,y:(t.clientY-r.top)/r.height*H};}
 cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){const r=cv.getBoundingClientRect();const x=(t.clientX-r.left)/r.width*W,y=(t.clientY-r.top)/r.height*H;if(x>W*0.55){if(fireId===null){fireTouch=true;fireId=t.identifier;}}else if(!stick)stick={ox:x,oy:y,f:0,t:0,id:t.identifier};}e.preventDefault();},{passive:false});
@@ -303,9 +339,11 @@ function poll(){
     if(s.v)verEl.textContent='v'+s.v;
     scoreEl.innerHTML='<span style="color:#a3b832">'+s.tanks[0].score+'</span> : <span style="color:#c96a2e">'+s.tanks[1].score+'</span>';
     const nm=[s.names[0]||'Player 1',s.names[1]||'Player 2'];
-    namesEl.textContent=`${nm[0]}  ${s.tanks[0].score} : ${s.tanks[1].score}  ${nm[1]} — round ${s.round}${you?` — you are P${you}`:joined?' — spectating':''}`;
+    const mySeats=you?[you].concat(localSeats):[];
+    namesEl.textContent=`${nm[0]}  ${s.tanks[0].score} : ${s.tanks[1].score}  ${nm[1]} — round ${s.round}${mySeats.length?` — you are ${mySeats.map(y=>'P'+y).join('+')}`:joined?' — spectating':''}`;
     s1.textContent='P1: '+(s.names[0]||'—')+(s.ready[0]?' ✅':'');s2.textContent='P2: '+(s.names[1]||'—')+(s.ready[1]?' ✅':'');
     s1.classList.toggle('on',s.connected[0]);s2.classList.toggle('on',s.connected[1]);
+    syncLocalBtn(s.connected);
     if(s.phase==='playing'||s.phase==='countdown'||s.phase==='round'){ov.style.display='none';endCard.style.display='none';}
     const pv=document.getElementById('pveil');
     if(s.paused){document.getElementById('pveilBy').textContent='Paused by '+(s.paused_by||'someone')+' — press P to resume';pv.classList.add('show');}
@@ -329,7 +367,7 @@ function poll(){
       ov.style.display='flex';
       if(!joined)return; // newcomer mid-aftermath: keep the pristine join lobby
       if(!overShown){overShown=true;document.getElementById('winText').textContent=`🏆 ${(s.winner?nm[s.winner-1]:'Nobody')} WINS!`;document.getElementById('finalScore').textContent=`Final ${s.tanks[0].score} : ${s.tanks[1].score}`;joinCard.style.display='none';endCard.style.display='block';beep(523,.12);setTimeout(()=>beep(659,.12),130);setTimeout(()=>beep(784,.25),260);
-        if(you&&s.winner&&you===s.winner){try{lbPost(s.tanks[s.winner-1].score);}catch(e){}}
+        if(you&&s.winner&&(you===s.winner||localSeats.includes(s.winner))){try{lbPost(s.tanks[s.winner-1].score);}catch(e){}}
         try{const _el=document.getElementById('lbLine');if(_el){_el.textContent='global board: loading…';lbTop(5).then(rows=>lbRender(_el,rows,v=>String(v)));}}catch(e){}}
     }
     else overShown=false;
@@ -346,6 +384,14 @@ function frame(now){
     if(key!==lastSent||now-lastMoveSend>100){
       lastSent=key;lastMoveSend=now;
       fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:cid,...inp})}).catch(()=>{});
+    }
+    if(localCids.length){
+      const inp2=(state&&state.phase==='playing')?inputFor(2):{fwd:0,turn:0,fire:false};
+      const key2=inp2.fwd.toFixed(2)+','+inp2.turn.toFixed(2)+','+inp2.fire;
+      if(key2!==lastSent2||now-lastMoveSend2>100){
+        lastSent2=key2;lastMoveSend2=now;
+        fetch('/api/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:localCids[0],...inp2})}).catch(()=>{});
+      }
     }
   }
   draw(now,dt);
@@ -444,7 +490,7 @@ function draw(now,dt){
     ctx.fillStyle='#e8f4f8';
     ctx.fillRect(4,-3,20,6);
     ctx.restore();
-    if(you===i+1){ctx.save();ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(t.x,t.y,22,0,7);ctx.stroke();ctx.restore();}
+    if((you&&you===i+1)||localSeats.includes(i+1)){ctx.save();ctx.strokeStyle='#ffffff88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(t.x,t.y,22,0,7);ctx.stroke();ctx.restore();}
     if(t.wpn){ctx.save();ctx.translate(t.x,t.y-32);const c=PKCOL[t.wpn]||'#fff';ctx.strokeStyle=c;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,10,0,7);ctx.stroke();drawPickupGlyph(t.wpn,0,0,c);ctx.restore();}
     if(t.wpn==='shield'){ctx.save();ctx.strokeStyle='#7dffcb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,24+2*Math.sin(now/150),0,7);ctx.stroke();ctx.restore();}
   });

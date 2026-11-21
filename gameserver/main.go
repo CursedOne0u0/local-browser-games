@@ -1,5 +1,5 @@
 // Universal LAN gameserver launcher: one binary, every game choosable.
-// Usage: gameserver [-game bomb|tank|pong|echo|horde|bastion|all] [-port N] [-no-browser]
+// Usage: gameserver [-game bomb|tank|pong|echo|horde|bastion|all] [-port N] [-no-browser] [-no-update]
 package main
 
 import (
@@ -17,7 +17,10 @@ import (
 	"local-browser-games/gameserver/horde"
 	"local-browser-games/gameserver/pong"
 	"local-browser-games/gameserver/tank"
+	"local-browser-games/gameserver/update"
 )
+
+const VERSION = "1.26"
 
 type entry struct {
 	key   string
@@ -39,7 +42,15 @@ func main() {
 	gameFlag := flag.String("game", "", "game key (1-6) or 'all'")
 	portFlag := flag.Int("port", 0, "override port (single game only)")
 	noBrowser := flag.Bool("no-browser", false, "don't open a browser")
+	noUpdate := flag.Bool("no-update", false, "skip the startup update check")
+	versionFlag := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("gameserver %s (%s)\n", VERSION, update.Platform())
+		return
+	}
+	update.MaybeUpdate(VERSION, *noUpdate)
 
 	if *gameFlag == "" {
 		menu(*noBrowser)
